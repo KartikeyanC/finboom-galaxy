@@ -26,7 +26,7 @@ const Index = () => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-primary">
               <Zap className="w-4 h-4 text-primary-foreground" />
             </div>
-            <h1 className="font-display text-xl font-bold text-gradient-primary">Finboom</h1>
+            <h1 className="font-display text-xl font-bold text-gradient-primary">FinRoots</h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-xs text-muted-foreground hidden sm:block">April 2026</span>
