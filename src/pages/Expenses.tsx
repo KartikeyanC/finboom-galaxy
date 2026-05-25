@@ -16,7 +16,7 @@ const Expenses = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard label="This Month" value="₹68,200" change="-4.1% vs last" changeType="positive" icon={<Receipt className="w-4 h-4" />} delay={0.05} />
         <MetricCard label="Daily Average" value="₹2,273" change="On track" changeType="neutral" icon={<CreditCard className="w-4 h-4" />} delay={0.1} />
-        <MetricCard label="Largest Category" value="Needs" value2="₹34,100" change="50% of spend" changeType="neutral" icon={<TrendingDown className="w-4 h-4" />} delay={0.15} />
+        <MetricCard label="Largest Category" value="₹34,100" change="Needs · 50% of spend" changeType="neutral" icon={<TrendingDown className="w-4 h-4" />} delay={0.15} />
         <MetricCard label="Over Budget" value="2 cats" change="Food & Play" changeType="negative" icon={<AlertCircle className="w-4 h-4" />} delay={0.2} />
       </div>
 
