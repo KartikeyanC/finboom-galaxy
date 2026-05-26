@@ -28,18 +28,18 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Income", url: "/income", icon: Wallet },
-  { title: "Expenses", url: "/expenses", icon: Receipt },
-  { title: "Investments", url: "/investments", icon: TrendingUp },
-  { title: "Budget", url: "/budget", icon: PieChart },
-  { title: "Goals", url: "/goals", icon: Target },
+  { title: "Dashboard", url: "/app", icon: LayoutDashboard },
+  { title: "Income", url: "/app/income", icon: Wallet },
+  { title: "Expenses", url: "/app/expenses", icon: Receipt },
+  { title: "Investments", url: "/app/investments", icon: TrendingUp },
+  { title: "Budget", url: "/app/budget", icon: PieChart },
+  { title: "Goals", url: "/app/goals", icon: Target },
 ];
 
 const toolItems = [
-  { title: "Calculators", url: "/calculators", icon: Calculator },
-  { title: "Reminders", url: "/reminders", icon: Bell },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Calculators", url: "/app/calculators", icon: Calculator },
+  { title: "Reminders", url: "/app/reminders", icon: Bell },
+  { title: "Settings", url: "/app/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

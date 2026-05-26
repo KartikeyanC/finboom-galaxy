@@ -14,6 +14,7 @@ import Investments from "./pages/Investments.tsx";
 import Budget from "./pages/Budget.tsx";
 import Goals from "./pages/Goals.tsx";
 import Auth from "./pages/Auth.tsx";
+import Landing from "./pages/Landing.tsx";
 
 const queryClient = new QueryClient();
 
@@ -25,9 +26,10 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route
-              path="/*"
+              path="/app/*"
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
@@ -45,6 +47,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
