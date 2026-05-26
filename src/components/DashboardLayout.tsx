@@ -3,9 +3,11 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { Bell, LogOut, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
+  useRealtimeSync();
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
