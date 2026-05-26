@@ -93,8 +93,18 @@ export default function AddIncomeDialog({ onAdd }: Props) {
       toast.error(parsed.error.issues[0].message);
       return;
     }
-    onAdd(parsed.data);
-    toast.success(`${parsed.data.name} added`);
+    const d = parsed.data;
+    onAdd({
+      name: d.name,
+      amount: d.amount,
+      currency: d.currency,
+      exchangeRateToINR: d.exchangeRateToINR,
+      icon: d.icon,
+      type: d.type,
+      frequency: d.frequency,
+      notes: d.notes,
+    });
+    toast.success(`${d.name} added`);
     setOpen(false);
   };
 
