@@ -1,53 +1,86 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { AnimatePresence } from "framer-motion";
 import MetricCard from "@/components/dashboard/MetricCard";
-import TransactionsTable from "@/components/transactions/TransactionsTable";
-import { Wallet, TrendingUp, Globe, Layers } from "lucide-react";
-import { useTransactions } from "@/hooks/useTransactions";
-import { formatCompact, toINR } from "@/lib/finance";
+import IncomeCard from "@/components/income/IncomeCard";
+import ManageCategoriesSheet from "@/components/income/ManageCategoriesSheet";
+import QuickAddCard from "@/components/income/QuickAddCard";
+import { Wallet, Globe, Layers, Sparkles } from "lucide-react";
+import { useIncomeStreams } from "@/hooks/useIncomeStreams";
+import { formatCompact } from "@/lib/finance";
 
 const Income = () => {
-  const { data: txns = [] } = useTransactions("income");
+  const { streams, visible, toggleVisible, reorder, move, add, remove, resetAll } = useIncomeStreams();
+  const dragId = useRef<string | null>(null);
 
   const stats = useMemo(() => {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const thisMonth = txns.filter((t) => new Date(t.occurred_at) >= monthStart);
-    const monthlyINR = thisMonth.reduce((s, t) => s + toINR(Number(t.amount), t.currency), 0);
-    const categories = new Set(txns.map((t) => t.category));
-    const forex = txns
-      .filter((t) => t.currency !== "INR")
-      .reduce((s, t) => s + Number(t.amount), 0);
-    return {
-      monthlyINR,
-      categoryCount: categories.size,
-      forex,
-      totalRecords: txns.length,
-    };
-  }, [txns]);
+    const totalINR = visible.reduce((s, x) => s + x.amount * x.exchangeRateToINR, 0);
+    const activeINR = visible
+      .filter((x) => x.type === "active")
+      .reduce((s, x) => s + x.amount * x.exchangeRateToINR, 0);
+    const passiveINR = totalINR - activeINR;
+    const forexCount = visible.filter((x) => x.currency !== "INR").length;
+    return { totalINR, activeINR, passiveINR, forexCount };
+  }, [visible]);
 
   return (
-    <div className="px-6 sm:px-8 py-8 space-y-8 max-w-[1400px] mx-auto">
+    <div className="px-4 sm:px-8 py-8 space-y-8 max-w-[1200px] mx-auto">
       <header>
         <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Income</span>
         <h1 className="font-display text-3xl font-bold text-foreground mt-1">Income Streams</h1>
         <p className="text-muted-foreground mt-2 max-w-lg">
-          Track multi-currency earnings across active, passive, investment, and property income.
+          Personalize, reorder, and hide your multi-currency earnings. Everything converts to INR instantly.
         </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="This Month (INR eq.)" value={formatCompact(stats.monthlyINR)}
-          change={`${txns.filter(t => new Date(t.occurred_at) >= new Date(new Date().getFullYear(), new Date().getMonth(), 1)).length} transactions`}
-          changeType="positive" icon={<Wallet className="w-4 h-4" />} delay={0.05} />
-        <MetricCard label="Total Records" value={String(stats.totalRecords)} change="All time"
-          changeType="neutral" icon={<TrendingUp className="w-4 h-4" />} delay={0.1} />
-        <MetricCard label="Categories" value={String(stats.categoryCount)} change="Unique streams"
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard label="Total Monthly (INR)" value={formatCompact(stats.totalINR)}
+          change={`${visible.length} active streams`} changeType="positive"
+          icon={<Wallet className="w-4 h-4" />} delay={0.05} />
+        <MetricCard label="Active Income" value={formatCompact(stats.activeINR)} change="Salary & work"
+          changeType="neutral" icon={<Sparkles className="w-4 h-4" />} delay={0.1} />
+        <MetricCard label="Passive Income" value={formatCompact(stats.passiveINR)} change="Recurring & flexible"
           changeType="neutral" icon={<Layers className="w-4 h-4" />} delay={0.15} />
-        <MetricCard label="Foreign Currency" value={stats.forex > 0 ? formatCompact(stats.forex, "USD") : "—"}
-          change="Non-INR amounts" changeType="neutral" icon={<Globe className="w-4 h-4" />} delay={0.2} />
+        <MetricCard label="Foreign Streams" value={String(stats.forexCount)} change="Non-INR currencies"
+          changeType="neutral" icon={<Globe className="w-4 h-4" />} delay={0.2} />
       </div>
 
-      <TransactionsTable type="income" />
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground">Your Streams</h2>
+            <p className="text-sm text-muted-foreground">Drag handles to reorder. Tap the gear to hide or show.</p>
+          </div>
+          <ManageCategoriesSheet streams={streams} onToggle={toggleVisible} onReset={resetAll} />
+        </div>
+
+        <div className="space-y-3">
+          <AnimatePresence initial={false}>
+            {visible.map((s, i) => (
+              <IncomeCard
+                key={s.id}
+                stream={s}
+                isFirst={i === 0}
+                isLast={i === visible.length - 1}
+                onDragStart={(id) => { dragId.current = id; }}
+                onDropOn={(targetId) => {
+                  if (dragId.current && dragId.current !== targetId) reorder(dragId.current, targetId);
+                  dragId.current = null;
+                }}
+                onMove={move}
+                onRemove={remove}
+              />
+            ))}
+          </AnimatePresence>
+
+          {visible.length === 0 && (
+            <div className="glass-card p-8 text-center text-muted-foreground">
+              All streams hidden. Open <span className="font-medium text-foreground">Manage Categories</span> to show some.
+            </div>
+          )}
+
+          <QuickAddCard onAdd={add} />
+        </div>
+      </section>
     </div>
   );
 };
