@@ -222,26 +222,92 @@ const AuthPage = () => {
 
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input id="signin-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                  </div>
+                  {profiles.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Saved profiles
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {profiles.map((p) => {
+                          const isActive = activeProfile?.email === p.email;
+                          return (
+                            <button
+                              key={p.email}
+                              type="button"
+                              onClick={() => {
+                                setActiveProfile(p);
+                                setEmail(p.email);
+                              }}
+                              className={`group relative flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                                isActive
+                                  ? "border-primary bg-primary/10 text-foreground"
+                                  : "border-border hover:bg-accent"
+                              }`}
+                            >
+                              <UserCircle2 className="h-4 w-4" />
+                              <span className="max-w-[140px] truncate">{p.name || p.email}</span>
+                              <span
+                                role="button"
+                                aria-label={`Remove ${p.email}`}
+                                onClick={(ev) => {
+                                  ev.stopPropagation();
+                                  removeProfile(p.email);
+                                  const next = loadProfiles();
+                                  setProfiles(next);
+                                  if (isActive) {
+                                    setActiveProfile(null);
+                                    setEmail("");
+                                  }
+                                }}
+                                className="ml-1 rounded-full p-0.5 opacity-60 hover:bg-background hover:opacity-100"
+                              >
+                                <X className="h-3 w-3" />
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeProfile ? (
+                    <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                      Signing in as{" "}
+                      <span className="font-medium text-foreground">{activeProfile.name || activeProfile.email}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveProfile(null);
+                          setEmail("");
+                        }}
+                        className="ml-2 text-xs text-primary hover:underline"
+                      >
+                        Use a different account
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-email">Email</Label>
+                      <Input
+                        id="signin-email"
+                        type="email"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
-                    <Input id="signin-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                    <Input id="signin-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus={!!activeProfile} />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                      <Checkbox
-                        checked={remember}
-                        onCheckedChange={(v) => setRemember(v === true)}
-                      />
-                      Remember me
-                    </label>
+                  <div className="flex items-center justify-end">
                     <button
                       type="button"
                       onClick={() => {
-                        setResetEmail(email);
+                        setResetEmail(activeProfile?.email ?? email);
                         setResetOpen(true);
                       }}
                       className="text-sm text-primary hover:underline"
@@ -258,14 +324,57 @@ const AuthPage = () => {
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4 pt-4">
                   <div className="space-y-2">
+                    <Label htmlFor="signup-name">Name</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      autoComplete="name"
+                      value={signupName}
+                      onChange={(e) => setSignupName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
-                    <Input id="signup-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      autoComplete="email"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input id="signup-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      autoComplete="new-password"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      required
+                    />
                     <p className="text-xs text-muted-foreground">At least 8 characters.</p>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirm">Re-enter password</Label>
+                    <Input
+                      id="signup-confirm"
+                      type="password"
+                      autoComplete="new-password"
+                      value={signupConfirm}
+                      onChange={(e) => setSignupConfirm(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                    <Checkbox
+                      checked={signupRemember}
+                      onCheckedChange={(v) => setSignupRemember(v === true)}
+                    />
+                    Remember this profile on this device
+                  </label>
                   <Button type="submit" className="w-full" disabled={busy}>
                     {busy ? "Creating account…" : "Create account"}
                   </Button>
