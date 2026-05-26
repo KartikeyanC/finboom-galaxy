@@ -199,9 +199,9 @@ const Landing = () => {
             <Link to="/auth" className="text-sm text-[#f5f0e0]/70 hover:text-[#f5f0e0] transition-colors px-3 py-2">
               Sign in
             </Link>
-            <Link to="/auth">
+            <Link to="/auth?tab=signup">
               <Button className="bg-[#c9a84c] hover:bg-[#d4b65c] text-[#0a1612] font-medium rounded-full px-5 h-9 shadow-[0_8px_30px_-8px_rgba(201,168,76,0.6)]">
-                Get started
+                Create account
               </Button>
             </Link>
           </div>
