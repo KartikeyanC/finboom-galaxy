@@ -4,9 +4,11 @@ import { Bell, LogOut, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useNavigate } from "react-router-dom";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   useRealtimeSync();
   return (
     <SidebarProvider>
@@ -34,7 +36,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span className="hidden md:inline text-xs text-muted-foreground max-w-[160px] truncate">
                     {user.email}
                   </span>
-                  <Button variant="ghost" size="sm" onClick={() => signOut()} className="gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      await signOut();
+                      navigate("/", { replace: true });
+                    }}
+                    className="gap-1.5"
+                  >
                     <LogOut className="w-4 h-4" />
                     <span className="hidden sm:inline">Sign out</span>
                   </Button>

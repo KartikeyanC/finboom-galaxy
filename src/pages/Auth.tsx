@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -7,8 +7,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Sprout } from "lucide-react";
 
@@ -17,16 +26,41 @@ const credentialsSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters").max(72),
 });
 
+const friendlyAuthError = (msg: string): string => {
+  const m = msg.toLowerCase();
+  if (m.includes("invalid login") || m.includes("invalid credentials"))
+    return "The email or password is incorrect. Please try again.";
+  if (m.includes("email not confirmed"))
+    return "Please confirm your email address before signing in.";
+  if (m.includes("user already registered") || m.includes("already registered"))
+    return "An account with this email already exists. Try signing in instead.";
+  if (m.includes("rate") && m.includes("limit"))
+    return "Too many attempts. Please wait a moment and try again.";
+  if (m.includes("network"))
+    return "Network issue. Check your connection and retry.";
+  return msg;
+};
+
 const AuthPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
   const { user, loading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+
+  const redirectTo =
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || "/app";
 
   useEffect(() => {
-    if (!loading && user) navigate("/app", { replace: true });
-  }, [user, loading, navigate]);
+    if (!loading && user) navigate(redirectTo, { replace: true });
+  }, [user, loading, navigate, redirectTo]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +77,7 @@ const AuthPage = () => {
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(friendlyAuthError(error.message));
       return;
     }
     toast.success("Account created. Check your email to confirm.");
@@ -63,16 +97,23 @@ const AuthPage = () => {
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(friendlyAuthError(error.message));
       return;
     }
-    navigate("/", { replace: true });
+    // "Remember me": when off, mark session-only so we sign out on browser close.
+    if (remember) {
+      localStorage.removeItem("finroots.session_only");
+    } else {
+      localStorage.setItem("finroots.session_only", "1");
+      sessionStorage.setItem("finroots.session_active", "1");
+    }
+    navigate(redirectTo, { replace: true });
   };
 
   const handleGoogle = async () => {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}/app`,
     });
     if (result.error) {
       setBusy(false);
@@ -80,7 +121,26 @@ const AuthPage = () => {
       return;
     }
     if (result.redirected) return;
-    navigate("/", { replace: true });
+    navigate(redirectTo, { replace: true });
+  };
+
+  const handlePasswordReset = async () => {
+    const parsed = z.string().email().safeParse(resetEmail);
+    if (!parsed.success) {
+      toast.error("Enter a valid email to receive a reset link.");
+      return;
+    }
+    setResetBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setResetBusy(false);
+    if (error) {
+      toast.error(friendlyAuthError(error.message));
+      return;
+    }
+    toast.success("Password reset link sent. Check your inbox.");
+    setResetOpen(false);
   };
 
   return (
@@ -99,7 +159,7 @@ const AuthPage = () => {
             <CardDescription>Sign in or create an account to continue.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue={initialTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign in</TabsTrigger>
                 <TabsTrigger value="signup">Sign up</TabsTrigger>
@@ -114,6 +174,25 @@ const AuthPage = () => {
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
                     <Input id="signin-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                      <Checkbox
+                        checked={remember}
+                        onCheckedChange={(v) => setRemember(v === true)}
+                      />
+                      Remember me
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetEmail(email);
+                        setResetOpen(true);
+                      }}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
                   </div>
                   <Button type="submit" className="w-full" disabled={busy}>
                     {busy ? "Signing in…" : "Sign in"}
@@ -153,6 +232,34 @@ const AuthPage = () => {
             </Button>
           </CardContent>
         </Card>
+
+        <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset your password</DialogTitle>
+              <DialogDescription>
+                Enter your email and we'll send you a secure link to set a new password.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="reset-email">Email</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setResetOpen(false)} disabled={resetBusy}>
+                Cancel
+              </Button>
+              <Button onClick={handlePasswordReset} disabled={resetBusy}>
+                {resetBusy ? "Sending…" : "Send reset link"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
