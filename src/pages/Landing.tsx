@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
  * Layout:  Bento grid
  */
 
-const fadeUp = {
+const fadeUp: any = {
   hidden: { opacity: 0, y: 24 },
   show: (i = 0) => ({
     opacity: 1,
