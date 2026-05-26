@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import MetricCard from "@/components/dashboard/MetricCard";
 import IncomeCard from "@/components/income/IncomeCard";
 import ManageCategoriesSheet from "@/components/income/ManageCategoriesSheet";
-import QuickAddCard from "@/components/income/QuickAddCard";
+import AddIncomeDialog from "@/components/income/AddIncomeDialog";
 import { Wallet, Globe, Layers, Sparkles } from "lucide-react";
 import { useIncomeStreams } from "@/hooks/useIncomeStreams";
 import { formatCompact } from "@/lib/finance";
@@ -24,12 +24,15 @@ const Income = () => {
 
   return (
     <div className="px-4 sm:px-8 py-8 space-y-8 max-w-[1200px] mx-auto">
-      <header>
-        <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Income</span>
-        <h1 className="font-display text-3xl font-bold text-foreground mt-1">Income Streams</h1>
-        <p className="text-muted-foreground mt-2 max-w-lg">
-          Personalize, reorder, and hide your multi-currency earnings. Everything converts to INR instantly.
-        </p>
+      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Income</span>
+          <h1 className="font-display text-3xl font-bold text-foreground mt-1">Income Streams</h1>
+          <p className="text-muted-foreground mt-2 max-w-lg">
+            Personalize, reorder, and hide your multi-currency earnings. Everything converts to INR instantly.
+          </p>
+        </div>
+        <AddIncomeDialog onAdd={add} />
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -77,8 +80,6 @@ const Income = () => {
               All streams hidden. Open <span className="font-medium text-foreground">Manage Categories</span> to show some.
             </div>
           )}
-
-          <QuickAddCard onAdd={add} />
         </div>
       </section>
     </div>
