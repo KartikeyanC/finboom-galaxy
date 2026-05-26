@@ -7,6 +7,8 @@ import {
 
 export type IncomeCurrency = "USD" | "EUR" | "INR";
 
+export type IncomeFrequency = "monthly" | "weekly" | "one-time";
+
 export type IncomeStream = {
   id: string;
   name: string;
@@ -17,6 +19,8 @@ export type IncomeStream = {
   exchangeRateToINR: number;
   isVisible: boolean;
   displayOrder: number;
+  frequency?: IncomeFrequency;
+  notes?: string;
 };
 
 export const DEFAULT_FX: Record<IncomeCurrency, number> = {

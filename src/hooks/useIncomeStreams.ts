@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { SEED_STREAMS, type IncomeStream, type IncomeCurrency, DEFAULT_FX } from "@/lib/incomeSeed";
+import { SEED_STREAMS, type IncomeStream, type IncomeCurrency, type IncomeFrequency, DEFAULT_FX } from "@/lib/incomeSeed";
 
 const STORAGE_KEY = "valar.income.streams";
 
@@ -60,19 +60,30 @@ export function useIncomeStreams() {
   }, []);
 
   const add = useCallback(
-    (input: { name: string; amount: number; currency: IncomeCurrency; exchangeRateToINR: number; icon?: string }) => {
+    (input: {
+      name: string;
+      amount: number;
+      currency: IncomeCurrency;
+      exchangeRateToINR: number;
+      icon?: string;
+      type?: "active" | "passive";
+      frequency?: IncomeFrequency;
+      notes?: string;
+    }) => {
       setStreams((prev) => {
         const maxOrder = prev.reduce((m, s) => Math.max(m, s.displayOrder), 0);
         const next: IncomeStream = {
           id: `custom-${Date.now()}`,
           name: input.name.trim() || "Custom",
-          type: "passive",
+          type: input.type ?? "passive",
           icon: input.icon ?? "Coins",
           amount: Number(input.amount) || 0,
           currency: input.currency,
           exchangeRateToINR: Number(input.exchangeRateToINR) || DEFAULT_FX[input.currency],
           isVisible: true,
           displayOrder: maxOrder + 1,
+          frequency: input.frequency ?? "monthly",
+          notes: input.notes?.trim() || undefined,
         };
         return [...prev, next];
       });
