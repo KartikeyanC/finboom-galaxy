@@ -25,7 +25,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (!loading && user) navigate("/", { replace: true });
+    if (!loading && user) navigate("/app", { replace: true });
   }, [user, loading, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -39,7 +39,7 @@ const AuthPage = () => {
     const { error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
-      options: { emailRedirectTo: `${window.location.origin}/` },
+      options: { emailRedirectTo: `${window.location.origin}/app` },
     });
     setBusy(false);
     if (error) {
