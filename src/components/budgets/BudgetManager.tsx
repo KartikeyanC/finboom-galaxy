@@ -99,8 +99,14 @@ function BudgetDialog({
       return;
     }
     try {
-      if (initial) await update.mutateAsync({ id: initial.id, ...parsed.data });
-      else await create.mutateAsync({ ...parsed.data, period: "monthly" });
+      const payload = {
+        bucket: parsed.data.bucket,
+        allocated: parsed.data.allocated,
+        spent: parsed.data.spent,
+        period_start: parsed.data.period_start,
+      };
+      if (initial) await update.mutateAsync({ id: initial.id, ...payload });
+      else await create.mutateAsync({ ...payload, period: "monthly" });
       onOpenChange(false);
     } catch {/* hook toasts */}
   };
