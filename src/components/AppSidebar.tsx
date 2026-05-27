@@ -9,7 +9,6 @@ import {
   Settings,
   Bell,
   Zap,
-  Zap as ZapIcon,
   PlusSquare,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
