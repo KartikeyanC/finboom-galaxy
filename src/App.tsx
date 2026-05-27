@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,11 @@ import Investments from "./pages/Investments.tsx";
 import Budget from "./pages/Budget.tsx";
 import Goals from "./pages/Goals.tsx";
 import QuickEntry from "./pages/QuickEntry.tsx";
+import CalculatorPage from "./pages/Calculator.tsx";
+import RemindersPage from "./pages/Reminders.tsx";
+import SettingsPage from "./pages/Settings.tsx";
+import ProfilePage from "./pages/Profile.tsx";
+import NotificationsPage from "./pages/Notifications.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
@@ -44,8 +50,14 @@ const App = () => (
                       <Route path="/budget" element={<Budget />} />
                       <Route path="/goals" element={<Goals />} />
                       <Route path="/quick-entry" element={<QuickEntry />} />
+                      <Route path="/calculator" element={<CalculatorPage />} />
+                      <Route path="/calculators" element={<Navigate to="/app/calculator" replace />} />
+                      <Route path="/reminders" element={<RemindersPage />} />
+                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/notifications" element={<NotificationsPage />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                      <Route path="*" element={<NotFound />} />
+                      <Route path="*" element={<Navigate to="/app" replace />} />
                     </Routes>
                   </DashboardLayout>
                 </ProtectedRoute>

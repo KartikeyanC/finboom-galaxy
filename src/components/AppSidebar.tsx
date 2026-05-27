@@ -39,7 +39,7 @@ const mainItems = [
 ];
 
 const toolItems = [
-  { title: "Calculators", url: "/app/calculators", icon: Calculator },
+  { title: "Calculator", url: "/app/calculator", icon: Calculator },
   { title: "Reminders", url: "/app/reminders", icon: Bell },
   { title: "Settings", url: "/app/settings", icon: Settings },
 ];
