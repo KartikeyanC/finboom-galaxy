@@ -14,7 +14,6 @@ import Expenses from "./pages/Expenses.tsx";
 import Investments from "./pages/Investments.tsx";
 import Budget from "./pages/Budget.tsx";
 import Goals from "./pages/Goals.tsx";
-import QuickEntry from "./pages/QuickEntry.tsx";
 import CalculatorPage from "./pages/Calculator.tsx";
 import RemindersPage from "./pages/Reminders.tsx";
 import SettingsPage from "./pages/Settings.tsx";
@@ -49,7 +48,6 @@ const App = () => (
                       <Route path="/investments" element={<Investments />} />
                       <Route path="/budget" element={<Budget />} />
                       <Route path="/goals" element={<Goals />} />
-                      <Route path="/quick-entry" element={<QuickEntry />} />
                       <Route path="/calculator" element={<CalculatorPage />} />
                       <Route path="/calculators" element={<Navigate to="/app/calculator" replace />} />
                       <Route path="/reminders" element={<RemindersPage />} />
