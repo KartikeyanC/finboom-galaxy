@@ -13,15 +13,25 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Trash2 } from "lucide-react";
 import {
   CURRENCIES,
   EXPENSE_CATEGORIES,
   INCOME_CATEGORIES,
 } from "@/lib/finance";
+import {
+  ACTIVE_INCOME,
+  PASSIVE_INCOME,
+  useCustomCategories,
+  type IncomeSubtype,
+} from "@/lib/categories";
 import {
   useCreateTransaction,
   useUpdateTransaction,
@@ -49,32 +59,46 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const isEdit = !!initial;
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
+  const custom = useCustomCategories();
 
-  const defaultCategory = type === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
-  const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const [activeType, setActiveType] = useState<TxnType>(type);
+  const defaultCategory =
+    activeType === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
 
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [category, setCategory] = useState<string>(defaultCategory);
   const [description, setDescription] = useState("");
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [newCatOpen, setNewCatOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatSub, setNewCatSub] = useState<IncomeSubtype>("active");
 
   useEffect(() => {
     if (!open) return;
     if (initial) {
+      setActiveType(initial.type);
       setAmount(String(initial.amount));
       setCurrency(initial.currency);
       setCategory(initial.category);
       setDescription(initial.description ?? "");
       setOccurredAt(initial.occurred_at.slice(0, 10));
     } else {
+      setActiveType(type);
       setAmount("");
       setCurrency("INR");
-      setCategory(defaultCategory);
+      setCategory(type === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0]);
       setDescription("");
       setOccurredAt(new Date().toISOString().slice(0, 10));
     }
-  }, [open, initial, defaultCategory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial, type]);
+
+  // When user toggles type within the dialog, reset category to a sensible default.
+  useEffect(() => {
+    if (!open || initial) return;
+    setCategory(activeType === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0]);
+  }, [activeType, open, initial]);
 
   const submit = async () => {
     const parsed = schema.safeParse({
@@ -89,7 +113,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       return;
     }
     const payload = {
-      type,
+      type: activeType,
       amount: parsed.data.amount,
       currency: parsed.data.currency,
       category: parsed.data.category,
@@ -110,15 +134,54 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
 
   const busy = create.isPending || update.isPending;
 
+  const activeIncome = [...ACTIVE_INCOME, ...custom.store.income.active];
+  const passiveIncome = [...PASSIVE_INCOME, ...custom.store.income.passive];
+  const expenseList = [...EXPENSE_CATEGORIES, ...custom.store.expense];
+
+  const saveNewCategory = () => {
+    const n = newCatName.trim();
+    if (!n) return;
+    if (activeType === "income") {
+      custom.addIncome(newCatSub, n);
+    } else {
+      custom.addExpense(n);
+    }
+    setCategory(n);
+    setNewCatName("");
+    setNewCatOpen(false);
+    toast.success(`Added "${n}"`);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="font-display">
-            {isEdit ? "Edit" : "Add"} {type === "income" ? "Income" : "Expense"}
+            {isEdit ? "Edit Transaction" : "Add Transaction"}
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-2">
+          {/* Type toggle */}
+          <div className="inline-flex p-1 rounded-lg bg-muted/40 border border-border w-full">
+            {(["income", "expense"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setActiveType(t)}
+                className={
+                  "flex-1 text-sm font-medium rounded-md py-1.5 transition-colors capitalize " +
+                  (activeType === t
+                    ? t === "income"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-coral/20 text-coral"
+                    : "text-muted-foreground hover:text-foreground")
+                }
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="amount">Amount</Label>
@@ -146,14 +209,124 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
           </div>
           <div className="space-y-1.5">
             <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {categories.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {activeType === "income" ? (
+                    <>
+                      <SelectGroup>
+                        <SelectLabel className="text-emerald-400">Active Income</SelectLabel>
+                        {activeIncome.map((c) => (
+                          <SelectItem key={`a-${c}`} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel className="text-teal-400">Passive Income</SelectLabel>
+                        {passiveIncome.map((c) => (
+                          <SelectItem key={`p-${c}`} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </>
+                  ) : (
+                    expenseList.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <Popover open={newCatOpen} onOpenChange={setNewCatOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" size="sm" className="shrink-0">
+                    <Plus className="w-4 h-4 mr-1" /> New
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Create new category</Label>
+                    <Input
+                      autoFocus
+                      placeholder="e.g. Crypto, Coffee"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && saveNewCategory()}
+                    />
+                  </div>
+                  {activeType === "income" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Classify as</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["active", "passive"] as const).map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setNewCatSub(s)}
+                            className={
+                              "text-xs rounded-md py-1.5 border capitalize " +
+                              (newCatSub === s
+                                ? "bg-primary/15 text-primary border-primary/40"
+                                : "border-border text-muted-foreground hover:text-foreground")
+                            }
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button size="sm" variant="ghost" onClick={() => setNewCatOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={saveNewCategory}>Save</Button>
+                  </div>
+                  {/* Manage existing custom */}
+                  {(activeType === "income"
+                    ? [...custom.store.income.active.map((n) => ({ n, sub: "active" as const })),
+                       ...custom.store.income.passive.map((n) => ({ n, sub: "passive" as const }))]
+                    : custom.store.expense.map((n) => ({ n, sub: null as null }))
+                  ).length > 0 && (
+                    <div className="border-t border-border pt-2 space-y-1">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Your custom
+                      </div>
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {activeType === "income"
+                          ? [
+                              ...custom.store.income.active.map((n) => ({ n, sub: "active" as IncomeSubtype })),
+                              ...custom.store.income.passive.map((n) => ({ n, sub: "passive" as IncomeSubtype })),
+                            ].map(({ n, sub }) => (
+                              <div key={`${sub}-${n}`} className="flex items-center justify-between text-xs">
+                                <span>
+                                  {n} <span className="text-muted-foreground">· {sub}</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  className="text-muted-foreground hover:text-coral"
+                                  onClick={() => custom.removeIncome(sub, n)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))
+                          : custom.store.expense.map((n) => (
+                              <div key={n} className="flex items-center justify-between text-xs">
+                                <span>{n}</span>
+                                <button
+                                  type="button"
+                                  className="text-muted-foreground hover:text-coral"
+                                  onClick={() => custom.removeExpense(n)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                      </div>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="occurred_at">Date</Label>
