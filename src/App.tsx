@@ -13,7 +13,6 @@ import Expenses from "./pages/Expenses.tsx";
 import Investments from "./pages/Investments.tsx";
 import Budget from "./pages/Budget.tsx";
 import Goals from "./pages/Goals.tsx";
-import QuickEntry from "./pages/QuickEntry.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
@@ -43,7 +42,6 @@ const App = () => (
                       <Route path="/investments" element={<Investments />} />
                       <Route path="/budget" element={<Budget />} />
                       <Route path="/goals" element={<Goals />} />
-                      <Route path="/quick-entry" element={<QuickEntry />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
