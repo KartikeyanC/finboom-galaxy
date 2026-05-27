@@ -9,7 +9,6 @@ import {
   Settings,
   Bell,
   Zap,
-  PlusSquare,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -30,7 +29,6 @@ import {
 
 const mainItems = [
   { title: "Dashboard", url: "/app", icon: LayoutDashboard },
-  { title: "Quick Entry", url: "/app/quick-entry", icon: PlusSquare },
   { title: "Income", url: "/app/income", icon: Wallet },
   { title: "Expenses", url: "/app/expenses", icon: Receipt },
   { title: "Investments", url: "/app/investments", icon: TrendingUp },
