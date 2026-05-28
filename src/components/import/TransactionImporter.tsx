@@ -8,12 +8,14 @@ import {
   FileType2,
   CheckCircle2,
   AlertTriangle,
-  ExternalLink,
+  Plus,
+  RotateCcw,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -192,6 +194,22 @@ const BROKERS: Broker[] = [
   },
 ];
 
+const CUSTOM_BROKER: Broker = {
+  value: "__custom__",
+  label: "Other Platform / Custom Bank PDF",
+  initial: "+",
+  brand: "#64748B",
+  url: "",
+  steps: [
+    "Export a **CSV, XLS, XLSX or PDF** statement from your platform",
+    "Ensure columns include **Date, Symbol/Asset, Type, Quantity, Price**",
+    "Drop the file into the upload area below",
+    "Review the extracted rows and adjust the FX rate for foreign currencies",
+    "Click **Approve & Import Rows** to save to your ledger",
+  ],
+  footnote: "Generic parser — works with most bank and broker statements.",
+};
+
 type Section = "assets" | "income";
 type Source = "broker" | "standard";
 type Mode = "append" | "update";
@@ -212,14 +230,16 @@ const extIcon = (name: string) => {
 export function TransactionImporter() {
   const [section, setSection] = useState<Section>("assets");
   const [source, setSource] = useState<Source>("broker");
-  const [mode, setMode] = useState<Mode>("update");
+  const [mode, setMode] = useState<Mode>("append");
   const [profile, setProfile] = useState(BROKERS[0].value);
   const [dragOver, setDragOver] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const createTxn = useCreateTransaction();
 
-  const broker = BROKERS.find((b) => b.value === profile) ?? BROKERS[0];
+  const allBrokers = useMemo(() => [...BROKERS, CUSTOM_BROKER], []);
+  const broker = allBrokers.find((b) => b.value === profile) ?? BROKERS[0];
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const list = Array.from(files);
@@ -230,8 +250,13 @@ export function TransactionImporter() {
         continue;
       }
       setStage(stageLabel(ext));
+      setProgress(8);
+      const tick = window.setInterval(() => {
+        setProgress((p) => (p < 90 ? p + Math.max(1, (92 - p) / 8) : p));
+      }, 120);
       try {
         const parsed = await parseFile(file);
+        setProgress(100);
         if (!parsed.length) toast.warning(`No rows detected in ${file.name}`);
         else toast.success(`Parsed ${parsed.length} rows from ${file.name}`);
         setRows((prev) => [...prev, ...parsed]);
@@ -239,7 +264,11 @@ export function TransactionImporter() {
         console.error(err);
         toast.error(`Failed to parse ${file.name}`);
       } finally {
-        setStage(null);
+        window.clearInterval(tick);
+        window.setTimeout(() => {
+          setStage(null);
+          setProgress(0);
+        }, 350);
       }
     }
   }, []);
@@ -256,8 +285,13 @@ export function TransactionImporter() {
   const removeRow = (id: string) =>
     setRows((prev) => prev.filter((r) => r.id !== id));
 
+  const safe = (n: number) => (Number.isFinite(n) ? n : 0);
   const totalINR = useMemo(
-    () => rows.reduce((s, r) => s + r.quantity * r.price * r.rate, 0),
+    () =>
+      rows.reduce(
+        (s, r) => s + safe(r.quantity) * safe(r.price) * safe(r.rate),
+        0,
+      ),
     [rows],
   );
 
@@ -306,19 +340,6 @@ export function TransactionImporter() {
         </TabsList>
       </Tabs>
 
-      {/* Mode banner */}
-      {mode === "update" && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex gap-3">
-          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-200">
-            <span className="font-semibold text-amber-400">Update by Name mode:</span>{" "}
-            assets whose names match existing ones will have their value, quantity, and
-            price updated. Assets not in this file are left untouched, and new names are
-            added as fresh entries.
-          </p>
-        </div>
-      )}
-
       {/* Source + mode segmented controls */}
       <div className="flex flex-wrap gap-3">
         <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
@@ -335,13 +356,27 @@ export function TransactionImporter() {
         </Tabs>
       </div>
 
+      {/* Mode banner — slides down on Update by Name */}
+      {mode === "update" && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex gap-3 animate-in slide-in-from-top-2 fade-in">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-200">
+            <span className="font-semibold text-amber-400">Update by Name mode:</span>{" "}
+            entries whose names match existing ones will have their value, quantity and
+            price overwritten. Names not in this file stay untouched; new names are
+            added as fresh rows.
+          </p>
+        </div>
+      )}
+
       {/* Broker grid */}
       {source === "broker" && (
         <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
           <h3 className="font-display text-base font-bold mb-4">Select Broker</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {BROKERS.map((b) => {
+            {allBrokers.map((b) => {
               const active = b.value === profile;
+              const isCustom = b.value === "__custom__";
               return (
                 <button
                   key={b.value}
@@ -350,15 +385,16 @@ export function TransactionImporter() {
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all",
                     active
-                      ? "border-primary bg-primary/10 ring-1 ring-primary/40"
+                      ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/40"
                       : "border-border/60 bg-secondary/30 hover:border-primary/40 hover:bg-secondary/50",
+                    isCustom && "col-span-2",
                   )}
                 >
                   <span
                     className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white shrink-0"
                     style={{ backgroundColor: b.brand }}
                   >
-                    {b.initial}
+                    {isCustom ? <Plus className="w-4 h-4" /> : b.initial}
                   </span>
                   <span className="text-sm font-medium truncate">{b.label}</span>
                 </button>
@@ -438,12 +474,16 @@ export function TransactionImporter() {
             onChange={(e) => e.target.files && handleFiles(e.target.files)}
           />
           {stage ? (
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-4 w-full max-w-sm">
               <div className="relative w-16 h-16">
                 <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
                 <Loader2 className="absolute inset-0 m-auto w-16 h-16 text-primary animate-spin" />
               </div>
               <p className="font-medium text-primary">{stage}</p>
+              <Progress value={progress} className="h-2 w-full" />
+              <p className="text-xs text-muted-foreground font-mono">
+                {Math.round(progress)}%
+              </p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
@@ -468,27 +508,14 @@ export function TransactionImporter() {
 
       {/* Preview */}
       {rows.length > 0 && (
-        <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
+        <Card className="p-6 bg-card/60 backdrop-blur border-border/60 pb-4">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-display text-lg font-bold">Validation Queue</h3>
               <p className="text-xs text-muted-foreground">
-                {rows.length} row(s) • Total ≈ {formatMoney(totalINR)}
+                {rows.length} row(s) • Total ≈ {totalINR > 0 ? formatMoney(totalINR) : "—"}
               </p>
             </div>
-            <Button
-              onClick={sync}
-              disabled={createTxn.isPending}
-              size="lg"
-              className="gap-2"
-            >
-              {createTxn.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4" />
-              )}
-              Approve & Sync to Ledger
-            </Button>
           </div>
 
           <div className="rounded-lg border border-border/60 overflow-x-auto">
@@ -508,11 +535,11 @@ export function TransactionImporter() {
               <TableBody>
                 {rows.map((r) => {
                   const foreign = r.currency !== "INR";
-                  const total = r.quantity * r.price * r.rate;
+                  const total = safe(r.quantity) * safe(r.price) * safe(r.rate);
                   return (
                     <TableRow key={r.id}>
-                      <TableCell className="font-mono text-xs">{r.date}</TableCell>
-                      <TableCell className="font-medium">{r.asset}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.date || "—"}</TableCell>
+                      <TableCell className="font-medium">{r.asset || "—"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={r.action === "Inflow" ? "default" : "secondary"}
@@ -525,18 +552,26 @@ export function TransactionImporter() {
                           {r.action}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono">{r.quantity}</TableCell>
                       <TableCell className="text-right font-mono">
-                        {r.currency} {r.price.toFixed(2)}
+                        {Number.isFinite(r.quantity) && r.quantity !== 0 ? r.quantity : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {r.currency}{" "}
+                        {Number.isFinite(r.price) && r.price !== 0 ? r.price.toFixed(2) : "—"}
                       </TableCell>
                       <TableCell>
                         {foreign ? (
                           <Input
                             type="number"
-                            value={r.rate}
+                            value={Number.isFinite(r.rate) ? r.rate : ""}
                             step="0.01"
                             onChange={(e) =>
-                              updateRow(r.id, { rate: Number(e.target.value) || 0 })
+                              updateRow(r.id, {
+                                rate:
+                                  e.target.value === ""
+                                    ? 0
+                                    : Number(e.target.value) || 0,
+                              })
                             }
                             className="h-8 w-24 text-xs"
                           />
@@ -545,7 +580,7 @@ export function TransactionImporter() {
                         )}
                       </TableCell>
                       <TableCell className="text-right font-mono font-semibold">
-                        {formatMoney(total)}
+                        {total > 0 ? formatMoney(total) : "—"}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -562,6 +597,27 @@ export function TransactionImporter() {
                 })}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Sticky finalization bar */}
+          <div className="sticky bottom-4 mt-6 flex flex-wrap gap-3 justify-end rounded-xl border border-border/60 bg-background/80 backdrop-blur p-3 shadow-lg">
+            <Button variant="outline" onClick={() => setRows([])} className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Clear / Reset Form
+            </Button>
+            <Button
+              onClick={sync}
+              disabled={createTxn.isPending}
+              size="lg"
+              className="gap-2"
+            >
+              {createTxn.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              Approve & Import Rows
+            </Button>
           </div>
         </Card>
       )}
