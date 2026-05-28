@@ -119,11 +119,26 @@ export function TransactionImporter() {
     <div className="space-y-6">
       {/* Dropzone */}
       <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
-        <div className="mb-6">
-          <h2 className="font-display text-2xl font-bold">Import Transactions</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Drop CSV, XLS, XLSX, or PDF statements to auto-extract rows.
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-2xl font-bold">Import Transactions</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Drop CSV, XLS, XLSX, or PDF statements to auto-extract rows.
+            </p>
+          </div>
+          <Button asChild size="sm" className="gap-2 shrink-0">
+            <label className="cursor-pointer">
+              <Upload className="w-4 h-4" />
+              Browse Files
+              <input
+                type="file"
+                multiple
+                accept={SUPPORTED_EXT.join(",")}
+                className="hidden"
+                onChange={(e) => e.target.files && handleFiles(e.target.files)}
+              />
+            </label>
+          </Button>
         </div>
 
         <div className="mb-6">
