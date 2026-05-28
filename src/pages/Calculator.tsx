@@ -523,7 +523,7 @@ export default function CalculatorPage() {
 
       <div className="glass-card p-6">
         <Tabs defaultValue="avg">
-          <div className="mb-6 -mx-1 overflow-x-auto">
+          <div className="mb-6 -mx-1 overflow-x-auto scrollbar-themed">
             <TabsList className="inline-flex w-max flex-nowrap h-auto">
               <TabsTrigger value="avg" className="whitespace-nowrap"><TrendingDown className="w-4 h-4 mr-2" />Average Down</TabsTrigger>
               <TabsTrigger value="sip" className="whitespace-nowrap"><PiggyBank className="w-4 h-4 mr-2" />Step-Up SIP</TabsTrigger>
