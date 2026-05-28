@@ -204,6 +204,7 @@ export default function AccountsManager() {
   const [newPurpose, setNewPurpose] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
 
   const addPurpose = () => {
     const v = newPurpose.trim();
@@ -281,12 +282,40 @@ export default function AccountsManager() {
       toast.error("Please enter an account name");
       return;
     }
-    setAccounts((a) => [...a, { ...form, id: crypto.randomUUID() }]);
-    toast.success("Account added");
+    if (editingAccountId) {
+      setAccounts((a) =>
+        a.map((x) => (x.id === editingAccountId ? { ...form, id: editingAccountId } : x)),
+      );
+      toast.success("Account updated");
+      setEditingAccountId(null);
+    } else {
+      setAccounts((a) => [...a, { ...form, id: crypto.randomUUID() }]);
+      toast.success("Account added");
+    }
     setForm(emptyForm());
   };
 
-  const remove = (id: string) => setAccounts((a) => a.filter((x) => x.id !== id));
+  const remove = (id: string) => {
+    setAccounts((a) => a.filter((x) => x.id !== id));
+    if (editingAccountId === id) {
+      setEditingAccountId(null);
+      setForm(emptyForm());
+    }
+  };
+
+  const startEditAccount = (acc: SavedAccount) => {
+    const { id, ...rest } = acc;
+    setForm(rest);
+    setEditingAccountId(id);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const cancelEditAccount = () => {
+    setEditingAccountId(null);
+    setForm(emptyForm());
+  };
 
   return (
     <div className="space-y-6">
