@@ -4,7 +4,6 @@ import {
   TrendingDown,
   PiggyBank,
   LineChart,
-  Target,
   RotateCcw,
   Wallet,
   Split,
