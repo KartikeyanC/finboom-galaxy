@@ -290,13 +290,118 @@ export function TransactionImporter() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="font-display text-2xl font-bold">Import</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Bulk import assets, income & expenses
+        </p>
+      </div>
+
+      {/* Section tabs */}
+      <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
+        <TabsList>
+          <TabsTrigger value="assets">Assets</TabsTrigger>
+          <TabsTrigger value="income">Income &amp; Expenses</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Mode banner */}
+      {mode === "update" && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex gap-3">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-200">
+            <span className="font-semibold text-amber-400">Update by Name mode:</span>{" "}
+            assets whose names match existing ones will have their value, quantity, and
+            price updated. Assets not in this file are left untouched, and new names are
+            added as fresh entries.
+          </p>
+        </div>
+      )}
+
+      {/* Source + mode segmented controls */}
+      <div className="flex flex-wrap gap-3">
+        <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
+          <TabsList>
+            <TabsTrigger value="broker">Import from Broker</TabsTrigger>
+            <TabsTrigger value="standard">Standard Import</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+          <TabsList>
+            <TabsTrigger value="append">Append</TabsTrigger>
+            <TabsTrigger value="update">Update by Name</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Broker grid */}
+      {source === "broker" && (
+        <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
+          <h3 className="font-display text-base font-bold mb-4">Select Broker</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {BROKERS.map((b) => {
+              const active = b.value === profile;
+              return (
+                <button
+                  key={b.value}
+                  type="button"
+                  onClick={() => setProfile(b.value)}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all",
+                    active
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/40"
+                      : "border-border/60 bg-secondary/30 hover:border-primary/40 hover:bg-secondary/50",
+                  )}
+                >
+                  <span
+                    className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white shrink-0"
+                    style={{ backgroundColor: b.brand }}
+                  >
+                    {b.initial}
+                  </span>
+                  <span className="text-sm font-medium truncate">{b.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* How-to-export */}
+      {source === "broker" && (
+        <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
+          <h3 className="font-display text-base font-bold mb-3">
+            How to Export from {broker.label}
+          </h3>
+          <ol className="space-y-1.5 text-sm text-foreground/90 list-decimal pl-5">
+            {broker.steps.map((s, i) => (
+              <li
+                key={i}
+                dangerouslySetInnerHTML={{
+                  __html: s
+                    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                    .replace(
+                      broker.url,
+                      `<a href="https://${broker.url}" target="_blank" rel="noreferrer" class="text-primary underline underline-offset-2">${broker.url}</a>`,
+                    ),
+                }}
+              />
+            ))}
+          </ol>
+          <p className="text-xs text-muted-foreground mt-4">{broker.footnote}</p>
+        </Card>
+      )}
+
       {/* Dropzone */}
       <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl font-bold">Import Transactions</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Drop CSV, XLS, XLSX, or PDF statements to auto-extract rows.
+            <h3 className="font-display text-base font-bold">Upload File</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {source === "broker"
+                ? `Drop the exported ${broker.label} file (CSV, XLS, XLSX, or PDF).`
+                : "Drop CSV, XLS, XLSX, or PDF statements to auto-extract rows."}
             </p>
           </div>
           <Button asChild size="sm" className="gap-2 shrink-0">
@@ -312,27 +417,6 @@ export function TransactionImporter() {
               />
             </label>
           </Button>
-        </div>
-
-        <div className="mb-6">
-          <div className="text-[11px] font-semibold uppercase tracking-widest text-primary font-display mb-2">
-            Broker / Bank Profile
-          </div>
-          <Tabs value={profile} onValueChange={setProfile}>
-            <div className="-mx-1 overflow-x-auto scrollbar-themed">
-              <TabsList className="inline-flex w-max flex-nowrap h-auto">
-                {PROFILES.map((p) => {
-                  const Icon = p.icon;
-                  return (
-                    <TabsTrigger key={p.value} value={p.value} className="whitespace-nowrap">
-                      <Icon className="w-4 h-4 mr-2" />
-                      {p.label}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-            </div>
-          </Tabs>
         </div>
 
         <label
