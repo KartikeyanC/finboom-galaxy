@@ -304,58 +304,201 @@ function CAGRCalc() {
   );
 }
 
-/* --------------------- 4. Profit & Loss --------------------- */
+/* --------------------------- 4. SWP --------------------------- */
 
-function PnLCalc() {
-  const [buy, setBuy] = useState("100");
-  const [sell, setSell] = useState("125");
-  const [qty, setQty] = useState("50");
-  const [fees, setFees] = useState("0.5");
+function SWPCalc() {
+  const [lump, setLump] = useState("1000000");
+  const [withdraw, setWithdraw] = useState("10000");
+  const [rate, setRate] = useState("8");
+  const [months, setMonths] = useState("120");
 
-  const { pnl, roi } = useMemo(() => {
-    const B = num(buy), S = num(sell), Q = num(qty);
-    const FeePct = num(fees) ?? 0;
-    if (B === null || S === null || Q === null || B <= 0 || Q <= 0) {
-      return { pnl: null, roi: null };
+  const { totalPayout, remaining } = useMemo(() => {
+    const L = num(lump), W = num(withdraw), R = num(rate), M = num(months);
+    if (L === null || W === null || R === null || M === null || L <= 0 || M <= 0) {
+      return { totalPayout: null, remaining: null };
     }
-    const gross = (S - B) * Q;
-    const turnover = (B + S) * Q;
-    const feeCost = (FeePct / 100) * turnover;
-    const net = gross - feeCost;
-    const invested = B * Q;
-    return { pnl: net, roi: (net / invested) * 100 };
-  }, [buy, sell, qty, fees]);
+    const i = R / 100 / 12;
+    let bal = L;
+    let paid = 0;
+    for (let m = 0; m < M; m++) {
+      bal = bal * (1 + i) - W;
+      paid += W;
+      if (bal < 0) {
+        paid += bal; // reduce overpaid
+        bal = 0;
+        break;
+      }
+    }
+    return { totalPayout: paid, remaining: bal };
+  }, [lump, withdraw, rate, months]);
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-6">
+      <div className="space-y-5">
+        <SliderField label="Lump-Sum Investment (₹)" value={lump} onChange={setLump} min={10000} max={50000000} step={10000} prefix="₹" />
+        <SliderField label="Monthly Withdrawal (₹)" value={withdraw} onChange={setWithdraw} min={500} max={500000} step={500} prefix="₹" />
+        <SliderField label="Annual Interest Rate (%)" value={rate} onChange={setRate} min={1} max={20} step={0.1} suffix="%" />
+        <SliderField label="Withdrawal Period (Months)" value={months} onChange={setMonths} min={1} max={480} step={1} suffix=" mo" />
+      </div>
+      <div className="space-y-3">
+        <ResultCard label="Total Payout Received" value={totalPayout === null ? DASH : inr(totalPayout)} tone="positive" />
+        <ResultCard
+          label="Remaining Balance"
+          value={remaining === null ? DASH : inr(remaining)}
+          tone={remaining === null ? "default" : remaining > 0 ? "positive" : "negative"}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------- 5. Stock Split ---------------------- */
+
+function StockSplitCalc() {
+  const [price, setPrice] = useState("1000");
+  const [shares, setShares] = useState("100");
+  const [oldR, setOldR] = useState("2");
+  const [newR, setNewR] = useState("5");
+
+  const { newPrice, newShares, fractional } = useMemo(() => {
+    const P = num(price), S = num(shares), O = num(oldR), N = num(newR);
+    if (P === null || S === null || O === null || N === null || O <= 0 || N <= 0) {
+      return { newPrice: null, newShares: null, fractional: null };
+    }
+    const np = P * (O / N);
+    const totalNew = S * (N / O);
+    const whole = Math.floor(totalNew);
+    const frac = totalNew - whole;
+    return { newPrice: np, newShares: whole, fractional: frac * np };
+  }, [price, shares, oldR, newR]);
 
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <div className="space-y-3">
         <div>
-          <Label>Buy Price</Label>
-          <Input value={buy} onChange={(e) => setBuy(e.target.value)} type="number" />
+          <Label>Current Stock Price (₹)</Label>
+          <Input value={price} onChange={(e) => setPrice(e.target.value)} type="number" />
         </div>
         <div>
-          <Label>Sell Price</Label>
-          <Input value={sell} onChange={(e) => setSell(e.target.value)} type="number" />
+          <Label>Current Shares Owned</Label>
+          <Input value={shares} onChange={(e) => setShares(e.target.value)} type="number" />
+        </div>
+        <div className="rounded-lg border border-border/40 bg-secondary/20 p-4 space-y-3">
+          <div className="text-xs font-semibold uppercase tracking-widest text-primary font-display">
+            Split Ratio (Old : New)
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Old Shares</Label>
+              <Input value={oldR} onChange={(e) => setOldR(e.target.value)} type="number" />
+            </div>
+            <div>
+              <Label>New Shares</Label>
+              <Input value={newR} onChange={(e) => setNewR(e.target.value)} type="number" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <ResultCard label="Adjusted Price Per Share" value={newPrice === null ? DASH : inr(newPrice)} />
+        <ResultCard
+          label="Total Shares After Split"
+          value={newShares === null ? DASH : newShares.toLocaleString("en-IN")}
+        />
+        <ResultCard
+          label="Fractional Cash Refund"
+          value={fractional === null ? DASH : inr(fractional)}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* --------------------- 6. Rule of 72 --------------------- */
+
+function Rule72Calc() {
+  const [rate, setRate] = useState("8");
+
+  const { years, months } = useMemo(() => {
+    const R = num(rate);
+    if (R === null || R <= 0) return { years: null, months: null };
+    const total = 72 / R;
+    const y = Math.floor(total);
+    const m = Math.round((total - y) * 12);
+    return { years: y, months: m };
+  }, [rate]);
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-6">
+      <div className="space-y-5">
+        <SliderField label="Annual Interest Rate (%)" value={rate} onChange={setRate} min={1} max={30} step={0.1} suffix="%" />
+        <p className="text-xs text-muted-foreground">
+          Rule of 72: an approximation of how long an investment takes to double at a fixed annual return.
+        </p>
+      </div>
+      <div className="space-y-3">
+        <ResultCard
+          label="Years to Double"
+          value={years === null ? DASH : `${years} yr ${months} mo`}
+          tone="positive"
+        />
+        <ResultCard
+          label="Exact Duration"
+          value={years === null ? DASH : `${(72 / (num(rate) ?? 1)).toFixed(2)} years`}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 7. Percentage / Spread ---------------- */
+
+function PercentageCalc() {
+  const [x, setX] = useState("10");
+  const [y, setY] = useState("250");
+
+  const { xOfY, increase, decrease, fraction } = useMemo(() => {
+    const X = num(x), Y = num(y);
+    if (X === null || Y === null) {
+      return { xOfY: null, increase: null, decrease: null, fraction: null };
+    }
+    const xy = (X / 100) * Y;
+    const inc = Y + xy;
+    const dec = Y - xy;
+    const frac = Y === 0 ? null : (X / Y) * 100;
+    return { xOfY: xy, increase: inc, decrease: dec, fraction: frac };
+  }, [x, y]);
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-6">
+      <div className="space-y-3">
+        <div>
+          <Label>Value X (%)</Label>
+          <Input value={x} onChange={(e) => setX(e.target.value)} type="number" />
         </div>
         <div>
-          <Label>Quantity</Label>
-          <Input value={qty} onChange={(e) => setQty(e.target.value)} type="number" />
-        </div>
-        <div>
-          <Label>Brokerage / Taxes (%) — optional</Label>
-          <Input value={fees} onChange={(e) => setFees(e.target.value)} type="number" step="0.01" />
+          <Label>Benchmark Y</Label>
+          <Input value={y} onChange={(e) => setY(e.target.value)} type="number" />
         </div>
       </div>
       <div className="space-y-3">
         <ResultCard
-          label="Net Profit / Loss"
-          value={pnl === null ? DASH : inr(pnl)}
-          tone={pnl === null ? "default" : pnl >= 0 ? "positive" : "negative"}
+          label="X% of Y"
+          value={xOfY === null ? DASH : xOfY.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
         />
         <ResultCard
-          label="Return on Investment (ROI)"
-          value={roi === null ? DASH : `${roi.toFixed(2)}%`}
-          tone={roi === null ? "default" : roi >= 0 ? "positive" : "negative"}
+          label="Target +X% (Profit)"
+          value={increase === null ? DASH : increase.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+          tone="positive"
+        />
+        <ResultCard
+          label="Target -X% (Stop Loss)"
+          value={decrease === null ? DASH : decrease.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+          tone="negative"
+        />
+        <ResultCard
+          label="X as % of Y"
+          value={fraction === null ? DASH : `${fraction.toFixed(2)}%`}
         />
       </div>
     </div>
@@ -384,15 +527,21 @@ export default function CalculatorPage() {
           <div className="mb-6 -mx-1 overflow-x-auto">
             <TabsList className="inline-flex w-max flex-nowrap h-auto">
               <TabsTrigger value="avg" className="whitespace-nowrap"><TrendingDown className="w-4 h-4 mr-2" />Average Down</TabsTrigger>
-              <TabsTrigger value="sip" className="whitespace-nowrap"><PiggyBank className="w-4 h-4 mr-2" />SIP</TabsTrigger>
+              <TabsTrigger value="sip" className="whitespace-nowrap"><PiggyBank className="w-4 h-4 mr-2" />Step-Up SIP</TabsTrigger>
+              <TabsTrigger value="swp" className="whitespace-nowrap"><Wallet className="w-4 h-4 mr-2" />SWP</TabsTrigger>
               <TabsTrigger value="cagr" className="whitespace-nowrap"><LineChart className="w-4 h-4 mr-2" />CAGR</TabsTrigger>
-              <TabsTrigger value="pnl" className="whitespace-nowrap"><Target className="w-4 h-4 mr-2" />Profit / Loss</TabsTrigger>
+              <TabsTrigger value="split" className="whitespace-nowrap"><Split className="w-4 h-4 mr-2" />Stock Split</TabsTrigger>
+              <TabsTrigger value="r72" className="whitespace-nowrap"><Timer className="w-4 h-4 mr-2" />Rule of 72</TabsTrigger>
+              <TabsTrigger value="pct" className="whitespace-nowrap"><Percent className="w-4 h-4 mr-2" />Percentage</TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="avg"><AverageDownCalc /></TabsContent>
           <TabsContent value="sip"><SIPCalc /></TabsContent>
+          <TabsContent value="swp"><SWPCalc /></TabsContent>
           <TabsContent value="cagr"><CAGRCalc /></TabsContent>
-          <TabsContent value="pnl"><PnLCalc /></TabsContent>
+          <TabsContent value="split"><StockSplitCalc /></TabsContent>
+          <TabsContent value="r72"><Rule72Calc /></TabsContent>
+          <TabsContent value="pct"><PercentageCalc /></TabsContent>
         </Tabs>
       </div>
     </div>
