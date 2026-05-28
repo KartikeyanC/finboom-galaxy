@@ -4,13 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Landmark, LineChart, Building2, Wallet, Sparkles } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -25,7 +20,13 @@ import { formatMoney } from "@/lib/finance";
 import { parseFile, SUPPORTED_EXT, type ImportedRow } from "@/lib/importParsers";
 import { useCreateTransaction } from "@/hooks/useTransactions";
 
-const PROFILES = ["Zerodha", "Groww", "Angel One", "HDFC Ledger", "Custom Template"];
+const PROFILES = [
+  { value: "Zerodha", label: "Zerodha", icon: LineChart },
+  { value: "Groww", label: "Groww", icon: Sparkles },
+  { value: "Angel One", label: "Angel One", icon: Landmark },
+  { value: "HDFC Ledger", label: "HDFC Ledger", icon: Building2 },
+  { value: "Custom Template", label: "Custom", icon: Wallet },
+];
 
 const stageLabel = (ext: string) => {
   if (ext === "pdf") return "Extracting Text from PDF Layers...";
@@ -41,7 +42,7 @@ const extIcon = (name: string) => {
 };
 
 export function TransactionImporter() {
-  const [profile, setProfile] = useState(PROFILES[0]);
+  const [profile, setProfile] = useState(PROFILES[0].value);
   const [dragOver, setDragOver] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [rows, setRows] = useState<ImportedRow[]>([]);
@@ -118,26 +119,32 @@ export function TransactionImporter() {
     <div className="space-y-6">
       {/* Dropzone */}
       <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-4">
-          <div>
-            <h2 className="font-display text-2xl font-bold">Import Transactions</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Drop CSV, XLS, XLSX, or PDF statements to auto-extract rows.
-            </p>
+        <div className="mb-6">
+          <h2 className="font-display text-2xl font-bold">Import Transactions</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Drop CSV, XLS, XLSX, or PDF statements to auto-extract rows.
+          </p>
+        </div>
+
+        <div className="mb-6">
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-primary font-display mb-2">
+            Broker / Bank Profile
           </div>
-          <div className="md:w-64">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-              Broker / Bank Profile
-            </label>
-            <Select value={profile} onValueChange={setProfile}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {PROFILES.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Tabs value={profile} onValueChange={setProfile}>
+            <div className="-mx-1 overflow-x-auto scrollbar-themed">
+              <TabsList className="inline-flex w-max flex-nowrap h-auto">
+                {PROFILES.map((p) => {
+                  const Icon = p.icon;
+                  return (
+                    <TabsTrigger key={p.value} value={p.value} className="whitespace-nowrap">
+                      <Icon className="w-4 h-4 mr-2" />
+                      {p.label}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
+          </Tabs>
         </div>
 
         <label
