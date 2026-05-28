@@ -366,12 +366,14 @@ export default function CalculatorPage() {
 
       <div className="glass-card p-6">
         <Tabs defaultValue="avg">
-          <TabsList className="mb-6 flex flex-wrap h-auto">
-            <TabsTrigger value="avg"><TrendingDown className="w-4 h-4 mr-2" />Average Down</TabsTrigger>
-            <TabsTrigger value="sip"><PiggyBank className="w-4 h-4 mr-2" />SIP</TabsTrigger>
-            <TabsTrigger value="cagr"><LineChart className="w-4 h-4 mr-2" />CAGR</TabsTrigger>
-            <TabsTrigger value="pnl"><Target className="w-4 h-4 mr-2" />Profit / Loss</TabsTrigger>
-          </TabsList>
+          <div className="mb-6 -mx-1 overflow-x-auto">
+            <TabsList className="inline-flex w-max flex-nowrap h-auto">
+              <TabsTrigger value="avg" className="whitespace-nowrap"><TrendingDown className="w-4 h-4 mr-2" />Average Down</TabsTrigger>
+              <TabsTrigger value="sip" className="whitespace-nowrap"><PiggyBank className="w-4 h-4 mr-2" />SIP</TabsTrigger>
+              <TabsTrigger value="cagr" className="whitespace-nowrap"><LineChart className="w-4 h-4 mr-2" />CAGR</TabsTrigger>
+              <TabsTrigger value="pnl" className="whitespace-nowrap"><Target className="w-4 h-4 mr-2" />Profit / Loss</TabsTrigger>
+            </TabsList>
+          </div>
           <TabsContent value="avg"><AverageDownCalc /></TabsContent>
           <TabsContent value="sip"><SIPCalc /></TabsContent>
           <TabsContent value="cagr"><CAGRCalc /></TabsContent>
