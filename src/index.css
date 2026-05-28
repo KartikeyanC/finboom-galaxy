@@ -127,3 +127,15 @@
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Number input spinner — match dark theme instead of browser white */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
