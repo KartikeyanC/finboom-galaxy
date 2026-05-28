@@ -207,41 +207,45 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
               </Select>
             </div>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label>Category</Label>
-            <div className="flex gap-2">
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {activeType === "income" ? (
-                    <>
-                      <SelectGroup>
-                        <SelectLabel className="text-emerald-400">Active Income</SelectLabel>
-                        {activeIncome.map((c) => (
-                          <SelectItem key={`a-${c}`} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel className="text-teal-400">Passive Income</SelectLabel>
-                        {passiveIncome.map((c) => (
-                          <SelectItem key={`p-${c}`} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </>
-                  ) : (
-                    expenseList.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              <Popover open={newCatOpen} onOpenChange={setNewCatOpen}>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="outline" size="sm" className="shrink-0">
-                    <Plus className="w-4 h-4 mr-1" /> New
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-72 space-y-3">
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {activeType === "income" ? (
+                  <>
+                    <SelectGroup>
+                      <SelectLabel className="text-emerald-400">Active Income</SelectLabel>
+                      {activeIncome.map((c) => (
+                        <SelectItem key={`a-${c}`} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel className="text-teal-400">Passive Income</SelectLabel>
+                      {passiveIncome.map((c) => (
+                        <SelectItem key={`p-${c}`} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </>
+                ) : (
+                  expenseList.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            <Popover open={newCatOpen} onOpenChange={setNewCatOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-center gap-2 border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create New {activeType === "income" ? "Income" : "Expense"} Category
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 sm:w-80 space-y-3 p-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Create new category</Label>
                     <Input
@@ -324,9 +328,8 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
                       </div>
                     </div>
                   )}
-                </PopoverContent>
-              </Popover>
-            </div>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="occurred_at">Date</Label>

@@ -4,8 +4,6 @@ import TransactionsTable from "@/components/transactions/TransactionsTable";
 import { Receipt, TrendingDown, AlertCircle, CreditCard } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatCompact, toINR } from "@/lib/finance";
-import RecurringList from "@/components/recurring/RecurringList";
-import RecurringDialog from "@/components/recurring/RecurringDialog";
 
 const Expenses = () => {
   const { data: txns = [] } = useTransactions("expense");
@@ -50,17 +48,6 @@ const Expenses = () => {
         <MetricCard label="Total Records" value={String(stats.totalRecords)}
           change="All time" changeType="neutral" icon={<AlertCircle className="w-4 h-4" />} delay={0.2} />
       </div>
-
-      <section className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl font-bold text-foreground">Recurring Expenses</h2>
-            <p className="text-sm text-muted-foreground">Rent, EMI, subscriptions. Tap “Mark paid” when due.</p>
-          </div>
-          <RecurringDialog type="expense" />
-        </div>
-        <RecurringList type="expense" />
-      </section>
 
       <TransactionsTable type="expense" />
     </div>
