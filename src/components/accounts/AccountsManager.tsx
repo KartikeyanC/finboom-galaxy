@@ -752,7 +752,12 @@ export default function AccountsManager() {
                     return (
                       <div
                         key={a.id}
-                        className="relative flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 p-3 overflow-hidden"
+                        className={cn(
+                          "relative flex items-center gap-3 rounded-lg border bg-card/40 p-3 overflow-hidden transition-colors",
+                          editingAccountId === a.id
+                            ? "border-primary/60 ring-1 ring-primary/40"
+                            : "border-border/60",
+                        )}
                       >
                         <div
                           className="absolute left-0 top-0 h-full w-1.5"
@@ -793,6 +798,15 @@ export default function AccountsManager() {
                             })}
                           </div>
                           <div className="mt-1 flex justify-end gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => startEditAccount(a)}
+                              aria-label="Edit account"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
                             <Button
                               size="icon"
                               variant="ghost"
