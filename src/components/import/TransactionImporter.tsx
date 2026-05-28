@@ -194,6 +194,22 @@ const BROKERS: Broker[] = [
   },
 ];
 
+const CUSTOM_BROKER: Broker = {
+  value: "__custom__",
+  label: "Other Platform / Custom Bank PDF",
+  initial: "+",
+  brand: "#64748B",
+  url: "",
+  steps: [
+    "Export a **CSV, XLS, XLSX or PDF** statement from your platform",
+    "Ensure columns include **Date, Symbol/Asset, Type, Quantity, Price**",
+    "Drop the file into the upload area below",
+    "Review the extracted rows and adjust the FX rate for foreign currencies",
+    "Click **Approve & Import Rows** to save to your ledger",
+  ],
+  footnote: "Generic parser — works with most bank and broker statements.",
+};
+
 type Section = "assets" | "income";
 type Source = "broker" | "standard";
 type Mode = "append" | "update";
@@ -214,14 +230,16 @@ const extIcon = (name: string) => {
 export function TransactionImporter() {
   const [section, setSection] = useState<Section>("assets");
   const [source, setSource] = useState<Source>("broker");
-  const [mode, setMode] = useState<Mode>("update");
+  const [mode, setMode] = useState<Mode>("append");
   const [profile, setProfile] = useState(BROKERS[0].value);
   const [dragOver, setDragOver] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const createTxn = useCreateTransaction();
 
-  const broker = BROKERS.find((b) => b.value === profile) ?? BROKERS[0];
+  const allBrokers = useMemo(() => [...BROKERS, CUSTOM_BROKER], []);
+  const broker = allBrokers.find((b) => b.value === profile) ?? BROKERS[0];
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const list = Array.from(files);
@@ -232,8 +250,13 @@ export function TransactionImporter() {
         continue;
       }
       setStage(stageLabel(ext));
+      setProgress(8);
+      const tick = window.setInterval(() => {
+        setProgress((p) => (p < 90 ? p + Math.max(1, (92 - p) / 8) : p));
+      }, 120);
       try {
         const parsed = await parseFile(file);
+        setProgress(100);
         if (!parsed.length) toast.warning(`No rows detected in ${file.name}`);
         else toast.success(`Parsed ${parsed.length} rows from ${file.name}`);
         setRows((prev) => [...prev, ...parsed]);
@@ -241,7 +264,11 @@ export function TransactionImporter() {
         console.error(err);
         toast.error(`Failed to parse ${file.name}`);
       } finally {
-        setStage(null);
+        window.clearInterval(tick);
+        window.setTimeout(() => {
+          setStage(null);
+          setProgress(0);
+        }, 350);
       }
     }
   }, []);
@@ -258,8 +285,13 @@ export function TransactionImporter() {
   const removeRow = (id: string) =>
     setRows((prev) => prev.filter((r) => r.id !== id));
 
+  const safe = (n: number) => (Number.isFinite(n) ? n : 0);
   const totalINR = useMemo(
-    () => rows.reduce((s, r) => s + r.quantity * r.price * r.rate, 0),
+    () =>
+      rows.reduce(
+        (s, r) => s + safe(r.quantity) * safe(r.price) * safe(r.rate),
+        0,
+      ),
     [rows],
   );
 
