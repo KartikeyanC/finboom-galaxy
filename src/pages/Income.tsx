@@ -7,6 +7,7 @@ import AddIncomeDialog from "@/components/income/AddIncomeDialog";
 import { Wallet, Globe, Layers, Sparkles } from "lucide-react";
 import { useIncomeStreams } from "@/hooks/useIncomeStreams";
 import { formatCompact } from "@/lib/finance";
+import TransactionsTable from "@/components/transactions/TransactionsTable";
 
 const Income = () => {
   const { streams, visible, toggleVisible, reorder, move, add, remove, resetAll } = useIncomeStreams();
@@ -82,6 +83,8 @@ const Income = () => {
           )}
         </div>
       </section>
+
+      <TransactionsTable type="income" />
     </div>
   );
 };
