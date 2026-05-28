@@ -1,11 +1,20 @@
 import { useCallback, useMemo, useState } from "react";
-import { Upload, Loader2, Trash2, FileSpreadsheet, FileText, FileType2, CheckCircle2 } from "lucide-react";
+import {
+  Upload,
+  Loader2,
+  Trash2,
+  FileSpreadsheet,
+  FileText,
+  FileType2,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Landmark, LineChart, Building2, Wallet, Sparkles } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,13 +29,172 @@ import { formatMoney } from "@/lib/finance";
 import { parseFile, SUPPORTED_EXT, type ImportedRow } from "@/lib/importParsers";
 import { useCreateTransaction } from "@/hooks/useTransactions";
 
-const PROFILES = [
-  { value: "Zerodha", label: "Zerodha", icon: LineChart },
-  { value: "Groww", label: "Groww", icon: Sparkles },
-  { value: "Angel One", label: "Angel One", icon: Landmark },
-  { value: "HDFC Ledger", label: "HDFC Ledger", icon: Building2 },
-  { value: "Custom Template", label: "Custom", icon: Wallet },
+type Broker = {
+  value: string;
+  label: string;
+  initial: string;
+  brand: string;
+  url: string;
+  steps: string[];
+  footnote: string;
+};
+
+const BROKERS: Broker[] = [
+  {
+    value: "Zerodha",
+    label: "Zerodha",
+    initial: "Z",
+    brand: "#387ED1",
+    url: "console.zerodha.com",
+    steps: [
+      "Login to **console.zerodha.com**",
+      "Go to **Console → Reports → Tradebook**",
+      "Select segment and date range",
+      "Click **XLSX** to download the file",
+      "Upload the downloaded file below",
+    ],
+    footnote: "Imports equity & F&O trades with cost and quantity.",
+  },
+  {
+    value: "Groww",
+    label: "Groww",
+    initial: "G",
+    brand: "#00B386",
+    url: "groww.in",
+    steps: [
+      "Login to **groww.in**",
+      "Open **Profile → Reports**",
+      "Choose **Capital Gains / Transactions**",
+      "Download the **Excel** statement",
+      "Upload the file below",
+    ],
+    footnote: "Imports stocks and mutual fund holdings.",
+  },
+  {
+    value: "INDmoney",
+    label: "INDmoney",
+    initial: "↑",
+    brand: "#111111",
+    url: "indmoney.com",
+    steps: [
+      "Login to **indmoney.com**",
+      "Open **Portfolio → Reports**",
+      "Select **Transactions** report",
+      "Export as **CSV / XLSX**",
+      "Upload the downloaded file below",
+    ],
+    footnote: "Imports US + IN equities and mutual funds.",
+  },
+  {
+    value: "Upstox",
+    label: "Upstox",
+    initial: "U",
+    brand: "#7B3FF2",
+    url: "upstox.com",
+    steps: [
+      "Login to **upstox.com**",
+      "Go to **Reports → Trade Report**",
+      "Pick the financial year",
+      "Download the **XLSX** file",
+      "Upload the file below",
+    ],
+    footnote: "Imports executed trades across segments.",
+  },
+  {
+    value: "ICICI Direct",
+    label: "ICICI Direct",
+    initial: "i",
+    brand: "#F26722",
+    url: "icicidirect.com",
+    steps: [
+      "Login to **icicidirect.com**",
+      "Open **Portfolio → Reports**",
+      "Choose **Transaction Statement**",
+      "Download as **XLSX / PDF**",
+      "Upload the file below",
+    ],
+    footnote: "Imports equity, F&O and MF activity.",
+  },
+  {
+    value: "CDSL",
+    label: "CDSL",
+    initial: "C",
+    brand: "#2563EB",
+    url: "cdslindia.com",
+    steps: [
+      "Login to **CDSL Easi / Easiest**",
+      "Open **Holdings Statement**",
+      "Select date range",
+      "Download the **PDF** statement",
+      "Upload the file below",
+    ],
+    footnote: "Imports demat holdings across linked DPs.",
+  },
+  {
+    value: "Angel One",
+    label: "Angel One",
+    initial: "A",
+    brand: "#E94560",
+    url: "angelone.in",
+    steps: [
+      "Login to **angelone.in**",
+      "Open **Reports → Trade Book**",
+      "Pick segment and dates",
+      "Download as **XLSX**",
+      "Upload the file below",
+    ],
+    footnote: "Imports equity and F&O trades.",
+  },
+  {
+    value: "Aionion",
+    label: "Aionion",
+    initial: "△",
+    brand: "#10B981",
+    url: "tradeplus.aionioncapital.com",
+    steps: [
+      "Login to **tradeplus.aionioncapital.com**",
+      "Click **Portfolio+**",
+      "Go to **Dashboard → DEMAT HOLDINGS**",
+      "Click **Export** to download the XLSX file",
+      "Upload the downloaded file below",
+    ],
+    footnote: "Imports equity holdings with investment cost and market values.",
+  },
+  {
+    value: "Chola Securities",
+    label: "Chola Securities",
+    initial: "+",
+    brand: "#DC2626",
+    url: "cholasecurities.com",
+    steps: [
+      "Login to **cholasecurities.com**",
+      "Open **Reports → Holdings**",
+      "Pick the financial year",
+      "Download as **XLSX**",
+      "Upload the file below",
+    ],
+    footnote: "Imports demat holdings statement.",
+  },
+  {
+    value: "mstock",
+    label: "mstock",
+    initial: "m",
+    brand: "#F97316",
+    url: "mstock.com",
+    steps: [
+      "Login to **mstock.com**",
+      "Open **Reports → Trade Book**",
+      "Pick segment and dates",
+      "Download as **XLSX**",
+      "Upload the file below",
+    ],
+    footnote: "Imports equity and derivatives trades.",
+  },
 ];
+
+type Section = "assets" | "income";
+type Source = "broker" | "standard";
+type Mode = "append" | "update";
 
 const stageLabel = (ext: string) => {
   if (ext === "pdf") return "Extracting Text from PDF Layers...";
@@ -42,11 +210,16 @@ const extIcon = (name: string) => {
 };
 
 export function TransactionImporter() {
-  const [profile, setProfile] = useState(PROFILES[0].value);
+  const [section, setSection] = useState<Section>("assets");
+  const [source, setSource] = useState<Source>("broker");
+  const [mode, setMode] = useState<Mode>("update");
+  const [profile, setProfile] = useState(BROKERS[0].value);
   const [dragOver, setDragOver] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const createTxn = useCreateTransaction();
+
+  const broker = BROKERS.find((b) => b.value === profile) ?? BROKERS[0];
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const list = Array.from(files);
