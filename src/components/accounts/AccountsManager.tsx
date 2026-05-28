@@ -698,12 +698,25 @@ export default function AccountsManager() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setForm(emptyForm())}>
-                Reset
-              </Button>
-              <Button onClick={save}>
-                <Plus className="h-4 w-4" /> Add Account
-              </Button>
+              {editingAccountId ? (
+                <>
+                  <Button variant="outline" onClick={cancelEditAccount}>
+                    Cancel
+                  </Button>
+                  <Button onClick={save}>
+                    <Check className="h-4 w-4" /> Save Changes
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setForm(emptyForm())}>
+                    Reset
+                  </Button>
+                  <Button onClick={save}>
+                    <Plus className="h-4 w-4" /> Add Account
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
