@@ -75,7 +75,13 @@ const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="font-display font-semibold text-foreground truncate">{stream.name}</h3>
-          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+          <span
+            className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              stream.type === "active"
+                ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"
+                : "bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/30"
+            }`}
+          >
             {stream.type}
           </span>
         </div>
