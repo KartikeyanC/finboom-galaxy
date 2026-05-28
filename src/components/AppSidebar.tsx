@@ -10,6 +10,7 @@ import {
   Bell,
   Zap,
   Upload,
+  Landmark,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -35,6 +36,7 @@ const mainItems = [
   { title: "Investments", url: "/app/investments", icon: TrendingUp },
   { title: "Budget", url: "/app/budget", icon: PieChart },
   { title: "Goals", url: "/app/goals", icon: Target },
+  { title: "Accounts", url: "/app/accounts", icon: Landmark },
 ];
 
 const toolItems = [
