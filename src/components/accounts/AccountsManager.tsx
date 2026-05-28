@@ -330,8 +330,14 @@ export default function AccountsManager() {
         {/* LEFT: Form */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">New Account</CardTitle>
-            <CardDescription>Configure the account details below.</CardDescription>
+            <CardTitle className="text-lg">
+              {editingAccountId ? "Edit Account" : "New Account"}
+            </CardTitle>
+            <CardDescription>
+              {editingAccountId
+                ? "Update the details below and save your changes."
+                : "Configure the account details below."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Type selector */}
