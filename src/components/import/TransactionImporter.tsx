@@ -508,27 +508,14 @@ export function TransactionImporter() {
 
       {/* Preview */}
       {rows.length > 0 && (
-        <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
+        <Card className="p-6 bg-card/60 backdrop-blur border-border/60 pb-4">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-display text-lg font-bold">Validation Queue</h3>
               <p className="text-xs text-muted-foreground">
-                {rows.length} row(s) • Total ≈ {formatMoney(totalINR)}
+                {rows.length} row(s) • Total ≈ {totalINR > 0 ? formatMoney(totalINR) : "—"}
               </p>
             </div>
-            <Button
-              onClick={sync}
-              disabled={createTxn.isPending}
-              size="lg"
-              className="gap-2"
-            >
-              {createTxn.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4" />
-              )}
-              Approve & Sync to Ledger
-            </Button>
           </div>
 
           <div className="rounded-lg border border-border/60 overflow-x-auto">
@@ -548,11 +535,11 @@ export function TransactionImporter() {
               <TableBody>
                 {rows.map((r) => {
                   const foreign = r.currency !== "INR";
-                  const total = r.quantity * r.price * r.rate;
+                  const total = safe(r.quantity) * safe(r.price) * safe(r.rate);
                   return (
                     <TableRow key={r.id}>
-                      <TableCell className="font-mono text-xs">{r.date}</TableCell>
-                      <TableCell className="font-medium">{r.asset}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.date || "—"}</TableCell>
+                      <TableCell className="font-medium">{r.asset || "—"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={r.action === "Inflow" ? "default" : "secondary"}
@@ -565,18 +552,26 @@ export function TransactionImporter() {
                           {r.action}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono">{r.quantity}</TableCell>
                       <TableCell className="text-right font-mono">
-                        {r.currency} {r.price.toFixed(2)}
+                        {Number.isFinite(r.quantity) && r.quantity !== 0 ? r.quantity : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {r.currency}{" "}
+                        {Number.isFinite(r.price) && r.price !== 0 ? r.price.toFixed(2) : "—"}
                       </TableCell>
                       <TableCell>
                         {foreign ? (
                           <Input
                             type="number"
-                            value={r.rate}
+                            value={Number.isFinite(r.rate) ? r.rate : ""}
                             step="0.01"
                             onChange={(e) =>
-                              updateRow(r.id, { rate: Number(e.target.value) || 0 })
+                              updateRow(r.id, {
+                                rate:
+                                  e.target.value === ""
+                                    ? 0
+                                    : Number(e.target.value) || 0,
+                              })
                             }
                             className="h-8 w-24 text-xs"
                           />
@@ -585,7 +580,7 @@ export function TransactionImporter() {
                         )}
                       </TableCell>
                       <TableCell className="text-right font-mono font-semibold">
-                        {formatMoney(total)}
+                        {total > 0 ? formatMoney(total) : "—"}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -602,6 +597,27 @@ export function TransactionImporter() {
                 })}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Sticky finalization bar */}
+          <div className="sticky bottom-4 mt-6 flex flex-wrap gap-3 justify-end rounded-xl border border-border/60 bg-background/80 backdrop-blur p-3 shadow-lg">
+            <Button variant="outline" onClick={() => setRows([])} className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Clear / Reset Form
+            </Button>
+            <Button
+              onClick={sync}
+              disabled={createTxn.isPending}
+              size="lg"
+              className="gap-2"
+            >
+              {createTxn.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              Approve & Import Rows
+            </Button>
           </div>
         </Card>
       )}
