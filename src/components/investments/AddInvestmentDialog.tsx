@@ -344,7 +344,15 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Invested Amount<CurrencyBadge /></>}>
-                {N("invested", "0.00")}
+                <NumberInput
+                  id="invested"
+                  placeholder="0.00"
+                  value={form.invested ?? ""}
+                  onChange={(v) => {
+                    set("invested", v);
+                    if (!currentTouched) set("current", v);
+                  }}
+                />
               </Field>
               <Field label="XIRR (%)">
                 {N("xirr", "7.5")}
@@ -363,7 +371,15 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
               </Select>
             </Field>
             <Field label={<>Current Value<CurrencyBadge /></>}>
-              {N("current", "0.00")}
+              <NumberInput
+                id="current"
+                placeholder="0.00"
+                value={form.current ?? ""}
+                onChange={(v) => {
+                  setCurrentTouched(true);
+                  set("current", v);
+                }}
+              />
             </Field>
           </div>
         );
