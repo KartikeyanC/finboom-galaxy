@@ -1,0 +1,635 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+
+type AssetType =
+  | "stocks"
+  | "mutual_funds"
+  | "bonds"
+  | "fd"
+  | "rd"
+  | "pf"
+  | "gold"
+  | "real_estate"
+  | "crypto";
+
+type Currency = "INR" | "USD" | "AED";
+type GoalLink = "Retirement" | "House Fund" | "Kid's Education" | "Emergency Stack";
+
+const ASSET_OPTIONS: { value: AssetType; label: string }[] = [
+  { value: "stocks", label: "Direct Stocks" },
+  { value: "mutual_funds", label: "Mutual Funds" },
+  { value: "bonds", label: "Bonds" },
+  { value: "fd", label: "Fixed Deposit" },
+  { value: "rd", label: "Recurring Deposit" },
+  { value: "pf", label: "Provident Fund / PF" },
+  { value: "gold", label: "Gold" },
+  { value: "real_estate", label: "Real Estate / Property" },
+  { value: "crypto", label: "Crypto & Digital Assets" },
+];
+
+const GOALS: GoalLink[] = ["Retirement", "House Fund", "Kid's Education", "Emergency Stack"];
+
+const safeNum = (v: string | number | undefined): number => {
+  const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
+  return Number.isFinite(n) ? n : 0;
+};
+const fmt = (n: number, d = 2) =>
+  Number.isFinite(n) && n !== 0
+    ? n.toLocaleString("en-IN", { maximumFractionDigits: d, minimumFractionDigits: d })
+    : "—";
+
+type Props = {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSave?: (payload: Record<string, unknown>) => void;
+};
+
+export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Props) {
+  const [asset, setAsset] = useState<AssetType>("stocks");
+  const [currency, setCurrency] = useState<Currency>("INR");
+  const [goal, setGoal] = useState<GoalLink | "">("");
+  const [form, setForm] = useState<Record<string, string>>({});
+  // MF strategy
+  const [mfMode, setMfMode] = useState<"SIP" | "Lumpsum">("Lumpsum");
+  // Gold subtype
+  const [goldType, setGoldType] = useState<"Physical Gold" | "SGB" | "Digital Gold">("Physical Gold");
+  // Bond frequency
+  const [bondFreq, setBondFreq] = useState<"Yearly" | "Monthly" | "Quarterly">("Yearly");
+  // Stocks: which side was last edited (qty*price <-> totalInvested)
+  const [stocksEdited, setStocksEdited] = useState<"derived" | "total">("derived");
+
+  // Reset form when asset changes
+  useEffect(() => {
+    setForm({});
+    setStocksEdited("derived");
+    if (asset === "bonds" && !form.xirr) {
+      setForm((f) => ({ ...f, xirr: "7.5" }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asset]);
+
+  // Reset on close
+  useEffect(() => {
+    if (!open) {
+      setAsset("stocks");
+      setCurrency("INR");
+      setGoal("");
+      setForm({});
+      setMfMode("Lumpsum");
+      setGoldType("Physical Gold");
+      setBondFreq("Yearly");
+    }
+  }, [open]);
+
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // ---------- Live calculations ----------
+  const calc = useMemo(() => {
+    switch (asset) {
+      case "stocks": {
+        const qty = safeNum(form.qty);
+        const buy = safeNum(form.buy);
+        const total = stocksEdited === "total" ? safeNum(form.total) : qty * buy;
+        const avg = qty > 0 ? total / qty : 0;
+        return { total, avg };
+      }
+      case "mutual_funds": {
+        const invested = safeNum(form.invested);
+        const units = safeNum(form.units);
+        const nav = safeNum(form.nav);
+        const avgNav = units > 0 ? invested / units : 0;
+        const currentValue = units * nav;
+        return { avgNav, currentValue };
+      }
+      case "fd": {
+        const p = safeNum(form.deposit);
+        const r = safeNum(form.rate);
+        // Simple compounded yearly maturity assuming 5y default tenure
+        const tenure = safeNum(form.tenure) || 5;
+        const maturity = p * Math.pow(1 + r / 100, tenure);
+        return { maturity, tenure };
+      }
+      case "rd": {
+        const m = safeNum(form.monthly);
+        const months = safeNum(form.months);
+        const r = safeNum(form.rate) || 6.5;
+        const principal = m * months;
+        // RD maturity approx: sum of monthly compounded
+        let maturity = 0;
+        const monthlyRate = r / 12 / 100;
+        for (let i = 1; i <= months; i++) {
+          maturity += m * Math.pow(1 + monthlyRate, months - i + 1);
+        }
+        return { principal, maturity };
+      }
+      case "pf": {
+        const ee = safeNum(form.employee);
+        const er = safeNum(form.employer);
+        const total = safeNum(form.balance) || ee + er;
+        return { contribTotal: ee + er, total };
+      }
+      case "gold": {
+        const qty = safeNum(form.grams);
+        const buy = safeNum(form.buy);
+        const cur = safeNum(form.current);
+        return { invested: qty * buy, currentValue: qty * cur };
+      }
+      case "real_estate": {
+        const pv = safeNum(form.purchase);
+        const fees = safeNum(form.fees);
+        return { totalCost: pv + fees, current: safeNum(form.current) };
+      }
+      case "crypto": {
+        const q = safeNum(form.qty);
+        const p = safeNum(form.buy);
+        return { invested: q * p };
+      }
+      case "bonds": {
+        return { current: safeNum(form.current) };
+      }
+      default:
+        return {};
+    }
+  }, [asset, form, stocksEdited]);
+
+  const CurrencyBadge = () => (
+    <Badge variant="outline" className="ml-2 text-[10px] font-medium">
+      {currency}
+    </Badge>
+  );
+
+  const NumberInput = ({
+    id,
+    placeholder,
+    step,
+    value,
+    onChange,
+  }: {
+    id: string;
+    placeholder?: string;
+    step?: string;
+    value?: string;
+    onChange?: (v: string) => void;
+  }) => (
+    <Input
+      id={id}
+      type="number"
+      inputMode="decimal"
+      step={step ?? "any"}
+      placeholder={placeholder}
+      value={value ?? form[id] ?? ""}
+      onChange={(e) => (onChange ? onChange(e.target.value) : set(id, e.target.value))}
+    />
+  );
+
+  const OutputBox = ({ label, value }: { label: string; value: string }) => (
+    <div className="rounded-md border bg-muted/40 px-3 py-2">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold text-foreground mt-0.5">{value}</div>
+    </div>
+  );
+
+  // ---------- Per-asset form bodies ----------
+  const renderForm = () => {
+    switch (asset) {
+      case "stocks":
+        return (
+          <div className="space-y-4">
+            <Field label="Investment Name">
+              <Input
+                placeholder="e.g. Infosys Ltd"
+                value={form.name ?? ""}
+                onChange={(e) => set("name", e.target.value)}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Buying Price<CurrencyBadge /></>}>
+                <NumberInput
+                  id="buy"
+                  placeholder="0.00"
+                  onChange={(v) => {
+                    set("buy", v);
+                    setStocksEdited("derived");
+                  }}
+                />
+              </Field>
+              <Field label="Quantity">
+                <NumberInput
+                  id="qty"
+                  placeholder="0"
+                  onChange={(v) => {
+                    set("qty", v);
+                    setStocksEdited("derived");
+                  }}
+                />
+              </Field>
+            </div>
+            <Field label={<>Total Invested (override)<CurrencyBadge /></>}>
+              <NumberInput
+                id="total"
+                placeholder={fmt(calc.total ?? 0)}
+                value={stocksEdited === "total" ? form.total ?? "" : ""}
+                onChange={(v) => {
+                  set("total", v);
+                  setStocksEdited("total");
+                  // If overridden, back-fill price = total/qty
+                  const qty = safeNum(form.qty);
+                  if (qty > 0) set("buy", String(safeNum(v) / qty));
+                }}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <OutputBox label="Total Invested" value={fmt(calc.total ?? 0)} />
+              <OutputBox label="Buying Avg" value={fmt(calc.avg ?? 0)} />
+            </div>
+          </div>
+        );
+
+      case "mutual_funds":
+        return (
+          <div className="space-y-4">
+            <div className="inline-flex rounded-lg bg-primary/10 p-1">
+              {(["SIP", "Lumpsum"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMfMode(m)}
+                  className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    mfMode === m
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            <Field label="Investment Name">
+              <Input
+                placeholder="e.g. Parag Parikh Flexi Cap"
+                value={form.name ?? ""}
+                onChange={(e) => set("name", e.target.value)}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Total Invested<CurrencyBadge /></>}>
+                <NumberInput id="invested" placeholder="0.00" />
+              </Field>
+              <Field label="Total Units">
+                <NumberInput id="units" placeholder="0.000" />
+              </Field>
+            </div>
+            <Field label={<>Current NAV<CurrencyBadge /></>}>
+              <NumberInput id="nav" placeholder="0.00" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <OutputBox label="Avg NAV" value={fmt(calc.avgNav ?? 0, 4)} />
+              <OutputBox label="Current Value" value={fmt(calc.currentValue ?? 0)} />
+            </div>
+          </div>
+        );
+
+      case "bonds":
+        return (
+          <div className="space-y-4">
+            <Field label="Investment Name">
+              <Input
+                placeholder="e.g. RBI Floating Rate Bond"
+                value={form.name ?? ""}
+                onChange={(e) => set("name", e.target.value)}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Invested Amount<CurrencyBadge /></>}>
+                <NumberInput id="invested" placeholder="0.00" />
+              </Field>
+              <Field label="XIRR (%)">
+                <NumberInput id="xirr" placeholder="7.5" />
+              </Field>
+            </div>
+            <Field label="Interest Payment Frequency">
+              <Select value={bondFreq} onValueChange={(v) => setBondFreq(v as typeof bondFreq)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Yearly">Yearly</SelectItem>
+                  <SelectItem value="Quarterly">Quarterly</SelectItem>
+                  <SelectItem value="Monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label={<>Current Value<CurrencyBadge /></>}>
+              <NumberInput id="current" placeholder="0.00" />
+            </Field>
+          </div>
+        );
+
+      case "fd":
+        return (
+          <div className="space-y-4">
+            <Field label="Bank Name">
+              <Input
+                placeholder="e.g. HDFC Bank"
+                value={form.bank ?? ""}
+                onChange={(e) => set("bank", e.target.value)}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Deposit Amount<CurrencyBadge /></>}>
+                <NumberInput id="deposit" placeholder="0.00" />
+              </Field>
+              <Field label="Interest Rate (%)">
+                <NumberInput id="rate" placeholder="0.00" />
+              </Field>
+            </div>
+            <Field label="Tenure (Years)">
+              <NumberInput id="tenure" placeholder="5" />
+            </Field>
+            <OutputBox
+              label={`Maturity Value (after ${calc.tenure ?? 5}y)`}
+              value={fmt(calc.maturity ?? 0)}
+            />
+          </div>
+        );
+
+      case "rd":
+        return (
+          <div className="space-y-4">
+            <Field label="Bank Name">
+              <Input
+                placeholder="e.g. SBI"
+                value={form.bank ?? ""}
+                onChange={(e) => set("bank", e.target.value)}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Monthly Installment<CurrencyBadge /></>}>
+                <NumberInput id="monthly" placeholder="0.00" />
+              </Field>
+              <Field label="Duration (Months)">
+                <NumberInput id="months" placeholder="12" />
+              </Field>
+            </div>
+            <Field label="Interest Rate (% p.a.)">
+              <NumberInput id="rate" placeholder="6.5" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <OutputBox label="Total Principal" value={fmt(calc.principal ?? 0)} />
+              <OutputBox label="Maturity Value" value={fmt(calc.maturity ?? 0)} />
+            </div>
+          </div>
+        );
+
+      case "pf":
+        return (
+          <div className="space-y-4">
+            <Field label="Investment Name">
+              <Input
+                placeholder="e.g. EPF — Company X"
+                value={form.name ?? ""}
+                onChange={(e) => set("name", e.target.value)}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Employee Contrib.<CurrencyBadge /></>}>
+                <NumberInput id="employee" placeholder="0.00" />
+              </Field>
+              <Field label={<>Employer Contrib.<CurrencyBadge /></>}>
+                <NumberInput id="employer" placeholder="0.00" />
+              </Field>
+            </div>
+            <Field label={<>Current Total Balance<CurrencyBadge /></>}>
+              <NumberInput id="balance" placeholder="0.00" />
+            </Field>
+            <OutputBox label="Contributions Total" value={fmt(calc.contribTotal ?? 0)} />
+          </div>
+        );
+
+      case "gold":
+        return (
+          <div className="space-y-4">
+            <Field label="Gold Type">
+              <Select value={goldType} onValueChange={(v) => setGoldType(v as typeof goldType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Physical Gold">Physical Gold</SelectItem>
+                  <SelectItem value="SGB">Sovereign Gold Bond (SGB)</SelectItem>
+                  <SelectItem value="Digital Gold">Digital Gold</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Quantity (Grams)">
+              <NumberInput id="grams" placeholder="0.000" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Buying Price (/g)<CurrencyBadge /></>}>
+                <NumberInput id="buy" placeholder="0.00" />
+              </Field>
+              <Field label={<>Current Price (/g)<CurrencyBadge /></>}>
+                <NumberInput id="current" placeholder="0.00" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <OutputBox label="Total Invested" value={fmt(calc.invested ?? 0)} />
+              <OutputBox label="Current Value" value={fmt(calc.currentValue ?? 0)} />
+            </div>
+          </div>
+        );
+
+      case "real_estate":
+        return (
+          <div className="space-y-4">
+            <Field label="Property Name">
+              <Input
+                placeholder="e.g. Bengaluru Flat"
+                value={form.name ?? ""}
+                onChange={(e) => set("name", e.target.value)}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Purchase Value<CurrencyBadge /></>}>
+                <NumberInput id="purchase" placeholder="0.00" />
+              </Field>
+              <Field label={<>Registration / Setup Fees<CurrencyBadge /></>}>
+                <NumberInput id="fees" placeholder="0.00" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Current Market Value<CurrencyBadge /></>}>
+                <NumberInput id="current" placeholder="0.00" />
+              </Field>
+              <Field label={<>Monthly Rental Yield<CurrencyBadge /></>}>
+                <NumberInput id="rent" placeholder="0.00" />
+              </Field>
+            </div>
+            <OutputBox label="Total Cost Basis" value={fmt(calc.totalCost ?? 0)} />
+          </div>
+        );
+
+      case "crypto":
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Token Ticker">
+                <Input
+                  placeholder="BTC, ETH, SOL…"
+                  value={form.ticker ?? ""}
+                  onChange={(e) => set("ticker", e.target.value.toUpperCase())}
+                />
+              </Field>
+              <Field label="Exchange Platform">
+                <Input
+                  placeholder="e.g. CoinDCX"
+                  value={form.platform ?? ""}
+                  onChange={(e) => set("platform", e.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={<>Buy Price<CurrencyBadge /></>}>
+                <NumberInput id="buy" placeholder="0.00" />
+              </Field>
+              <Field label="Quantity">
+                <NumberInput id="qty" placeholder="0.00000000" step="0.00000001" />
+              </Field>
+            </div>
+            <OutputBox label="Total Invested" value={fmt(calc.invested ?? 0)} />
+          </div>
+        );
+    }
+  };
+
+  const handleSave = () => {
+    if (!asset) return;
+    const payload = {
+      asset,
+      currency,
+      goal: goal || null,
+      mfMode: asset === "mutual_funds" ? mfMode : undefined,
+      goldType: asset === "gold" ? goldType : undefined,
+      bondFreq: asset === "bonds" ? bondFreq : undefined,
+      fields: form,
+      derived: calc,
+      savedAt: new Date().toISOString(),
+    };
+    onSave?.(payload);
+    toast({
+      title: "Investment saved",
+      description: `${ASSET_OPTIONS.find((a) => a.value === asset)?.label} added to your portfolio.`,
+    });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add New Investment</DialogTitle>
+          <DialogDescription>
+            Track a new asset in your portfolio. Calculations update live as you type.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Asset Type">
+              <Select value={asset} onValueChange={(v) => setAsset(v as AssetType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ASSET_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Currency">
+              <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="INR">INR ₹</SelectItem>
+                  <SelectItem value="USD">USD $</SelectItem>
+                  <SelectItem value="AED">AED د.إ</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          <div className="border-t pt-4">{renderForm()}</div>
+
+          <div className="border-t pt-4">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Link to Financial Goal
+            </Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {GOALS.map((g) => {
+                const active = goal === g;
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGoal(active ? "" : g)}
+                    className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground hover:text-foreground border-border"
+                    }`}
+                  >
+                    {g}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <Button onClick={handleSave} className="w-full" size="lg">
+            Save Investment Record
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground flex items-center">
+        {label}
+      </Label>
+      {children}
+    </div>
+  );
+}
