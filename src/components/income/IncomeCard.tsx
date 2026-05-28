@@ -68,7 +68,13 @@ const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, 
         </button>
       </div>
 
-      <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+      <div
+        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+          stream.type === "active"
+            ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25"
+            : "bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/25"
+        }`}
+      >
         <Icon className="w-5 h-5" />
       </div>
 
