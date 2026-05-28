@@ -92,6 +92,66 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_items: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          currency: string
+          frequency: string
+          fx_rate: number
+          icon: string | null
+          id: string
+          is_active: boolean
+          last_generated_at: string | null
+          name: string
+          next_due_date: string
+          notes: string | null
+          subtype: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          category: string
+          created_at?: string
+          currency?: string
+          frequency?: string
+          fx_rate?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          last_generated_at?: string | null
+          name: string
+          next_due_date?: string
+          notes?: string | null
+          subtype?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          currency?: string
+          frequency?: string
+          fx_rate?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          last_generated_at?: string | null
+          name?: string
+          next_due_date?: string
+          notes?: string | null
+          subtype?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -101,6 +161,7 @@ export type Database = {
           description: string | null
           id: string
           occurred_at: string
+          source_recurring_id: string | null
           type: string
           updated_at: string
           user_id: string
@@ -113,6 +174,7 @@ export type Database = {
           description?: string | null
           id?: string
           occurred_at?: string
+          source_recurring_id?: string | null
           type: string
           updated_at?: string
           user_id: string
@@ -125,6 +187,7 @@ export type Database = {
           description?: string | null
           id?: string
           occurred_at?: string
+          source_recurring_id?: string | null
           type?: string
           updated_at?: string
           user_id?: string
