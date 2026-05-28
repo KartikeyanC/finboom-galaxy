@@ -6,31 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import {
-  DEFAULT_FX,
-  ICON_MAP,
-  getIcon,
-  type IncomeCurrency,
-  type IncomeFrequency,
+  DEFAULT_FX, ICON_MAP, getIcon,
+  type IncomeCurrency, type IncomeFrequency,
 } from "@/lib/incomeSeed";
+import { ACTIVE_INCOME, PASSIVE_INCOME } from "@/lib/categories";
+import { useCreateRecurring } from "@/hooks/useRecurring";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name required").max(60),
+  category: z.string().min(1, "Category required"),
   amount: z.number().positive("Amount must be positive").max(1e12),
   currency: z.enum(["INR", "USD", "EUR"]),
   exchangeRateToINR: z.number().positive("Rate must be positive").max(1e6),
@@ -57,19 +48,22 @@ const ICON_KEYS = Object.keys(ICON_MAP);
 
 export default function AddIncomeDialog({ onAdd }: Props) {
   const [open, setOpen] = useState(false);
+  const [type, setType] = useState<"active" | "passive">("active");
+  const [category, setCategory] = useState<string>(ACTIVE_INCOME[0]);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<IncomeCurrency>("INR");
   const [rate, setRate] = useState(String(DEFAULT_FX.INR));
-  const [type, setType] = useState<"active" | "passive">("passive");
   const [frequency, setFrequency] = useState<IncomeFrequency>("monthly");
   const [icon, setIcon] = useState<string>("Coins");
   const [notes, setNotes] = useState("");
+  const createRecurring = useCreateRecurring();
 
   useEffect(() => {
     if (!open) return;
-    setName(""); setAmount(""); setCurrency("INR"); setRate(String(DEFAULT_FX.INR));
-    setType("passive"); setFrequency("monthly"); setIcon("Coins"); setNotes("");
+    setType("active"); setCategory(ACTIVE_INCOME[0]); setName("");
+    setAmount(""); setCurrency("INR"); setRate(String(DEFAULT_FX.INR));
+    setFrequency("monthly"); setIcon("Coins"); setNotes("");
   }, [open]);
 
   const handleCurrency = (v: string) => {
@@ -78,9 +72,18 @@ export default function AddIncomeDialog({ onAdd }: Props) {
     setRate(String(DEFAULT_FX[c]));
   };
 
+  const handleType = (v: "active" | "passive") => {
+    setType(v);
+    setCategory(v === "active" ? ACTIVE_INCOME[0] : PASSIVE_INCOME[0]);
+  };
+
+  const categories = type === "active" ? ACTIVE_INCOME : PASSIVE_INCOME;
+
   const submit = () => {
+    const finalName = name.trim() || category;
     const parsed = schema.safeParse({
-      name,
+      name: finalName,
+      category,
       amount: Number(amount),
       currency,
       exchangeRateToINR: Number(rate),
@@ -104,6 +107,19 @@ export default function AddIncomeDialog({ onAdd }: Props) {
       frequency: d.frequency,
       notes: d.notes,
     });
+    createRecurring.mutate({
+      type: "income",
+      name: d.name,
+      category: d.category,
+      subtype: d.type,
+      amount: d.amount,
+      currency: d.currency,
+      fx_rate: d.exchangeRateToINR,
+      frequency: d.frequency,
+      next_due_date: new Date().toISOString().slice(0, 10),
+      icon: d.icon,
+      notes: d.notes ?? null,
+    });
     toast.success(`${d.name} added`);
     setOpen(false);
   };
@@ -116,17 +132,41 @@ export default function AddIncomeDialog({ onAdd }: Props) {
           Add Income
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display">Add Income Stream</DialogTitle>
+          <DialogTitle className="font-display">Add New Income Stream</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Income Type</Label>
+              <Select value={type} onValueChange={(v) => handleType(v as "active" | "passive")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active Income (Salary)</SelectItem>
+                  <SelectItem value="passive">Passive Income</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
-            <Label htmlFor="inc-name">Name</Label>
+            <Label htmlFor="inc-name">Name (optional)</Label>
             <Input
               id="inc-name"
-              placeholder="e.g. Consulting"
+              placeholder={`e.g. ${category} — source`}
               maxLength={60}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -138,10 +178,8 @@ export default function AddIncomeDialog({ onAdd }: Props) {
               <Label htmlFor="inc-amount">Amount</Label>
               <Input
                 id="inc-amount"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
+                type="number" step="0.01" min="0"
+                placeholder="Enter amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
@@ -159,36 +197,23 @@ export default function AddIncomeDialog({ onAdd }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as "active" | "passive")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="passive">Passive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Frequency</Label>
-              <Select value={frequency} onValueChange={(v) => setFrequency(v as IncomeFrequency)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="one-time">One-time</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <Label>Frequency</Label>
+            <Select value={frequency} onValueChange={(v) => setFrequency(v as IncomeFrequency)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="one-time">One-time</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="inc-rate">Exchange rate to INR</Label>
             <Input
               id="inc-rate"
-              type="number"
-              step="0.0001"
+              type="number" step="0.0001"
               value={rate}
               disabled={currency === "INR"}
               onChange={(e) => setRate(e.target.value)}
@@ -221,12 +246,11 @@ export default function AddIncomeDialog({ onAdd }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="inc-notes">Notes (optional)</Label>
+            <Label htmlFor="inc-notes">Description</Label>
             <Textarea
               id="inc-notes"
-              maxLength={500}
-              rows={3}
-              placeholder="Any details about this stream..."
+              maxLength={500} rows={2}
+              placeholder="Brief description"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -234,8 +258,9 @@ export default function AddIncomeDialog({ onAdd }: Props) {
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit}>Add stream</Button>
+          <Button onClick={submit} className="w-full" disabled={createRecurring.isPending}>
+            {createRecurring.isPending ? "Adding..." : "Add Income Stream"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
