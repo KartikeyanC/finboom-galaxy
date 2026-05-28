@@ -11,12 +11,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus } from "lucide-react";
 import {
   DEFAULT_FX, ICON_MAP, getIcon,
   type IncomeCurrency, type IncomeFrequency,
 } from "@/lib/incomeSeed";
-import { ACTIVE_INCOME, PASSIVE_INCOME } from "@/lib/categories";
+import { ACTIVE_INCOME, PASSIVE_INCOME, useCustomCategories } from "@/lib/categories";
 import { useCreateRecurring } from "@/hooks/useRecurring";
 
 const schema = z.object({
@@ -58,6 +59,9 @@ export default function AddIncomeDialog({ onAdd }: Props) {
   const [icon, setIcon] = useState<string>("Coins");
   const [notes, setNotes] = useState("");
   const createRecurring = useCreateRecurring();
+  const custom = useCustomCategories();
+  const [newCatOpen, setNewCatOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -77,7 +81,20 @@ export default function AddIncomeDialog({ onAdd }: Props) {
     setCategory(v === "active" ? ACTIVE_INCOME[0] : PASSIVE_INCOME[0]);
   };
 
-  const categories = type === "active" ? ACTIVE_INCOME : PASSIVE_INCOME;
+  const categories =
+    type === "active"
+      ? [...ACTIVE_INCOME, ...custom.store.income.active]
+      : [...PASSIVE_INCOME, ...custom.store.income.passive];
+
+  const saveNewCategory = () => {
+    const n = newCatName.trim();
+    if (!n) return;
+    custom.addIncome(type, n);
+    setCategory(n);
+    setNewCatName("");
+    setNewCatOpen(false);
+    toast.success(`Added "${n}"`);
+  };
 
   const submit = () => {
     const finalName = name.trim() || category;
