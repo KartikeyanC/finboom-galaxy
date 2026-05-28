@@ -51,10 +51,48 @@ const safeNum = (v: string | number | undefined): number => {
   const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
   return Number.isFinite(n) ? n : 0;
 };
-const fmt = (n: number, d = 2) =>
-  Number.isFinite(n) && n !== 0
-    ? n.toLocaleString("en-IN", { maximumFractionDigits: d, minimumFractionDigits: d })
-    : "—";
+const fmt = (n: number, d = 2) => {
+  const v = Number.isFinite(n) ? n : 0;
+  return v.toLocaleString("en-IN", {
+    maximumFractionDigits: d,
+    minimumFractionDigits: d,
+  });
+};
+
+// Hoisted so identity is stable across renders — inline definitions caused
+// the input to remount on every keystroke (focus loss + value stripping).
+const NumberInput = ({
+  id,
+  placeholder,
+  step,
+  value,
+  onChange,
+}: {
+  id: string;
+  placeholder?: string;
+  step?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) => (
+  <Input
+    id={id}
+    type="number"
+    inputMode="decimal"
+    step={step ?? "any"}
+    placeholder={placeholder ?? "0.00"}
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+  />
+);
+
+const OutputBox = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-md border bg-muted/40 px-3 py-2">
+    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+      {label}
+    </div>
+    <div className="text-sm font-semibold text-foreground mt-0.5">{value}</div>
+  </div>
+);
 
 type Props = {
   open: boolean;
