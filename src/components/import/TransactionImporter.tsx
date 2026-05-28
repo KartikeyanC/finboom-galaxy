@@ -474,12 +474,16 @@ export function TransactionImporter() {
             onChange={(e) => e.target.files && handleFiles(e.target.files)}
           />
           {stage ? (
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-4 w-full max-w-sm">
               <div className="relative w-16 h-16">
                 <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
                 <Loader2 className="absolute inset-0 m-auto w-16 h-16 text-primary animate-spin" />
               </div>
               <p className="font-medium text-primary">{stage}</p>
+              <Progress value={progress} className="h-2 w-full" />
+              <p className="text-xs text-muted-foreground font-mono">
+                {Math.round(progress)}%
+              </p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
