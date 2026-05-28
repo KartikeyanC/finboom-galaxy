@@ -22,19 +22,23 @@ const SliceTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   const { h, s } = parseHsl(p.color);
-  // Always render a light pastel gradient so dark text stays readable.
-  const bg = `linear-gradient(135deg, hsl(${h}, ${Math.min(s, 70)}%, 92%) 0%, hsl(${h}, ${Math.min(s, 70)}%, 80%) 100%)`;
-  const fg = `hsl(${h}, 60%, 18%)`;
+  // Frosted-glass tint that picks up the slice hue.
+  const ss = Math.min(s, 70);
+  const bg = `linear-gradient(135deg, hsla(${h}, ${ss}%, 92%, 0.32) 0%, hsla(${h}, ${ss}%, 75%, 0.16) 100%)`;
+  const fg = "hsl(210, 25%, 96%)";
   return (
     <div
       style={{
         background: bg,
         color: fg,
-        border: `2px solid ${p.color}`,
-        borderRadius: 8,
-        padding: "6px 10px",
+        border: `1px solid ${p.color}`,
+        borderRadius: 10,
+        padding: "8px 12px",
         fontSize: 12,
-        boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+        backdropFilter: "blur(14px) saturate(160%)",
+        WebkitBackdropFilter: "blur(14px) saturate(160%)",
+        boxShadow: `0 8px 24px rgba(0,0,0,0.35), inset 0 0 0 1px hsla(0,0%,100%,0.08), 0 0 14px ${p.color}55`,
+        textShadow: "0 1px 2px rgba(0,0,0,0.45)",
       }}
     >
       <span style={{ fontWeight: 600 }}>{p.name}</span>
