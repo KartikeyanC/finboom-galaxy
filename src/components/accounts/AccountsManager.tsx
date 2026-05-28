@@ -204,6 +204,7 @@ export default function AccountsManager() {
   const [newPurpose, setNewPurpose] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
 
   const addPurpose = () => {
     const v = newPurpose.trim();
@@ -281,12 +282,40 @@ export default function AccountsManager() {
       toast.error("Please enter an account name");
       return;
     }
-    setAccounts((a) => [...a, { ...form, id: crypto.randomUUID() }]);
-    toast.success("Account added");
+    if (editingAccountId) {
+      setAccounts((a) =>
+        a.map((x) => (x.id === editingAccountId ? { ...form, id: editingAccountId } : x)),
+      );
+      toast.success("Account updated");
+      setEditingAccountId(null);
+    } else {
+      setAccounts((a) => [...a, { ...form, id: crypto.randomUUID() }]);
+      toast.success("Account added");
+    }
     setForm(emptyForm());
   };
 
-  const remove = (id: string) => setAccounts((a) => a.filter((x) => x.id !== id));
+  const remove = (id: string) => {
+    setAccounts((a) => a.filter((x) => x.id !== id));
+    if (editingAccountId === id) {
+      setEditingAccountId(null);
+      setForm(emptyForm());
+    }
+  };
+
+  const startEditAccount = (acc: SavedAccount) => {
+    const { id, ...rest } = acc;
+    setForm(rest);
+    setEditingAccountId(id);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const cancelEditAccount = () => {
+    setEditingAccountId(null);
+    setForm(emptyForm());
+  };
 
   return (
     <div className="space-y-6">
@@ -301,8 +330,14 @@ export default function AccountsManager() {
         {/* LEFT: Form */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">New Account</CardTitle>
-            <CardDescription>Configure the account details below.</CardDescription>
+            <CardTitle className="text-lg">
+              {editingAccountId ? "Edit Account" : "New Account"}
+            </CardTitle>
+            <CardDescription>
+              {editingAccountId
+                ? "Update the details below and save your changes."
+                : "Configure the account details below."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Type selector */}
@@ -663,12 +698,25 @@ export default function AccountsManager() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setForm(emptyForm())}>
-                Reset
-              </Button>
-              <Button onClick={save}>
-                <Plus className="h-4 w-4" /> Add Account
-              </Button>
+              {editingAccountId ? (
+                <>
+                  <Button variant="outline" onClick={cancelEditAccount}>
+                    Cancel
+                  </Button>
+                  <Button onClick={save}>
+                    <Check className="h-4 w-4" /> Save Changes
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setForm(emptyForm())}>
+                    Reset
+                  </Button>
+                  <Button onClick={save}>
+                    <Plus className="h-4 w-4" /> Add Account
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -704,7 +752,12 @@ export default function AccountsManager() {
                     return (
                       <div
                         key={a.id}
-                        className="relative flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 p-3 overflow-hidden"
+                        className={cn(
+                          "relative flex items-center gap-3 rounded-lg border bg-card/40 p-3 overflow-hidden transition-colors",
+                          editingAccountId === a.id
+                            ? "border-primary/60 ring-1 ring-primary/40"
+                            : "border-border/60",
+                        )}
                       >
                         <div
                           className="absolute left-0 top-0 h-full w-1.5"
@@ -745,6 +798,15 @@ export default function AccountsManager() {
                             })}
                           </div>
                           <div className="mt-1 flex justify-end gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => startEditAccount(a)}
+                              aria-label="Edit account"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
                             <Button
                               size="icon"
                               variant="ghost"
