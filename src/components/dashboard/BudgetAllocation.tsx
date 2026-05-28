@@ -41,6 +41,7 @@ const BudgetAllocation = () => {
                 ))}
               </Pie>
               <Tooltip
+                cursor={false}
                 contentStyle={{
                   backgroundColor: "hsl(220, 18%, 10%)",
                   border: "1px solid hsl(220, 14%, 16%)",
@@ -48,7 +49,12 @@ const BudgetAllocation = () => {
                   color: "hsl(210, 20%, 92%)",
                   fontSize: "12px",
                 }}
-                formatter={(value: number) => [`${value}%`, ""]}
+                itemStyle={{ color: "hsl(210, 20%, 92%)" }}
+                labelStyle={{ color: "hsl(210, 20%, 70%)" }}
+                formatter={(value: number, _n, entry: any) => [
+                  `${value}%`,
+                  entry?.payload?.name ?? "",
+                ]}
               />
             </PieChart>
           </ResponsiveContainer>
