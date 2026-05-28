@@ -221,18 +221,28 @@ function SIPCalc() {
   const [sip, setSip] = useState("10000");
   const [rate, setRate] = useState("12");
   const [years, setYears] = useState("10");
+  const [stepUp, setStepUp] = useState("10");
 
   const { invested, gain, future } = useMemo(() => {
     const P = num(sip), R = num(rate), Y = num(years);
+    const S = num(stepUp) ?? 0;
     if (P === null || R === null || Y === null || P <= 0 || Y <= 0) {
       return { invested: null, gain: null, future: null };
     }
     const i = R / 100 / 12;
-    const n = Y * 12;
-    const F = i === 0 ? P * n : P * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
-    const inv = P * n;
-    return { invested: inv, gain: F - inv, future: F };
-  }, [sip, rate, years]);
+    const step = S / 100;
+    let monthly = P;
+    let future = 0;
+    let inv = 0;
+    for (let y = 0; y < Y; y++) {
+      for (let m = 0; m < 12; m++) {
+        future = (future + monthly) * (1 + i);
+        inv += monthly;
+      }
+      monthly = monthly * (1 + step);
+    }
+    return { invested: inv, gain: future - inv, future };
+  }, [sip, rate, years, stepUp]);
 
   return (
     <div className="grid lg:grid-cols-2 gap-6">
@@ -240,6 +250,7 @@ function SIPCalc() {
         <SliderField label="Monthly Investment (₹)" value={sip} onChange={setSip} min={500} max={200000} step={500} prefix="₹" />
         <SliderField label="Expected Annual Return (%)" value={rate} onChange={setRate} min={1} max={30} step={0.1} suffix="%" />
         <SliderField label="Time Period (Years)" value={years} onChange={setYears} min={1} max={40} step={1} suffix=" yrs" />
+        <SliderField label="Annual Step-Up (%)" value={stepUp} onChange={setStepUp} min={0} max={50} step={1} suffix="%" />
       </div>
       <div className="space-y-3">
         <ResultCard label="Total Amount Invested" value={invested === null ? DASH : inr(invested)} />
