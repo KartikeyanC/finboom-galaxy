@@ -1,97 +1,50 @@
-## Income & Customization Module — Valar Finance Tracker
 
-Build an interactive Income module on `/app/income` with reorderable, hide/show-able category cards, currency-aware INR conversion, and an inline quick-add card. State is local (mocked) for now, with a schema shape ready to sync to the backend later.
+# Recurring + Transactions Model
 
-### 1. Data model (local state)
+Replace the standalone "Income Stream" concept with a unified **Recurring Items** system that works for both income and expenses. A recurring item is a template (e.g. "Salary — Acme — ₹80k/month"); when it's due, the user marks it received/paid with one tap and a real transaction is auto-created and linked back to the template.
 
-A single `incomeStreams` array, typed:
+## What the user will see
 
-```ts
-type IncomeStream = {
-  id: string;
-  name: string;          // "Salary", "Rent", custom tag, etc.
-  type: "active" | "passive";
-  icon: string;          // lucide icon name
-  amount: number;
-  currency: "USD" | "EUR" | "INR";
-  exchangeRateToINR: number;
-  isVisible: boolean;
-  displayOrder: number;
-};
-```
+**Income page**
+- Top section: **Recurring Income** cards (existing income streams UI, kept) with a new "Mark received" button per card when due.
+- Bottom: **Received Transactions** (filtered transactions list, type=income).
 
-Seeded with: Salary (active) + Rent, Dividend, Course, YouTube, Sponsorship, College, Interview, Editing, Digital Art, Interest, Business, Bonus, Tax Refund, Self Transfer (passive). Persisted to `localStorage` under `valar.income.streams` so refreshes keep state.
+**Expenses page**
+- New top section: **Recurring Expenses** (rent, EMI, subscriptions, utilities) — same card pattern as income streams, but red-themed.
+- Bottom: existing transactions list.
 
-### 2. UI layout (replaces current `src/pages/Income.tsx` body)
+**Add flow**
+- Add Transaction dialog (image 1) → stays as the quick one-off entry.
+- Add Income Stream dialog (image 2) → renamed **Add Recurring Income**.
+- New **Add Recurring Expense** dialog (mirrors the income one with red theme + expense categories).
 
-Keep the existing header + 4 metric cards (recomputed from visible streams, INR equivalents). Below them:
+**Dashboard**
+- "Upcoming this month" widget showing next due recurring items (both income & expense).
 
-```text
-+--------------------------------------------------+
-| Income Streams              [⚙ Manage Categories]|
-+--------------------------------------------------+
-| ⋮⋮  [icon]  Salary                               |
-|             $5,000 USD  →  ₹4,16,000             |
-+--------------------------------------------------+
-| ⋮⋮  [icon]  Rent                                 |
-|             ₹25,000 INR →  ₹25,000               |
-+--------------------------------------------------+
-| ...                                              |
-+--------------------------------------------------+
-| +  Add custom income stream                      |
-+--------------------------------------------------+
-```
+## Technical details
 
-Cards: rounded, high-contrast, generous whitespace, hover lift, fade-in on mount. Responsive single column on mobile (375px+), comfortable max-width on desktop.
+### Database
+New unified table `recurring_items`:
+- `type` (income | expense)
+- `name`, `category`, `subtype` (active/passive for income, null for expense)
+- `amount`, `currency`, `fx_rate`
+- `frequency` (monthly | weekly | yearly | one-time)
+- `next_due_date`, `last_generated_at`
+- `icon`, `notes`, `is_active`
+- standard `user_id`, timestamps + RLS
 
-### 3. Drag-and-drop reordering
+Add nullable column `transactions.source_recurring_id` (uuid) so generated transactions trace back to their template.
 
-- Left-side grip handle (`GripVertical` icon) on each card.
-- Use HTML5 drag-and-drop (no new dependency) on the handle; on drop, recompute `displayOrder` for all visible cards and animate position change with a CSS transition (`transition-all duration-300`).
-- Touch-friendly fallback: small up/down chevron buttons appear on the handle for mobile.
+Keep existing `income_streams` table for now (used by dashboard). Add a small migration script to copy rows into `recurring_items` so nothing is lost; phase out in a later pass.
 
-### 4. Manage Categories overlay
+### Frontend
+- `src/hooks/useRecurring.ts` — CRUD + `markPaid(id, date)` which inserts a transaction and bumps `next_due_date`.
+- `src/components/recurring/RecurringDialog.tsx` — shared dialog (income/expense mode, mirrors image 2's icon picker + frequency UI).
+- `src/components/recurring/RecurringList.tsx` — card grid with due-date pill and "Mark received/paid" action.
+- Wire into `src/pages/Income.tsx` and `src/pages/Expenses.tsx`.
+- Dashboard widget: `src/components/dashboard/UpcomingRecurring.tsx`.
 
-- Gear button top-right of the section opens a Sheet/Dialog (shadcn `Sheet`).
-- Lists every stream (active + passive) with a `Switch` bound to `isVisible`.
-- Toggling instantly hides/shows the matching card in the main list, with a fade + height-collapse transition.
-
-### 5. Inline quick-add card
-
-- A "+ Add custom income stream" card sits at the bottom of the visible list.
-- Click expands it inline (height/opacity animation) with fields:
-  - Amount (number)
-  - Currency dropdown (USD / EUR / INR)
-  - Exchange rate to INR (auto-filled with sensible default per currency; editable; locked to 1 for INR)
-  - Category name (text)
-- Save appends a new stream with the next `displayOrder`, `isVisible: true`, type `"passive"`. Cancel collapses without saving.
-
-### 6. Files
-
-- Edit `src/pages/Income.tsx` — orchestrates state, metrics, list.
-- New `src/components/income/IncomeCard.tsx` — single card with handle, icon, amount, INR conversion.
-- New `src/components/income/ManageCategoriesSheet.tsx` — overlay with toggles.
-- New `src/components/income/QuickAddCard.tsx` — inline add form.
-- New `src/hooks/useIncomeStreams.ts` — state, localStorage sync, reorder/toggle/add helpers.
-- New `src/lib/incomeSeed.ts` — default categories + icon map.
-
-### 7. Backend-ready schema (not built now)
-
-Documented in code comments so a future migration is one-to-one:
-
-```text
-income_streams(
-  id uuid pk, user_id uuid, name text, type text,
-  icon text, amount numeric, currency text,
-  exchange_rate_to_inr numeric, is_visible boolean,
-  display_order int, created_at, updated_at
-)
-```
-
-No DB changes in this step — module is fully interactive on local state. Wiring to Supabase happens in a follow-up once you approve the UX.
-
-### Out of scope for this step
-
-- Persisting to the backend / RLS migration.
-- Editing existing card amounts (only add + hide + reorder for now — can add inline edit next round if you want).
-- Live FX rates (rates are user-entered; defaults provided).
+### Scope kept tight
+- No cron / automatic generation yet — user taps "Mark received/paid" (matches Monarch/YNAB behavior and keeps the user in control).
+- Keep existing AddIncomeDialog & TransactionDialog working; only add the recurring-expense variant and rename labels.
+- No deletion of `income_streams` table this pass — non-breaking migration.
