@@ -13,6 +13,8 @@ import {
   Archive,
   Check,
   CalendarIcon,
+  Pencil,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -73,13 +75,13 @@ const ICONS: { id: string; icon: LucideIcon }[] = [
   { id: "shield", icon: Shield },
 ];
 
-const PURPOSES = [
+const DEFAULT_PURPOSES = [
   "Home Expenses",
   "Financial Goals",
   "Emergency Fund",
   "Domestic Investment",
   "Global Investment",
-] as const;
+];
 
 const BANKS = [
   "HDFC Bank",
@@ -197,6 +199,62 @@ function AccountPreviewCard({ form }: { form: FormState }) {
 export default function AccountsManager() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [accounts, setAccounts] = useState<SavedAccount[]>([]);
+  const [purposeOptions, setPurposeOptions] = useState<string[]>(DEFAULT_PURPOSES);
+  const [adding, setAdding] = useState(false);
+  const [newPurpose, setNewPurpose] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const addPurpose = () => {
+    const v = newPurpose.trim();
+    if (!v) return;
+    if (purposeOptions.some((p) => p.toLowerCase() === v.toLowerCase())) {
+      toast.error("Purpose already exists");
+      return;
+    }
+    setPurposeOptions((p) => [...p, v]);
+    setNewPurpose("");
+    setAdding(false);
+    toast.success("Purpose added");
+  };
+
+  const startEdit = (p: string) => {
+    setEditing(p);
+    setEditValue(p);
+  };
+
+  const commitEdit = () => {
+    const v = editValue.trim();
+    if (!editing || !v || v === editing) {
+      setEditing(null);
+      return;
+    }
+    if (purposeOptions.some((p) => p.toLowerCase() === v.toLowerCase() && p !== editing)) {
+      toast.error("Purpose already exists");
+      return;
+    }
+    setPurposeOptions((opts) => opts.map((x) => (x === editing ? v : x)));
+    setForm((f) => ({
+      ...f,
+      purposes: f.purposes.map((x) => (x === editing ? v : x)),
+    }));
+    setAccounts((a) =>
+      a.map((acc) => ({
+        ...acc,
+        purposes: acc.purposes.map((x) => (x === editing ? v : x)),
+      })),
+    );
+    setEditing(null);
+  };
+
+  const deletePurpose = (p: string) => {
+    setPurposeOptions((opts) => opts.filter((x) => x !== p));
+    setForm((f) => ({ ...f, purposes: f.purposes.filter((x) => x !== p) }));
+    setAccounts((a) =>
+      a.map((acc) => ({ ...acc, purposes: acc.purposes.filter((x) => x !== p) })),
+    );
+    toast.success("Purpose removed");
+  };
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -482,28 +540,125 @@ export default function AccountsManager() {
 
             {/* Purposes */}
             <div className="space-y-2">
-              <Label>Account Utility Purpose</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {PURPOSES.map((p) => {
+              <div className="flex items-center justify-between">
+                <Label>Account Utility Purpose</Label>
+                {!adding && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-primary hover:text-primary"
+                    onClick={() => setAdding(true)}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add Custom Purpose
+                  </Button>
+                )}
+              </div>
+
+              {adding && (
+                <div className="flex gap-2">
+                  <Input
+                    autoFocus
+                    value={newPurpose}
+                    onChange={(e) => setNewPurpose(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addPurpose();
+                      } else if (e.key === "Escape") {
+                        setAdding(false);
+                        setNewPurpose("");
+                      }
+                    }}
+                    placeholder="e.g. Business Capital, Kids Education"
+                    className="h-9"
+                  />
+                  <Button type="button" size="sm" onClick={addPurpose}>
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setAdding(false);
+                      setNewPurpose("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                {purposeOptions.map((p) => {
                   const checked = form.purposes.includes(p);
+                  if (editing === p) {
+                    return (
+                      <div key={p} className="flex items-center gap-1 rounded-full border border-primary/60 bg-primary/10 pl-2 pr-1 py-0.5">
+                        <Input
+                          autoFocus
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitEdit();
+                            } else if (e.key === "Escape") {
+                              setEditing(null);
+                            }
+                          }}
+                          onBlur={commitEdit}
+                          className="h-7 w-40 text-xs border-0 bg-transparent focus-visible:ring-0 px-1"
+                        />
+                      </div>
+                    );
+                  }
                   return (
-                    <label
+                    <div
                       key={p}
                       className={cn(
-                        "flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors",
+                        "group inline-flex items-center gap-1 rounded-full border pl-3 pr-1 py-1 text-xs transition-colors cursor-pointer select-none",
                         checked
-                          ? "border-primary/60 bg-primary/10"
-                          : "border-border/60 hover:border-border"
+                          ? "border-primary/60 bg-primary/15 text-primary"
+                          : "border-border/60 bg-card/40 hover:border-border text-foreground/80",
                       )}
+                      onClick={() => togglePurpose(p)}
                     >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => togglePurpose(p)}
-                      />
-                      <span className="text-sm">{p}</span>
-                    </label>
+                      {checked && <Check className="h-3 w-3" />}
+                      <span>{p}</span>
+                      <span className="ml-1 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEdit(p);
+                          }}
+                          className="h-6 w-6 inline-flex items-center justify-center rounded-full hover:bg-foreground/10"
+                          aria-label={`Edit ${p}`}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deletePurpose(p);
+                          }}
+                          className="h-6 w-6 inline-flex items-center justify-center rounded-full hover:bg-destructive/15 text-destructive"
+                          aria-label={`Delete ${p}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    </div>
                   );
                 })}
+                {purposeOptions.length === 0 && !adding && (
+                  <p className="text-xs text-muted-foreground">
+                    No purposes yet. Add one to tag your accounts.
+                  </p>
+                )}
               </div>
             </div>
 
