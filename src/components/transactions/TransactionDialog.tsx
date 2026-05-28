@@ -161,27 +161,6 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-2">
-          {/* Type toggle */}
-          <div className="inline-flex p-1 rounded-lg bg-muted/40 border border-border w-full">
-            {(["income", "expense"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setActiveType(t)}
-                className={
-                  "flex-1 text-sm font-medium rounded-md py-1.5 transition-colors capitalize " +
-                  (activeType === t
-                    ? t === "income"
-                      ? "bg-emerald-500/20 text-emerald-300"
-                      : "bg-coral/20 text-coral"
-                    : "text-muted-foreground hover:text-foreground")
-                }
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="amount">Amount</Label>
