@@ -11,6 +11,35 @@ const BUDGET_DATA = [
   { name: "Agri", value: 5, color: "hsl(90, 50%, 45%)" },
 ];
 
+// Pick black or white text based on slice color luminance so it stays readable.
+const readableText = (hsl: string) => {
+  const m = hsl.match(/hsl\(\s*\d+\s*,\s*\d+%\s*,\s*(\d+)%\s*\)/);
+  const l = m ? Number(m[1]) : 50;
+  return l > 55 ? "#0b1018" : "#ffffff";
+};
+
+const SliceTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  const fg = readableText(p.color);
+  return (
+    <div
+      style={{
+        backgroundColor: p.color,
+        color: fg,
+        border: `1px solid ${p.color}`,
+        borderRadius: 8,
+        padding: "6px 10px",
+        fontSize: 12,
+        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+      }}
+    >
+      <span style={{ fontWeight: 600 }}>{p.name}</span>
+      <span style={{ marginLeft: 6, opacity: 0.9 }}>: {p.value}%</span>
+    </div>
+  );
+};
+
 const BudgetAllocation = () => {
   return (
     <motion.div
@@ -40,22 +69,7 @@ const BudgetAllocation = () => {
                   <Cell key={index} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                cursor={false}
-                contentStyle={{
-                  backgroundColor: "hsl(220, 18%, 10%)",
-                  border: "1px solid hsl(220, 14%, 16%)",
-                  borderRadius: "8px",
-                  color: "hsl(210, 20%, 92%)",
-                  fontSize: "12px",
-                }}
-                itemStyle={{ color: "hsl(210, 20%, 92%)" }}
-                labelStyle={{ color: "hsl(210, 20%, 70%)" }}
-                formatter={(value: number, _n, entry: any) => [
-                  `${value}%`,
-                  entry?.payload?.name ?? "",
-                ]}
-              />
+              <Tooltip cursor={false} content={<SliceTooltip />} />
             </PieChart>
           </ResponsiveContainer>
         </div>
