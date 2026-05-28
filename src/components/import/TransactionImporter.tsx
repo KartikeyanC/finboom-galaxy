@@ -340,19 +340,6 @@ export function TransactionImporter() {
         </TabsList>
       </Tabs>
 
-      {/* Mode banner */}
-      {mode === "update" && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex gap-3">
-          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-200">
-            <span className="font-semibold text-amber-400">Update by Name mode:</span>{" "}
-            assets whose names match existing ones will have their value, quantity, and
-            price updated. Assets not in this file are left untouched, and new names are
-            added as fresh entries.
-          </p>
-        </div>
-      )}
-
       {/* Source + mode segmented controls */}
       <div className="flex flex-wrap gap-3">
         <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
@@ -369,13 +356,27 @@ export function TransactionImporter() {
         </Tabs>
       </div>
 
+      {/* Mode banner — slides down on Update by Name */}
+      {mode === "update" && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex gap-3 animate-in slide-in-from-top-2 fade-in">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-200">
+            <span className="font-semibold text-amber-400">Update by Name mode:</span>{" "}
+            entries whose names match existing ones will have their value, quantity and
+            price overwritten. Names not in this file stay untouched; new names are
+            added as fresh rows.
+          </p>
+        </div>
+      )}
+
       {/* Broker grid */}
       {source === "broker" && (
         <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
           <h3 className="font-display text-base font-bold mb-4">Select Broker</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {BROKERS.map((b) => {
+            {allBrokers.map((b) => {
               const active = b.value === profile;
+              const isCustom = b.value === "__custom__";
               return (
                 <button
                   key={b.value}
@@ -384,15 +385,16 @@ export function TransactionImporter() {
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all",
                     active
-                      ? "border-primary bg-primary/10 ring-1 ring-primary/40"
+                      ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/40"
                       : "border-border/60 bg-secondary/30 hover:border-primary/40 hover:bg-secondary/50",
+                    isCustom && "col-span-2",
                   )}
                 >
                   <span
                     className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white shrink-0"
                     style={{ backgroundColor: b.brand }}
                   >
-                    {b.initial}
+                    {isCustom ? <Plus className="w-4 h-4" /> : b.initial}
                   </span>
                   <span className="text-sm font-medium truncate">{b.label}</span>
                 </button>
