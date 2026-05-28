@@ -42,7 +42,8 @@ import {
 import { formatMoney } from "@/lib/finance";
 import { categoryBadgeClass, getIncomeSubtype, useCustomCategories } from "@/lib/categories";
 
-export default function TransactionsTable({ type }: { type: TxnType }) {
+export default function TransactionsTable({ type: initialType }: { type: TxnType }) {
+  const [type, setType] = useState<TxnType>(initialType);
   const { data, isLoading } = useTransactions(type);
   const del = useDeleteTransaction();
   const custom = useCustomCategories();
@@ -106,11 +107,19 @@ export default function TransactionsTable({ type }: { type: TxnType }) {
 
   return (
     <div className="glass-card p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display text-sm font-semibold text-foreground uppercase tracking-wider">
-          {title} ({filtered.length}
-          {hasFilter && data ? ` / ${data.length}` : ""})
-        </h3>
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <h3 className="font-display text-sm font-semibold text-foreground uppercase tracking-wider">
+            {title} ({filtered.length}
+            {hasFilter && data ? ` / ${data.length}` : ""})
+          </h3>
+          <Tabs value={type} onValueChange={(v) => { setType(v as TxnType); setCatFilter("all"); setSubtype("all"); }}>
+            <TabsList className="h-8">
+              <TabsTrigger value="income" className="text-xs px-3">Income</TabsTrigger>
+              <TabsTrigger value="expense" className="text-xs px-3">Expense</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
         <Button
           size="sm"
           onClick={() => {
