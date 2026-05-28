@@ -68,11 +68,16 @@ const IncomeStreams = () => {
         </span>
       </div>
       <div className="flex flex-col gap-4">
-        {INCOME_STREAMS.map((stream) => (
+        {INCOME_STREAMS.map((stream) => {
+          const isActive = stream.category === "Active";
+          const tone = isActive ? "text-emerald-400" : "text-violet-300";
+          const dot = isActive ? "bg-emerald-400" : "bg-violet-300";
+          return (
           <div key={stream.category}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-muted-foreground">{stream.icon}</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+              <span className={tone}>{stream.icon}</span>
+              <span className={`text-xs font-semibold uppercase tracking-wider ${tone}`}>
                 {stream.category}
               </span>
             </div>
@@ -94,7 +99,8 @@ const IncomeStreams = () => {
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </motion.div>
   );
