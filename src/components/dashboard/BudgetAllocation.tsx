@@ -11,31 +11,35 @@ const BUDGET_DATA = [
   { name: "Agri", value: 5, color: "hsl(90, 50%, 45%)" },
 ];
 
-// Pick black or white text based on slice color luminance so it stays readable.
-const readableText = (hsl: string) => {
-  const m = hsl.match(/hsl\(\s*\d+\s*,\s*\d+%\s*,\s*(\d+)%\s*\)/);
-  const l = m ? Number(m[1]) : 50;
-  return l > 55 ? "#0b1018" : "#ffffff";
+// Parse hsl() and build a soft light gradient + readable text tone.
+const parseHsl = (hsl: string) => {
+  const m = hsl.match(/hsl\(\s*(\d+)\s*,\s*(\d+)%\s*,\s*(\d+)%\s*\)/);
+  if (!m) return { h: 220, s: 20, l: 50 };
+  return { h: Number(m[1]), s: Number(m[2]), l: Number(m[3]) };
 };
 
 const SliceTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
-  const fg = readableText(p.color);
+  const { h, s } = parseHsl(p.color);
+  // Always render a light pastel gradient so dark text stays readable.
+  const bg = `linear-gradient(135deg, hsl(${h}, ${Math.min(s, 70)}%, 92%) 0%, hsl(${h}, ${Math.min(s, 70)}%, 80%) 100%)`;
+  const border = `hsl(${h}, ${Math.min(s, 70)}%, 70%)`;
+  const fg = `hsl(${h}, 60%, 18%)`;
   return (
     <div
       style={{
-        backgroundColor: p.color,
+        background: bg,
         color: fg,
-        border: `1px solid ${p.color}`,
+        border: `1px solid ${border}`,
         borderRadius: 8,
         padding: "6px 10px",
         fontSize: 12,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+        boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
       }}
     >
       <span style={{ fontWeight: 600 }}>{p.name}</span>
-      <span style={{ marginLeft: 6, opacity: 0.9 }}>: {p.value}%</span>
+      <span style={{ marginLeft: 6, opacity: 0.85 }}>: {p.value}%</span>
     </div>
   );
 };
