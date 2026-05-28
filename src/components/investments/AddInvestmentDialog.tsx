@@ -248,6 +248,7 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
                 <NumberInput
                   id="buy"
                   placeholder="0.00"
+                  value={form.buy ?? ""}
                   onChange={(v) => {
                     set("buy", v);
                     setStocksEdited("derived");
@@ -258,6 +259,7 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
                 <NumberInput
                   id="qty"
                   placeholder="0"
+                  value={form.qty ?? ""}
                   onChange={(v) => {
                     set("qty", v);
                     setStocksEdited("derived");
