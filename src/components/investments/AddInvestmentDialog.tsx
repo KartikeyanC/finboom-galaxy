@@ -314,14 +314,14 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Total Invested<CurrencyBadge /></>}>
-                <NumberInput id="invested" placeholder="0.00" />
+                {N("invested", "0.00")}
               </Field>
               <Field label="Total Units">
-                <NumberInput id="units" placeholder="0.000" />
+                {N("units", "0.000")}
               </Field>
             </div>
             <Field label={<>Current NAV<CurrencyBadge /></>}>
-              <NumberInput id="nav" placeholder="0.00" />
+              {N("nav", "0.00")}
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <OutputBox label="Avg NAV" value={fmt(calc.avgNav ?? 0, 4)} />
@@ -342,10 +342,10 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Invested Amount<CurrencyBadge /></>}>
-                <NumberInput id="invested" placeholder="0.00" />
+                {N("invested", "0.00")}
               </Field>
               <Field label="XIRR (%)">
-                <NumberInput id="xirr" placeholder="7.5" />
+                {N("xirr", "7.5")}
               </Field>
             </div>
             <Field label="Interest Payment Frequency">
@@ -361,7 +361,7 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
               </Select>
             </Field>
             <Field label={<>Current Value<CurrencyBadge /></>}>
-              <NumberInput id="current" placeholder="0.00" />
+              {N("current", "0.00")}
             </Field>
           </div>
         );
@@ -378,14 +378,14 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Deposit Amount<CurrencyBadge /></>}>
-                <NumberInput id="deposit" placeholder="0.00" />
+                {N("deposit", "0.00")}
               </Field>
               <Field label="Interest Rate (%)">
-                <NumberInput id="rate" placeholder="0.00" />
+                {N("rate", "0.00")}
               </Field>
             </div>
             <Field label="Tenure (Years)">
-              <NumberInput id="tenure" placeholder="5" />
+              {N("tenure", "5")}
             </Field>
             <OutputBox
               label={`Maturity Value (after ${calc.tenure ?? 5}y)`}
@@ -406,14 +406,14 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Monthly Installment<CurrencyBadge /></>}>
-                <NumberInput id="monthly" placeholder="0.00" />
+                {N("monthly", "0.00")}
               </Field>
               <Field label="Duration (Months)">
-                <NumberInput id="months" placeholder="12" />
+                {N("months", "12")}
               </Field>
             </div>
             <Field label="Interest Rate (% p.a.)">
-              <NumberInput id="rate" placeholder="6.5" />
+              {N("rate", "6.5")}
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <OutputBox label="Total Principal" value={fmt(calc.principal ?? 0)} />
@@ -434,14 +434,14 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Employee Contrib.<CurrencyBadge /></>}>
-                <NumberInput id="employee" placeholder="0.00" />
+                {N("employee", "0.00")}
               </Field>
               <Field label={<>Employer Contrib.<CurrencyBadge /></>}>
-                <NumberInput id="employer" placeholder="0.00" />
+                {N("employer", "0.00")}
               </Field>
             </div>
             <Field label={<>Current Total Balance<CurrencyBadge /></>}>
-              <NumberInput id="balance" placeholder="0.00" />
+              {N("balance", "0.00")}
             </Field>
             <OutputBox label="Contributions Total" value={fmt(calc.contribTotal ?? 0)} />
           </div>
@@ -463,14 +463,14 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
               </Select>
             </Field>
             <Field label="Quantity (Grams)">
-              <NumberInput id="grams" placeholder="0.000" />
+              {N("grams", "0.000")}
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Buying Price (/g)<CurrencyBadge /></>}>
-                <NumberInput id="buy" placeholder="0.00" />
+                {N("buy", "0.00")}
               </Field>
               <Field label={<>Current Price (/g)<CurrencyBadge /></>}>
-                <NumberInput id="current" placeholder="0.00" />
+                {N("current", "0.00")}
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -492,18 +492,18 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Purchase Value<CurrencyBadge /></>}>
-                <NumberInput id="purchase" placeholder="0.00" />
+                {N("purchase", "0.00")}
               </Field>
               <Field label={<>Registration / Setup Fees<CurrencyBadge /></>}>
-                <NumberInput id="fees" placeholder="0.00" />
+                {N("fees", "0.00")}
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Current Market Value<CurrencyBadge /></>}>
-                <NumberInput id="current" placeholder="0.00" />
+                {N("current", "0.00")}
               </Field>
               <Field label={<>Monthly Rental Yield<CurrencyBadge /></>}>
-                <NumberInput id="rent" placeholder="0.00" />
+                {N("rent", "0.00")}
               </Field>
             </div>
             <OutputBox label="Total Cost Basis" value={fmt(calc.totalCost ?? 0)} />
@@ -531,10 +531,10 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Buy Price<CurrencyBadge /></>}>
-                <NumberInput id="buy" placeholder="0.00" />
+                {N("buy", "0.00")}
               </Field>
               <Field label="Quantity">
-                <NumberInput id="qty" placeholder="0.00000000" step="0.00000001" />
+                {N("qty", "0.00000000", "0.00000001")}
               </Field>
             </div>
             <OutputBox label="Total Invested" value={fmt(calc.invested ?? 0)} />
