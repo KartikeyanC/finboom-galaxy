@@ -113,11 +113,15 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
   const [bondFreq, setBondFreq] = useState<"Yearly" | "Monthly" | "Quarterly">("Yearly");
   // Stocks: which side was last edited (qty*price <-> totalInvested)
   const [stocksEdited, setStocksEdited] = useState<"derived" | "total">("derived");
+  // Track whether the user manually edited "Current Value" — if not, we mirror
+  // the Invested Amount into it live.
+  const [currentTouched, setCurrentTouched] = useState(false);
 
   // Reset form when asset changes
   useEffect(() => {
     setForm({});
     setStocksEdited("derived");
+    setCurrentTouched(false);
     if (asset === "bonds" && !form.xirr) {
       setForm((f) => ({ ...f, xirr: "7.5" }));
     }
@@ -134,6 +138,7 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
       setMfMode("Lumpsum");
       setGoldType("Physical Gold");
       setBondFreq("Yearly");
+      setCurrentTouched(false);
     }
   }, [open]);
 
@@ -214,35 +219,15 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
     </Badge>
   );
 
-  const NumberInput = ({
-    id,
-    placeholder,
-    step,
-    value,
-    onChange,
-  }: {
-    id: string;
-    placeholder?: string;
-    step?: string;
-    value?: string;
-    onChange?: (v: string) => void;
-  }) => (
-    <Input
+  // Bound helper for the common case: read/write a key on `form`.
+  const N = (id: string, placeholder?: string, step?: string) => (
+    <NumberInput
       id={id}
-      type="number"
-      inputMode="decimal"
-      step={step ?? "any"}
       placeholder={placeholder}
-      value={value ?? form[id] ?? ""}
-      onChange={(e) => (onChange ? onChange(e.target.value) : set(id, e.target.value))}
+      step={step}
+      value={form[id] ?? ""}
+      onChange={(v) => set(id, v)}
     />
-  );
-
-  const OutputBox = ({ label, value }: { label: string; value: string }) => (
-    <div className="rounded-md border bg-muted/40 px-3 py-2">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-sm font-semibold text-foreground mt-0.5">{value}</div>
-    </div>
   );
 
   // ---------- Per-asset form bodies ----------
