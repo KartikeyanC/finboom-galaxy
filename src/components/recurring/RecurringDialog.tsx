@@ -86,8 +86,21 @@ export default function RecurringDialog({ type, trigger }: Props) {
       toast.error(parsed.error.issues[0].message);
       return;
     }
+    const d = parsed.data;
     create.mutate(
-      { type, ...parsed.data, notes: parsed.data.notes ?? null },
+      {
+        type,
+        name: d.name,
+        category: d.category,
+        amount: d.amount,
+        currency: d.currency,
+        fx_rate: d.fx_rate,
+        frequency: d.frequency,
+        next_due_date: d.next_due_date,
+        icon: d.icon,
+        subtype: d.subtype ?? null,
+        notes: d.notes ?? null,
+      },
       { onSuccess: () => setOpen(false) }
     );
   };
