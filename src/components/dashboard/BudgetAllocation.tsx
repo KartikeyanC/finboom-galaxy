@@ -24,14 +24,13 @@ const SliceTooltip = ({ active, payload }: any) => {
   const { h, s } = parseHsl(p.color);
   // Always render a light pastel gradient so dark text stays readable.
   const bg = `linear-gradient(135deg, hsl(${h}, ${Math.min(s, 70)}%, 92%) 0%, hsl(${h}, ${Math.min(s, 70)}%, 80%) 100%)`;
-  const border = `hsl(${h}, ${Math.min(s, 70)}%, 70%)`;
   const fg = `hsl(${h}, 60%, 18%)`;
   return (
     <div
       style={{
         background: bg,
         color: fg,
-        border: `1px solid ${border}`,
+        border: `2px solid ${p.color}`,
         borderRadius: 8,
         padding: "6px 10px",
         fontSize: 12,
