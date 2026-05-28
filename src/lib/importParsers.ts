@@ -1,7 +1,6 @@
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import * as pdfjsLib from "pdfjs-dist";
-// @ts-expect-error - vite worker import
 import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;
@@ -102,7 +101,7 @@ export async function parsePDF(file: File): Promise<ImportedRow[]> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    text += content.items.map((it: { str?: string }) => it.str ?? "").join(" ") + "\n";
+    text += content.items.map((it) => ("str" in it ? it.str : "")).join(" ") + "\n";
   }
   // Regex: DATE  SYMBOL  BUY/SELL  QTY  PRICE
   const re =
