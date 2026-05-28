@@ -41,9 +41,11 @@ const Income = () => {
           change={`${visible.length} active streams`} changeType="positive"
           icon={<Wallet className="w-4 h-4" />} delay={0.05} />
         <MetricCard label="Active Income" value={formatCompact(stats.activeINR)} change="Salary & work"
-          changeType="neutral" icon={<Sparkles className="w-4 h-4" />} delay={0.1} />
+          changeType="neutral"
+          icon={<Sparkles className="w-4 h-4 text-emerald-400" />} delay={0.1} />
         <MetricCard label="Passive Income" value={formatCompact(stats.passiveINR)} change="Recurring & flexible"
-          changeType="neutral" icon={<Layers className="w-4 h-4" />} delay={0.15} />
+          changeType="neutral"
+          icon={<Layers className="w-4 h-4 text-violet-300" />} delay={0.15} />
         <MetricCard label="Foreign Streams" value={String(stats.forexCount)} change="Non-INR currencies"
           changeType="neutral" icon={<Globe className="w-4 h-4" />} delay={0.2} />
       </div>
