@@ -7,8 +7,6 @@ import AddIncomeDialog from "@/components/income/AddIncomeDialog";
 import { Wallet, Globe, Layers, Sparkles } from "lucide-react";
 import { useIncomeStreams } from "@/hooks/useIncomeStreams";
 import { formatCompact } from "@/lib/finance";
-import RecurringList from "@/components/recurring/RecurringList";
-import RecurringDialog from "@/components/recurring/RecurringDialog";
 
 const Income = () => {
   const { streams, visible, toggleVisible, reorder, move, add, remove, resetAll } = useIncomeStreams();
@@ -34,10 +32,7 @@ const Income = () => {
             Personalize, reorder, and hide your multi-currency earnings. Everything converts to INR instantly.
           </p>
         </div>
-        <div className="flex gap-2">
-          <RecurringDialog type="income" />
-          <AddIncomeDialog onAdd={add} />
-        </div>
+        <AddIncomeDialog onAdd={add} />
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -51,16 +46,6 @@ const Income = () => {
         <MetricCard label="Foreign Streams" value={String(stats.forexCount)} change="Non-INR currencies"
           changeType="neutral" icon={<Globe className="w-4 h-4" />} delay={0.2} />
       </div>
-
-      <section className="space-y-4">
-        <div>
-          <h2 className="font-display text-xl font-bold text-foreground">Recurring Income</h2>
-          <p className="text-sm text-muted-foreground">
-            Saved templates that auto-generate transactions when you tap “Mark received”.
-          </p>
-        </div>
-        <RecurringList type="income" />
-      </section>
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-3">
