@@ -179,6 +179,37 @@ export default function AddIncomeDialog({ onAdd }: Props) {
             </div>
           </div>
 
+          <Popover open={newCatOpen} onOpenChange={setNewCatOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-center gap-2 border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <Plus className="w-4 h-4" />
+                Create New {type === "active" ? "Active" : "Passive"} Income Category
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 sm:w-80 space-y-3 p-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">New category name</Label>
+                <Input
+                  autoFocus
+                  placeholder="e.g. Royalties, Crypto"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && saveNewCategory()}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setNewCatOpen(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={saveNewCategory}>Save</Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
           <div className="space-y-1.5">
             <Label htmlFor="inc-name">Name (optional)</Label>
             <Input
