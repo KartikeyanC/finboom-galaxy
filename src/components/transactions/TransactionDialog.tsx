@@ -20,8 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Wallet } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, Wallet, Receipt, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   CURRENCIES,
