@@ -1,1 +1,4 @@
 project_id = "tsmdnfywxsjsjqjszoek"
+
+[functions.live-price]
+verify_jwt = false
