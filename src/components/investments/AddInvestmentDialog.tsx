@@ -626,7 +626,7 @@ export default function AddInvestmentDialog({
             <div className="grid grid-cols-2 gap-3">
               <Field label="Token Ticker">
                 <Input
-                  placeholder="BTC, ETH, SOL…"
+                  placeholder="BTC-USD, ETH-USD, SOL-USD…"
                   value={form.ticker ?? ""}
                   onChange={(e) => set("ticker", e.target.value.toUpperCase())}
                 />
