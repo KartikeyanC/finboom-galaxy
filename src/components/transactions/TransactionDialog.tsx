@@ -20,7 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Wallet } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import {
   CURRENCIES,
   EXPENSE_CATEGORIES,
@@ -39,6 +41,8 @@ import {
   type TxnType,
 } from "@/hooks/useTransactions";
 import { toast } from "sonner";
+import { buildInstallments, computeMonthly, useDebts, type DebtRecord } from "@/lib/debtsStore";
+import { useReminders, type ReminderRecord } from "@/lib/remindersStore";
 
 const schema = z.object({
   amount: z.number().positive("Amount must be positive").max(1e12),
@@ -60,6 +64,8 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
   const custom = useCustomCategories();
+  const debts = useDebts();
+  const reminders = useReminders();
 
   const [activeType, setActiveType] = useState<TxnType>(type);
   const defaultCategory =
@@ -73,6 +79,14 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatSub, setNewCatSub] = useState<IncomeSubtype>("active");
+
+  // Debt / installment state
+  const [debtMode, setDebtMode] = useState(false);
+  const [debtTotal, setDebtTotal] = useState("");
+  const [debtDuration, setDebtDuration] = useState<number>(3);
+  const [debtCustomDuration, setDebtCustomDuration] = useState<string>("6");
+  const [debtFirstDue, setDebtFirstDue] = useState(() => new Date().toISOString().slice(0, 10));
+  const [debtLender, setDebtLender] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -91,6 +105,12 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       setDescription("");
       setOccurredAt(new Date().toISOString().slice(0, 10));
     }
+    setDebtMode(false);
+    setDebtTotal("");
+    setDebtDuration(3);
+    setDebtCustomDuration("6");
+    setDebtFirstDue(new Date().toISOString().slice(0, 10));
+    setDebtLender("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial, type]);
 
@@ -101,6 +121,9 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   }, [activeType, open, initial]);
 
   const submit = async () => {
+    if (debtMode && activeType === "expense") {
+      return submitDebt();
+    }
     const parsed = schema.safeParse({
       amount: Number(amount),
       currency,
@@ -130,6 +153,67 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
     } catch {
       /* toast handled in hook */
     }
+  };
+
+  const submitDebt = () => {
+    const total = Number(debtTotal);
+    const duration = debtDuration > 0 ? debtDuration : Number(debtCustomDuration);
+    if (!Number.isFinite(total) || total <= 0) {
+      toast.error("Enter a valid total debt amount");
+      return;
+    }
+    if (!Number.isFinite(duration) || duration < 1) {
+      toast.error("Choose a repayment duration");
+      return;
+    }
+    if (!debtLender.trim()) {
+      toast.error("Add a lender / source name");
+      return;
+    }
+    if (!debtFirstDue) {
+      toast.error("Pick the first installment date");
+      return;
+    }
+    const installments = buildInstallments(total, duration, debtFirstDue);
+    const debtId = crypto.randomUUID();
+    const lender = debtLender.trim();
+    const linked: typeof installments = installments.map((inst) => {
+      const reminderId = crypto.randomUUID();
+      const rec: ReminderRecord = {
+        id: reminderId,
+        title: `${lender} · EMI ${inst.month}/${duration}`,
+        context: "fixed_due",
+        date: inst.dueDate,
+        amount: inst.amount,
+        currency,
+        frequency: "one_time",
+        grace: "3d",
+        source: "debt",
+        sourceId: debtId,
+        status: "scheduled",
+        notes: `Upcoming Debt Paydown: Month ${inst.month} of ${duration} for ${lender} is due soon.`,
+        debt: { debtId, month: inst.month, totalMonths: duration, lender },
+        createdAt: new Date().toISOString(),
+      };
+      reminders.upsert(rec);
+      return { ...inst, reminderId };
+    });
+    const rec: DebtRecord = {
+      id: debtId,
+      lender,
+      category,
+      currency,
+      totalAmount: total,
+      duration,
+      monthly: computeMonthly(total, duration),
+      firstDueDate: debtFirstDue,
+      notes: description.trim() || undefined,
+      installments: linked,
+      createdAt: new Date().toISOString(),
+    };
+    debts.upsert(rec);
+    toast.success(`Debt logged · ${duration} monthly reminders scheduled`);
+    onOpenChange(false);
   };
 
   const busy = create.isPending || update.isPending;
@@ -329,13 +413,116 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
+
+          {activeType === "expense" && !isEdit && (
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  <div>
+                    <Label className="text-sm font-medium">Pay in Installments (Debt/EMI)</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Splits into a monthly ledger with auto-scheduled reminders.
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={debtMode} onCheckedChange={setDebtMode} />
+              </div>
+
+              {debtMode && (
+                <div className="space-y-3 pt-2 border-t border-border/40">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Total Debt Amount</Label>
+                      <Input
+                        type="number" inputMode="decimal" placeholder="30000"
+                        value={debtTotal} onChange={(e) => setDebtTotal(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Monthly Installment</Label>
+                      <Input
+                        readOnly
+                        value={(() => {
+                          const dur = debtDuration > 0 ? debtDuration : Number(debtCustomDuration);
+                          const m = computeMonthly(Number(debtTotal), dur);
+                          return `${currency} ${m.toFixed(2)}`;
+                        })()}
+                        className="bg-muted/40 font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Repayment Duration</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[2, 3, 4].map((m) => (
+                        <button
+                          key={m} type="button"
+                          onClick={() => setDebtDuration(m)}
+                          className={cn(
+                            "rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                            debtDuration === m
+                              ? "border-primary/60 bg-primary/10 text-foreground"
+                              : "border-border/50 hover:bg-accent/40 text-muted-foreground",
+                          )}
+                        >
+                          {m} Months
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setDebtDuration(0)}
+                        className={cn(
+                          "rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                          debtDuration === 0
+                            ? "border-primary/60 bg-primary/10 text-foreground"
+                            : "border-border/50 hover:bg-accent/40 text-muted-foreground",
+                        )}
+                      >
+                        Custom
+                      </button>
+                    </div>
+                    {debtDuration === 0 && (
+                      <Select value={debtCustomDuration} onValueChange={setDebtCustomDuration}>
+                        <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {[5, 6, 9, 12, 18, 24, 36].map((m) => (
+                            <SelectItem key={m} value={String(m)}>{m} Months</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">First Due Date</Label>
+                      <Input
+                        type="date" value={debtFirstDue}
+                        onChange={(e) => setDebtFirstDue(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Lender / Source</Label>
+                      <Input
+                        placeholder="e.g. HDFC Bank, Friend - Rahul"
+                        value={debtLender}
+                        onChange={(e) => setDebtLender(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </Button>
           <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving..." : isEdit ? "Save changes" : "Add"}
+            {busy ? "Saving..." : isEdit ? "Save changes" : debtMode ? "Save Debt" : "Add"}
           </Button>
         </DialogFooter>
       </DialogContent>
