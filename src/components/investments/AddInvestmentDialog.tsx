@@ -18,7 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import type { InvestmentRecord } from "@/lib/investmentsStore";
+import {
+  BROKERS,
+  BROKER_TINTS,
+  type Broker,
+  type InvestmentRecord,
+} from "@/lib/investmentsStore";
 
 type AssetType =
   | "stocks"
@@ -144,6 +149,7 @@ export default function AddInvestmentDialog({
   const [asset, setAsset] = useState<AssetType>("stocks");
   const [currency, setCurrency] = useState<Currency>("INR");
   const [goal, setGoal] = useState<GoalLink | "">("");
+  const [broker, setBroker] = useState<Broker>("Zerodha");
   const [form, setForm] = useState<Record<string, string>>({});
   // MF strategy
   const [mfMode, setMfMode] = useState<"SIP" | "Lumpsum">("Lumpsum");
@@ -171,6 +177,7 @@ export default function AddInvestmentDialog({
       setAsset(initial.asset);
       setCurrency(initial.currency);
       setGoal(initial.goal ?? "");
+      setBroker(initial.broker ?? "Other / Direct Holding");
       setForm(initial.fields ?? {});
       if (initial.mfMode) setMfMode(initial.mfMode);
       if (initial.goldType) setGoldType(initial.goldType);
@@ -201,6 +208,7 @@ export default function AddInvestmentDialog({
       setAsset("stocks");
       setCurrency("INR");
       setGoal("");
+      setBroker("Zerodha");
       setForm({});
       setMfMode("Lumpsum");
       setGoldType("Physical Gold");
@@ -212,6 +220,7 @@ export default function AddInvestmentDialog({
       setAsset("stocks");
       setCurrency("INR");
       setGoal("");
+      setBroker("Zerodha");
       setForm({});
       setMfMode("Lumpsum");
       setGoldType("Physical Gold");
@@ -660,6 +669,7 @@ export default function AddInvestmentDialog({
       asset,
       currency,
       goal: goal || null,
+      broker,
       mfMode: asset === "mutual_funds" ? mfMode : undefined,
       goldType: asset === "gold" ? goldType : undefined,
       bondFreq: asset === "bonds" ? bondFreq : undefined,
