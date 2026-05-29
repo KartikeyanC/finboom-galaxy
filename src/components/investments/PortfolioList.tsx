@@ -102,9 +102,9 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
               const direction = tick?.direction ?? "flat";
               const flashClass =
                 direction === "up"
-                  ? "animate-[fade-in_0.6s_ease-out] text-emerald-500"
+                  ? "animate-flash-up text-emerald-500 rounded px-1"
                   : direction === "down"
-                    ? "animate-[fade-in_0.6s_ease-out] text-rose-500"
+                    ? "animate-flash-down text-rose-500 rounded px-1"
                     : "text-foreground";
               const isConfirming = confirmId === r.id;
 
