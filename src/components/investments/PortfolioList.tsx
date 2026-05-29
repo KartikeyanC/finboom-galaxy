@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/finance";
 import {
   ASSET_LABELS,
+  BROKER_TINTS,
+  type Broker,
   getCurrent,
   getInvested,
   getRecordName,
@@ -28,6 +30,7 @@ interface Props {
 
 const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [brokerFilter, setBrokerFilter] = useState<Broker | null>(null);
   const { live, refresh, refreshedAt } = useLivePrices(records);
   const [spinning, setSpinning] = useState(false);
 
@@ -38,6 +41,13 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
   };
 
   const lastUpdatedLabel = new Date(refreshedAt).toLocaleTimeString();
+
+  const brokersInUse = Array.from(
+    new Set(records.map((r) => r.broker).filter(Boolean) as Broker[]),
+  );
+  const visibleRecords = brokerFilter
+    ? records.filter((r) => r.broker === brokerFilter)
+    : records;
 
   return (
     <section className="rounded-xl border border-border bg-card/60 backdrop-blur-sm">
@@ -56,8 +66,9 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {records.length}{" "}
-            {records.length === 1 ? "asset tracked" : "assets tracked"}
+            {visibleRecords.length}{" "}
+            {visibleRecords.length === 1 ? "asset" : "assets"}
+            {brokerFilter ? ` via ${brokerFilter}` : " tracked"}
             <span className="mx-1.5">·</span>
             Updated {lastUpdatedLabel}
           </p>
@@ -75,23 +86,57 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
         </Button>
       </header>
 
-      {records.length === 0 ? (
+      {brokersInUse.length > 0 && (
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-border overflow-x-auto">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+            Filter:
+          </span>
+          <button
+            type="button"
+            onClick={() => setBrokerFilter(null)}
+            className={`shrink-0 px-2.5 py-1 text-[11px] rounded-full border transition-colors ${
+              brokerFilter === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground hover:text-foreground border-border"
+            }`}
+          >
+            All
+          </button>
+          {brokersInUse.map((b) => {
+            const active = brokerFilter === b;
+            return (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setBrokerFilter(active ? null : b)}
+                className={`shrink-0 px-2.5 py-1 text-[11px] rounded-full border transition-colors whitespace-nowrap ${
+                  active
+                    ? `${BROKER_TINTS[b]} font-semibold`
+                    : "bg-background text-muted-foreground hover:text-foreground border-border"
+                }`}
+              >
+                {b}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {visibleRecords.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center py-14 px-6">
           <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-4 text-muted-foreground">
             <Wallet className="w-7 h-7" />
           </div>
           <p className="text-sm text-muted-foreground max-w-xs">
-            Your portfolio is empty. Click{" "}
-            <span className="text-foreground font-medium">
-              "Add New Investment"
-            </span>{" "}
-            above to track your growth.
+            {brokerFilter
+              ? `No assets held with ${brokerFilter}.`
+              : 'Your portfolio is empty. Click "Add New Investment" above to track your growth.'}
           </p>
         </div>
       ) : (
         <ul className="divide-y divide-border">
           <AnimatePresence initial={false}>
-            {records.map((r) => {
+            {visibleRecords.map((r) => {
               const invested = getInvested(r);
               const tick = live[r.id];
               const tracked = isLiveAsset(r.asset) && tick !== undefined;
@@ -124,6 +169,14 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
                         <span className="font-semibold text-foreground truncate">
                           {getRecordName(r)}
                         </span>
+                        {r.broker && (
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] ${BROKER_TINTS[r.broker]}`}
+                          >
+                            via {r.broker}
+                          </Badge>
+                        )}
                         <Badge variant="secondary" className="text-[10px]">
                           {ASSET_LABELS[r.asset]}
                         </Badge>

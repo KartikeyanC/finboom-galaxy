@@ -18,7 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import type { InvestmentRecord } from "@/lib/investmentsStore";
+import {
+  BROKERS,
+  BROKER_TINTS,
+  type Broker,
+  type InvestmentRecord,
+} from "@/lib/investmentsStore";
 
 type AssetType =
   | "stocks"
@@ -144,6 +149,7 @@ export default function AddInvestmentDialog({
   const [asset, setAsset] = useState<AssetType>("stocks");
   const [currency, setCurrency] = useState<Currency>("INR");
   const [goal, setGoal] = useState<GoalLink | "">("");
+  const [broker, setBroker] = useState<Broker>("Zerodha");
   const [form, setForm] = useState<Record<string, string>>({});
   // MF strategy
   const [mfMode, setMfMode] = useState<"SIP" | "Lumpsum">("Lumpsum");
@@ -171,6 +177,7 @@ export default function AddInvestmentDialog({
       setAsset(initial.asset);
       setCurrency(initial.currency);
       setGoal(initial.goal ?? "");
+      setBroker(initial.broker ?? "Other / Direct Holding");
       setForm(initial.fields ?? {});
       if (initial.mfMode) setMfMode(initial.mfMode);
       if (initial.goldType) setGoldType(initial.goldType);
@@ -201,6 +208,7 @@ export default function AddInvestmentDialog({
       setAsset("stocks");
       setCurrency("INR");
       setGoal("");
+      setBroker("Zerodha");
       setForm({});
       setMfMode("Lumpsum");
       setGoldType("Physical Gold");
@@ -212,6 +220,7 @@ export default function AddInvestmentDialog({
       setAsset("stocks");
       setCurrency("INR");
       setGoal("");
+      setBroker("Zerodha");
       setForm({});
       setMfMode("Lumpsum");
       setGoldType("Physical Gold");
@@ -660,6 +669,7 @@ export default function AddInvestmentDialog({
       asset,
       currency,
       goal: goal || null,
+      broker,
       mfMode: asset === "mutual_funds" ? mfMode : undefined,
       goldType: asset === "gold" ? goldType : undefined,
       bondFreq: asset === "bonds" ? bondFreq : undefined,
@@ -722,6 +732,31 @@ export default function AddInvestmentDialog({
           </div>
 
           <div className="border-t pt-4">{renderForm()}</div>
+
+          <div className="border-t pt-4">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Select Broker / Platform
+            </Label>
+            <div className="flex gap-2 mt-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+              {BROKERS.map((b) => {
+                const active = broker === b;
+                return (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setBroker(b)}
+                    className={`shrink-0 px-3 py-1.5 text-xs rounded-full border transition-colors whitespace-nowrap ${
+                      active
+                        ? `${BROKER_TINTS[b]} font-semibold ring-1 ring-current/30`
+                        : "bg-background text-muted-foreground hover:text-foreground border-border"
+                    }`}
+                  >
+                    {b}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="border-t pt-4">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
