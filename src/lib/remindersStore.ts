@@ -5,6 +5,13 @@ export type ReminderFrequency = "one_time" | "monthly" | "quarterly";
 export type GraceWindow = "exact" | "1d" | "3d";
 export type MaturityLead = "30d" | "7d";
 
+export interface DebtLink {
+  debtId: string;
+  month: number;
+  totalMonths: number;
+  lender: string;
+}
+
 export interface ReminderRecord {
   id: string;
   title: string;
@@ -14,7 +21,7 @@ export interface ReminderRecord {
   amount?: number;
   currency?: string;
   notes?: string;
-  source?: "accounts" | "bills" | "investments" | "manual";
+  source?: "accounts" | "bills" | "investments" | "manual" | "debt";
   sourceId?: string;
   // Type A
   frequency?: ReminderFrequency;
@@ -23,6 +30,8 @@ export interface ReminderRecord {
   verifyLiquidity?: boolean;
   // Type C
   maturityLeads?: MaturityLead[];
+  // Debt installment linkage
+  debt?: DebtLink;
   status?: "scheduled" | "completed";
   createdAt: string;
 }
