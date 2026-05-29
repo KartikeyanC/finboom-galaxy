@@ -169,9 +169,9 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
                     {/* Middle: values */}
                     <div className="flex items-center gap-6 ml-auto">
                       {tracked && (
-                        <div className="text-right hidden sm:block">
+                        <div className="text-right">
                           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                            Live Price
+                            Current Price
                           </div>
                           <div
                             key={tick.updatedAt}
