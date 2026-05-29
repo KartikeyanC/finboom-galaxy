@@ -4,6 +4,7 @@ import TransactionsTable from "@/components/transactions/TransactionsTable";
 import { Receipt, TrendingDown, AlertCircle, CreditCard } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatCompact, toINR } from "@/lib/finance";
+import DebtLedger from "@/components/expenses/DebtLedger";
 
 const Expenses = () => {
   const { data: txns = [] } = useTransactions("expense");
@@ -48,6 +49,8 @@ const Expenses = () => {
         <MetricCard label="Total Records" value={String(stats.totalRecords)}
           change="All time" changeType="neutral" icon={<AlertCircle className="w-4 h-4" />} delay={0.2} />
       </div>
+
+      <DebtLedger />
 
       <TransactionsTable type="expense" />
     </div>
