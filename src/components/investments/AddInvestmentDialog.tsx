@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import type { InvestmentRecord } from "@/lib/investmentsStore";
 
 type AssetType =
   | "stocks"
@@ -129,10 +130,17 @@ const OutputBox = ({ label, value }: { label: string; value: string }) => (
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onSave?: (payload: Record<string, unknown>) => void;
+  onSave?: (payload: InvestmentRecord) => void;
+  initial?: InvestmentRecord | null;
 };
 
-export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Props) {
+export default function AddInvestmentDialog({
+  open,
+  onOpenChange,
+  onSave,
+  initial,
+}: Props) {
+  const isEdit = !!initial;
   const [asset, setAsset] = useState<AssetType>("stocks");
   const [currency, setCurrency] = useState<Currency>("INR");
   const [goal, setGoal] = useState<GoalLink | "">("");
@@ -148,9 +156,36 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
   // Track whether the user manually edited "Current Value" — if not, we mirror
   // the Invested Amount into it live.
   const [currentTouched, setCurrentTouched] = useState(false);
+  // Guards
+  const skipNextAssetResetRef = useRef(false);
+  const seededIdRef = useRef<string | null>(null);
 
-  // Reset form when asset changes
+  // Seed from `initial` when opening in edit mode
   useEffect(() => {
+    if (!open) {
+      seededIdRef.current = null;
+      return;
+    }
+    if (initial && seededIdRef.current !== initial.id) {
+      skipNextAssetResetRef.current = true;
+      setAsset(initial.asset);
+      setCurrency(initial.currency);
+      setGoal(initial.goal ?? "");
+      setForm(initial.fields ?? {});
+      if (initial.mfMode) setMfMode(initial.mfMode);
+      if (initial.goldType) setGoldType(initial.goldType);
+      if (initial.bondFreq) setBondFreq(initial.bondFreq);
+      setCurrentTouched(true);
+      seededIdRef.current = initial.id;
+    }
+  }, [open, initial]);
+
+  // Reset form when asset changes (skipped on initial seeding)
+  useEffect(() => {
+    if (skipNextAssetResetRef.current) {
+      skipNextAssetResetRef.current = false;
+      return;
+    }
     setForm({});
     setStocksEdited("derived");
     setCurrentTouched(false);
@@ -162,7 +197,7 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
 
   // Reset on close
   useEffect(() => {
-    if (!open) {
+    if (!open && !initial) {
       setAsset("stocks");
       setCurrency("INR");
       setGoal("");
@@ -172,7 +207,18 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
       setBondFreq("Yearly");
       setCurrentTouched(false);
     }
-  }, [open]);
+    if (!open && initial) {
+      // Reset edit-mode state on close so a future "new" open starts clean.
+      setAsset("stocks");
+      setCurrency("INR");
+      setGoal("");
+      setForm({});
+      setMfMode("Lumpsum");
+      setGoldType("Physical Gold");
+      setBondFreq("Yearly");
+      setCurrentTouched(false);
+    }
+  }, [open, initial]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -595,7 +641,8 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
 
   const handleSave = () => {
     if (!asset) return;
-    const payload = {
+    const payload: InvestmentRecord = {
+      id: initial?.id ?? (crypto.randomUUID?.() ?? `inv_${Date.now()}`),
       asset,
       currency,
       goal: goal || null,
@@ -603,13 +650,15 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
       goldType: asset === "gold" ? goldType : undefined,
       bondFreq: asset === "bonds" ? bondFreq : undefined,
       fields: form,
-      derived: calc,
-      savedAt: new Date().toISOString(),
+      derived: calc as Record<string, number>,
+      savedAt: initial?.savedAt ?? new Date().toISOString(),
     };
     onSave?.(payload);
     toast({
-      title: "Investment saved",
-      description: `${ASSET_OPTIONS.find((a) => a.value === asset)?.label} added to your portfolio.`,
+      title: isEdit ? "Investment updated" : "Investment saved",
+      description: `${ASSET_OPTIONS.find((a) => a.value === asset)?.label} ${
+        isEdit ? "record updated." : "added to your portfolio."
+      }`,
     });
     onOpenChange(false);
   };
@@ -618,9 +667,13 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Investment</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Modify Investment Record" : "Add New Investment"}
+          </DialogTitle>
           <DialogDescription>
-            Track a new asset in your portfolio. Calculations update live as you type.
+            {isEdit
+              ? "Update the saved details for this asset. Calculations update live as you type."
+              : "Track a new asset in your portfolio. Calculations update live as you type."}
           </DialogDescription>
         </DialogHeader>
 
@@ -682,7 +735,7 @@ export default function AddInvestmentDialog({ open, onOpenChange, onSave }: Prop
           </div>
 
           <Button onClick={handleSave} className="w-full" size="lg">
-            Save Investment Record
+            {isEdit ? "Update Investment Record" : "Save Investment Record"}
           </Button>
         </div>
       </DialogContent>
