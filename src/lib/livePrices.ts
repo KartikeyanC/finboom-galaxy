@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import {
   getCurrent,
   type AssetType,
@@ -124,31 +123,17 @@ async function fetchUnitPrice(r: InvestmentRecord): Promise<number | null> {
   const { provider, symbol } = resolveSymbol(r);
   if (!provider || !symbol) return null;
   try {
-    const { data, error } = await supabase.functions.invoke("live-price", {
-      method: "GET" as never,
-      // @ts-expect-error - query param support via fetch path
-      headers: {},
+    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/live-price?provider=${provider}&symbol=${encodeURIComponent(symbol)}`;
+    const resp = await fetch(url, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
     });
-    // Fallback: invoke doesn't support query strings well; use direct fetch
-    if (error || !data) throw error ?? new Error("no data");
-    const p = (data as { price?: number }).price;
+    if (!resp.ok) return null;
+    const j = await resp.json();
+    const p = j?.price;
     return typeof p === "number" && Number.isFinite(p) && p > 0 ? p : null;
   } catch {
-    try {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/live-price?provider=${provider}&symbol=${encodeURIComponent(symbol)}`;
-      const resp = await fetch(url, {
-        headers: {
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string}`,
-        },
-      });
-      if (!resp.ok) return null;
-      const j = await resp.json();
-      const p = j?.price;
-      return typeof p === "number" && Number.isFinite(p) && p > 0 ? p : null;
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
