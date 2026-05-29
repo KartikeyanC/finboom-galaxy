@@ -119,40 +119,22 @@ function resolveSymbol(r: InvestmentRecord): { provider: Provider; symbol: strin
   return { provider: null, symbol: "" };
 }
 
-async function fetchYahoo(symbol: string): Promise<number | null> {
-  try {
-    const r = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-        symbol,
-      )}?interval=1d&range=1d`,
-    );
-    if (!r.ok) return null;
-    const j = await r.json();
-    const p = j?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    return typeof p === "number" && Number.isFinite(p) ? p : null;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchMF(code: string): Promise<number | null> {
-  try {
-    const r = await fetch(`https://api.mfapi.in/mf/${code}/latest`);
-    if (!r.ok) return null;
-    const j = await r.json();
-    const nav = parseFloat(j?.data?.[0]?.nav);
-    return Number.isFinite(nav) ? nav : null;
-  } catch {
-    return null;
-  }
-}
-
 async function fetchUnitPrice(r: InvestmentRecord): Promise<number | null> {
   const { provider, symbol } = resolveSymbol(r);
   if (!provider || !symbol) return null;
-  if (provider === "yahoo") return fetchYahoo(symbol);
-  if (provider === "mf") return fetchMF(symbol);
-  return null;
+  try {
+    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/live-price?provider=${provider}&symbol=${encodeURIComponent(symbol)}`;
+    const resp = await fetch(url, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (!resp.ok) return null;
+    const j = await resp.json();
+    const p = j?.price;
+    return typeof p === "number" && Number.isFinite(p) && p > 0 ? p : null;
+  } catch {
+    return null;
+  }
 }
 
 export function useLivePrices(records: InvestmentRecord[], intervalMs = 60_000) {
