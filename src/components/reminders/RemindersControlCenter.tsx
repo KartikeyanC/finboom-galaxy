@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  CalendarClock, CheckCircle2, Pencil, Plus, Trash2, Bell, ChevronDown,
+  CalendarClock, CheckCircle2, Pencil, Plus, Trash2, Bell, ChevronDown, Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,9 @@ import {
   type ReminderRecord,
 } from "@/lib/remindersStore";
 import { ReminderEditorDialog } from "./ReminderEditorDialog";
+import { useDebts } from "@/lib/debtsStore";
+import { useCreateTransaction } from "@/hooks/useTransactions";
+import { toast } from "sonner";
 
 const TONE_STYLES = {
   danger: "border-destructive/60 text-destructive bg-destructive/10",
@@ -37,9 +40,30 @@ function formatAmount(amount?: number, currency?: string) {
 
 export function RemindersControlCenter() {
   const { records, upsert, remove, complete } = useReminders();
+  const debts = useDebts();
+  const createTxn = useCreateTransaction();
   const [open, setOpen] = useState(true);
   const [editing, setEditing] = useState<ReminderRecord | null>(null);
   const [creating, setCreating] = useState(false);
+
+  const confirmDebtPayment = async (r: ReminderRecord) => {
+    if (!r.debt) return;
+    try {
+      const txn = await createTxn.mutateAsync({
+        type: "expense",
+        amount: r.amount ?? 0,
+        currency: r.currency ?? "INR",
+        category: "Debt Repayment",
+        description: `${r.debt.lender} · EMI ${r.debt.month}/${r.debt.totalMonths}`,
+        occurred_at: new Date().toISOString(),
+      });
+      debts.markPaid(r.debt.debtId, r.debt.month, txn?.id);
+      complete(r.id);
+      toast.success(`Month ${r.debt.month} marked as paid`);
+    } catch {
+      /* createTxn handles its own toast */
+    }
+  };
 
   const sorted = useMemo(() => {
     return [...records].sort((a, b) => {
@@ -151,6 +175,16 @@ export function RemindersControlCenter() {
                         </div>
 
                         <div className="flex items-center gap-1 self-end sm:self-center">
+                          {r.debt && !isDone && (
+                            <Button
+                              size="sm"
+                              className="h-8 px-2.5 text-xs gap-1"
+                              onClick={() => confirmDebtPayment(r)}
+                              disabled={createTxn.isPending}
+                            >
+                              <Wallet className="w-3.5 h-3.5" /> Confirm Monthly Payment
+                            </Button>
+                          )}
                           {!isDone && (
                             <Button
                               size="sm" variant="ghost"
