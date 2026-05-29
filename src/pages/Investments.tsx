@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import MetricCard from "@/components/dashboard/MetricCard";
 import NetWorthTrend from "@/components/dashboard/NetWorthTrend";
 import { TrendingUp, PieChart, Coins, LineChart, Plus } from "lucide-react";
@@ -8,6 +9,12 @@ import { useBudgets } from "@/hooks/useBudgets";
 import { formatCompact, toINR } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import AddInvestmentDialog from "@/components/investments/AddInvestmentDialog";
+import PortfolioList from "@/components/investments/PortfolioList";
+import {
+  getCurrent,
+  useInvestments,
+  type InvestmentRecord,
+} from "@/lib/investmentsStore";
 
 const INVEST_CATS = new Set(["Investment", "Dividend", "Interest"]);
 
@@ -16,6 +23,8 @@ const Investments = () => {
   const { data: goals = [] } = useGoals();
   const { data: budgets = [] } = useBudgets();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<InvestmentRecord | null>(null);
+  const { records, upsert, remove } = useInvestments();
 
   const stats = useMemo(() => {
     const investIncome = txns
@@ -26,11 +35,17 @@ const Investments = () => {
       .filter((b) => ["Long-Term Savings", "Financial Freedom"].includes(b.bucket))
       .reduce((s, b) => s + Number(b.spent), 0);
 
-    const portfolioValue = investIncome + savingsBucket;
+    const recordsValue = records.reduce(
+      (s, r) => s + toINR(getCurrent(r), r.currency),
+      0,
+    );
+
+    const portfolioValue = investIncome + savingsBucket + recordsValue;
 
     const investCategories = new Set(
       txns.filter((t) => INVEST_CATS.has(t.category)).map((t) => t.category)
     );
+    records.forEach((r) => investCategories.add(r.asset));
 
     const retirementGoals = goals.filter((g) =>
       ["Retirement", "Emergency Fund"].includes(g.category ?? "")
@@ -42,7 +57,26 @@ const Investments = () => {
       classes: investCategories.size,
       retirementGoals: retirementGoals.length,
     };
-  }, [txns, goals, budgets]);
+  }, [txns, goals, budgets, records]);
+
+  const handleOpenAdd = () => {
+    setEditing(null);
+    setOpen(true);
+  };
+
+  const handleEdit = (rec: InvestmentRecord) => {
+    setEditing(rec);
+    setOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    remove(id);
+    toast.success("Investment successfully removed.");
+  };
+
+  const handleSave = (rec: InvestmentRecord) => {
+    upsert(rec);
+  };
 
   return (
     <div className="px-6 sm:px-8 py-8 space-y-8 max-w-[1400px] mx-auto">
@@ -54,7 +88,7 @@ const Investments = () => {
             Derived from your investment-category transactions, long-term savings buckets, and retirement goals.
           </p>
         </div>
-        <Button onClick={() => setOpen(true)} size="lg" className="shrink-0">
+        <Button onClick={handleOpenAdd} size="lg" className="shrink-0">
           <Plus className="w-4 h-4" /> Add Investment
         </Button>
       </header>
@@ -76,7 +110,21 @@ const Investments = () => {
 
       <NetWorthTrend />
 
-      <AddInvestmentDialog open={open} onOpenChange={setOpen} />
+      <PortfolioList
+        records={records}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+
+      <AddInvestmentDialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setEditing(null);
+        }}
+        onSave={handleSave}
+        initial={editing}
+      />
     </div>
   );
 };
