@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Pencil, Trash2, Wallet } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/finance";
@@ -11,6 +18,7 @@ import {
   getRecordName,
   type InvestmentRecord,
 } from "@/lib/investmentsStore";
+import { isLiveAsset, useLivePrices } from "@/lib/livePrices";
 
 interface Props {
   records: InvestmentRecord[];
@@ -20,19 +28,51 @@ interface Props {
 
 const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const { live, refresh, refreshedAt } = useLivePrices(records);
+  const [spinning, setSpinning] = useState(false);
+
+  const handleRefresh = () => {
+    setSpinning(true);
+    refresh();
+    window.setTimeout(() => setSpinning(false), 700);
+  };
+
+  const lastUpdatedLabel = new Date(refreshedAt).toLocaleTimeString();
 
   return (
     <section className="rounded-xl border border-border bg-card/60 backdrop-blur-sm">
       <header className="flex items-center justify-between p-5 border-b border-border">
         <div>
-          <h2 className="font-display text-lg font-semibold text-foreground">
-            Active Investment Portfolio
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Active Investment Portfolio
+            </h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+              </span>
+              Live Market Rates Active
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
             {records.length}{" "}
             {records.length === 1 ? "asset tracked" : "assets tracked"}
+            <span className="mx-1.5">·</span>
+            Updated {lastUpdatedLabel}
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          className="h-8 gap-1.5 text-xs"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${spinning ? "animate-spin" : ""}`}
+          />
+          Refresh Prices
+        </Button>
       </header>
 
       {records.length === 0 ? (
@@ -53,9 +93,19 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
           <AnimatePresence initial={false}>
             {records.map((r) => {
               const invested = getInvested(r);
-              const current = getCurrent(r);
+              const tick = live[r.id];
+              const tracked = isLiveAsset(r.asset) && tick !== undefined;
+              const current = tracked ? tick.currentValue : getCurrent(r);
               const delta = current - invested;
               const positive = delta >= 0;
+              const pct = invested > 0 ? (delta / invested) * 100 : 0;
+              const direction = tick?.direction ?? "flat";
+              const flashClass =
+                direction === "up"
+                  ? "animate-[fade-in_0.6s_ease-out] text-emerald-500"
+                  : direction === "down"
+                    ? "animate-[fade-in_0.6s_ease-out] text-rose-500"
+                    : "text-foreground";
               const isConfirming = confirmId === r.id;
 
               return (
@@ -88,11 +138,49 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
                             {r.goal}
                           </Badge>
                         )}
+                        {tracked ? (
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] gap-1 ${
+                              positive
+                                ? "border-emerald-500/40 text-emerald-500 bg-emerald-500/5"
+                                : "border-rose-500/40 text-rose-500 bg-rose-500/5"
+                            }`}
+                          >
+                            {positive ? (
+                              <ArrowUpRight className="w-3 h-3" />
+                            ) : (
+                              <ArrowDownRight className="w-3 h-3" />
+                            )}
+                            {positive ? "+" : ""}
+                            {pct.toFixed(2)}% {positive ? "Profit" : "Loss"}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] text-muted-foreground"
+                          >
+                            Fixed Rate
+                          </Badge>
+                        )}
                       </div>
                     </div>
 
                     {/* Middle: values */}
                     <div className="flex items-center gap-6 ml-auto">
+                      {tracked && (
+                        <div className="text-right hidden sm:block">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            Live Price
+                          </div>
+                          <div
+                            key={tick.updatedAt}
+                            className={`text-sm font-semibold tabular-nums ${flashClass}`}
+                          >
+                            {formatMoney(tick.unitPrice, r.currency)}
+                          </div>
+                        </div>
+                      )}
                       <div className="text-right">
                         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Invested
@@ -106,8 +194,13 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
                           Current
                         </div>
                         <div
+                          key={tick?.updatedAt ?? "static"}
                           className={`text-sm font-bold tabular-nums ${
-                            positive ? "text-emerald-500" : "text-rose-500"
+                            tracked
+                              ? flashClass
+                              : positive
+                                ? "text-emerald-500"
+                                : "text-rose-500"
                           }`}
                         >
                           {formatMoney(current, r.currency)}
