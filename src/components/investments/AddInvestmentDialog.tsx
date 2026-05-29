@@ -321,6 +321,13 @@ export default function AddInvestmentDialog({
                 onChange={(e) => set("name", e.target.value)}
               />
             </Field>
+            <Field label="Ticker (Google Finance format)">
+              <Input
+                placeholder="e.g. NSE:RELIANCE, BOM:500325, NASDAQ:AAPL"
+                value={form.ticker ?? ""}
+                onChange={(e) => set("ticker", e.target.value.toUpperCase())}
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Buying Price<CurrencyBadge /></>}>
                 <NumberInput
@@ -390,6 +397,13 @@ export default function AddInvestmentDialog({
                 placeholder="e.g. Parag Parikh Flexi Cap"
                 value={form.name ?? ""}
                 onChange={(e) => set("name", e.target.value)}
+              />
+            </Field>
+            <Field label="MFAPI Scheme Code (for live NAV)">
+              <Input
+                placeholder="e.g. 122639 — from api.mfapi.in"
+                value={form.scheme ?? ""}
+                onChange={(e) => set("scheme", e.target.value)}
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -612,7 +626,7 @@ export default function AddInvestmentDialog({
             <div className="grid grid-cols-2 gap-3">
               <Field label="Token Ticker">
                 <Input
-                  placeholder="BTC, ETH, SOL…"
+                  placeholder="BTC-USD, ETH-USD, SOL-USD…"
                   value={form.ticker ?? ""}
                   onChange={(e) => set("ticker", e.target.value.toUpperCase())}
                 />

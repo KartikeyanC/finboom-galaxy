@@ -58,12 +58,101 @@ function getBaseUnitPrice(r: InvestmentRecord): number {
   }
 }
 
-// Seeded pseudo-random walk per id so each refresh produces a small delta.
-function nextPrice(prev: number): number {
+// Tiny pseudo-random walk used as a graceful fallback if a live fetch fails.
+function walk(prev: number): number {
   if (!prev || !Number.isFinite(prev)) return prev;
-  const drift = (Math.random() - 0.48) * 0.02; // ~±2%, slight upward bias
-  const next = prev * (1 + drift);
-  return Math.max(next, prev * 0.5);
+  const drift = (Math.random() - 0.48) * 0.01;
+  return Math.max(prev * (1 + drift), prev * 0.5);
+}
+
+// --------- Live providers (free, no-key) ---------
+
+type Provider = "yahoo" | "mf" | null;
+
+const YAHOO_SUFFIX: Record<string, string> = {
+  NSE: ".NS",
+  BSE: ".BO",
+  BOM: ".BO",
+  NASDAQ: "",
+  NYSE: "",
+  AMEX: "",
+  LSE: ".L",
+  TSE: ".T",
+  TSX: ".TO",
+  ASX: ".AX",
+  HKG: ".HK",
+  FRA: ".F",
+  EPA: ".PA",
+};
+
+function pickTicker(r: InvestmentRecord): string {
+  const f = r.fields ?? {};
+  return String(
+    f.ticker || f.symbol || f.coin || f.scheme || f.name || "",
+  ).trim();
+}
+
+function resolveSymbol(r: InvestmentRecord): { provider: Provider; symbol: string } {
+  const raw = pickTicker(r);
+  if (!raw) return { provider: null, symbol: "" };
+
+  if (r.asset === "mutual_funds") {
+    const m = raw.match(/(\d{4,})/);
+    return m ? { provider: "mf", symbol: m[1] } : { provider: null, symbol: "" };
+  }
+
+  if (r.asset === "crypto") {
+    const sym = raw.toUpperCase().replace(/\s+/g, "");
+    return { provider: "yahoo", symbol: sym.includes("-") ? sym : `${sym}-USD` };
+  }
+
+  if (r.asset === "stocks") {
+    let sym = raw.toUpperCase().replace(/\s+/g, "");
+    if (sym.includes(":")) {
+      const [prefix, rest] = sym.split(":");
+      const suffix = YAHOO_SUFFIX[prefix] ?? "";
+      sym = rest + suffix;
+    }
+    return { provider: "yahoo", symbol: sym };
+  }
+
+  return { provider: null, symbol: "" };
+}
+
+async function fetchYahoo(symbol: string): Promise<number | null> {
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+        symbol,
+      )}?interval=1d&range=1d`,
+    );
+    if (!r.ok) return null;
+    const j = await r.json();
+    const p = j?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    return typeof p === "number" && Number.isFinite(p) ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchMF(code: string): Promise<number | null> {
+  try {
+    const r = await fetch(`https://api.mfapi.in/mf/${code}/latest`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const nav = parseFloat(j?.data?.[0]?.nav);
+    return Number.isFinite(nav) ? nav : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchUnitPrice(r: InvestmentRecord): Promise<number | null> {
+  const { provider, symbol } = resolveSymbol(r);
+  if (!provider || !symbol) return null;
+  if (provider === "yahoo") return fetchYahoo(symbol);
+  if (provider === "mf") return fetchMF(symbol);
+  return null;
 }
 
 export function useLivePrices(records: InvestmentRecord[], intervalMs = 60_000) {
@@ -71,26 +160,36 @@ export function useLivePrices(records: InvestmentRecord[], intervalMs = 60_000) 
   const [refreshedAt, setRefreshedAt] = useState<number>(() => Date.now());
   const recordsRef = useRef(records);
   recordsRef.current = records;
+  const liveRef = useRef<LiveMap>({});
+  liveRef.current = live;
 
-  const tick = useCallback(() => {
-    const recs = recordsRef.current;
-    setLive((prev) => {
+  const tick = useCallback(async () => {
+    const recs = recordsRef.current.filter((r) => isLiveAsset(r.asset));
+    const prev = liveRef.current;
+    const results = await Promise.all(
+      recs.map(async (r) => {
+        const fetched = await fetchUnitPrice(r);
+        return { r, fetched };
+      }),
+    );
+
+    setLive(() => {
       const next: LiveMap = {};
-      for (const r of recs) {
-        if (!isLiveAsset(r.asset)) continue;
+      for (const { r, fetched } of results) {
         const qty = getQuantity(r);
         const existing = prev[r.id];
         const prevUnit = existing?.unitPrice ?? getBaseUnitPrice(r);
-        const unit = nextPrice(prevUnit) || prevUnit;
-        const currentValue = unit * qty;
-        const prevCurrentValue = (existing?.unitPrice ?? prevUnit) * qty;
+        const unit =
+          fetched && Number.isFinite(fetched) && fetched > 0
+            ? fetched
+            : walk(prevUnit) || prevUnit;
         const direction: LiveTick["direction"] =
           unit > prevUnit ? "up" : unit < prevUnit ? "down" : "flat";
         next[r.id] = {
           unitPrice: unit,
           prevUnitPrice: prevUnit,
-          currentValue,
-          prevCurrentValue,
+          currentValue: unit * qty,
+          prevCurrentValue: prevUnit * qty,
           quantity: qty,
           updatedAt: Date.now(),
           direction,
@@ -131,15 +230,17 @@ export function useLivePrices(records: InvestmentRecord[], intervalMs = 60_000) 
       }
       return next;
     });
+    // Kick off an immediate live fetch when records change
+    void tick();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey]);
 
   useEffect(() => {
-    const id = window.setInterval(tick, intervalMs);
+    const id = window.setInterval(() => void tick(), intervalMs);
     return () => window.clearInterval(id);
   }, [tick, intervalMs]);
 
-  const refresh = useCallback(() => tick(), [tick]);
+  const refresh = useCallback(() => void tick(), [tick]);
 
   return { live, refresh, refreshedAt };
 }
