@@ -737,7 +737,7 @@ export default function AddInvestmentDialog({
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
               Select Broker / Platform
             </Label>
-            <div className="flex gap-2 mt-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
               {BROKERS.map((b) => {
                 const active = broker === b;
                 return (
@@ -745,7 +745,7 @@ export default function AddInvestmentDialog({
                     key={b}
                     type="button"
                     onClick={() => setBroker(b)}
-                    className={`shrink-0 px-3 py-1.5 text-xs rounded-full border transition-colors whitespace-nowrap ${
+                    className={`px-3 py-2 text-xs rounded-lg border transition-colors text-center truncate ${
                       active
                         ? `${BROKER_TINTS[b]} font-semibold ring-1 ring-current/30`
                         : "bg-background text-muted-foreground hover:text-foreground border-border"
