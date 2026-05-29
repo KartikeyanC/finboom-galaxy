@@ -237,14 +237,49 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40">
           <DialogTitle className="font-display">
-            {isEdit ? "Edit Transaction" : "Add Transaction"}
+            {isEdit
+              ? "Edit transaction"
+              : activeType === "expense"
+                ? debtMode ? "New debt / installment plan" : "Add expense"
+                : "Add income"}
           </DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-2">
-          <div className="grid grid-cols-2 gap-3">
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 grid gap-4">
+          {activeType === "expense" && !isEdit && (
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border/40">
+              <button
+                type="button"
+                onClick={() => setDebtMode(false)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors",
+                  !debtMode
+                    ? "bg-background text-foreground shadow-sm border border-border/60"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Receipt className="w-3.5 h-3.5" /> One-time expense
+              </button>
+              <button
+                type="button"
+                onClick={() => setDebtMode(true)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors",
+                  debtMode
+                    ? "bg-background text-foreground shadow-sm border border-primary/40"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Wallet className="w-3.5 h-3.5" /> Pay in installments
+              </button>
+            </div>
+          )}
+
+          <div className={cn("grid gap-3", debtMode ? "grid-cols-1" : "grid-cols-2")}>
+            {!debtMode && (
             <div className="space-y-1.5">
               <Label htmlFor="amount">Amount</Label>
               <Input
@@ -257,6 +292,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
+            )}
             <div className="space-y-1.5">
               <Label>Currency</Label>
               <Select value={currency} onValueChange={setCurrency}>
@@ -542,12 +578,12 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t border-border/40 bg-background/80 backdrop-blur">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </Button>
           <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving..." : isEdit ? "Save changes" : debtMode ? "Save Debt" : "Add"}
+            {busy ? "Saving…" : isEdit ? "Save changes" : debtMode ? "Save plan" : "Add expense"}
           </Button>
         </DialogFooter>
       </DialogContent>
