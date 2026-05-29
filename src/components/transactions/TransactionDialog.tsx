@@ -20,8 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Wallet } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, Wallet, Receipt, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   CURRENCIES,
@@ -238,14 +237,49 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40">
           <DialogTitle className="font-display">
-            {isEdit ? "Edit Transaction" : "Add Transaction"}
+            {isEdit
+              ? "Edit transaction"
+              : activeType === "expense"
+                ? debtMode ? "New debt / installment plan" : "Add expense"
+                : "Add income"}
           </DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-2">
-          <div className="grid grid-cols-2 gap-3">
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 grid gap-4">
+          {activeType === "expense" && !isEdit && (
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border/40">
+              <button
+                type="button"
+                onClick={() => setDebtMode(false)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors",
+                  !debtMode
+                    ? "bg-background text-foreground shadow-sm border border-border/60"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Receipt className="w-3.5 h-3.5" /> One-time expense
+              </button>
+              <button
+                type="button"
+                onClick={() => setDebtMode(true)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors",
+                  debtMode
+                    ? "bg-background text-foreground shadow-sm border border-primary/40"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Wallet className="w-3.5 h-3.5" /> Pay in installments
+              </button>
+            </div>
+          )}
+
+          <div className={cn("grid gap-3", debtMode ? "grid-cols-1" : "grid-cols-2")}>
+            {!debtMode && (
             <div className="space-y-1.5">
               <Label htmlFor="amount">Amount</Label>
               <Input
@@ -258,6 +292,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
+            )}
             <div className="space-y-1.5">
               <Label>Currency</Label>
               <Select value={currency} onValueChange={setCurrency}>
@@ -414,67 +449,67 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
             />
           </div>
 
-          {activeType === "expense" && !isEdit && (
-            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-primary" />
-                  <div>
-                    <Label className="text-sm font-medium">Pay in Installments (Debt/EMI)</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Splits into a monthly ledger with auto-scheduled reminders.
-                    </p>
-                  </div>
+          {activeType === "expense" && !isEdit && debtMode && (
+            <div className="rounded-xl border border-primary/30 bg-primary/[0.04] p-4 space-y-4">
+              <div className="flex items-start gap-2">
+                <Wallet className="w-4 h-4 text-primary mt-0.5" />
+                <div>
+                  <Label className="text-sm font-medium">Installment plan</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    We&apos;ll split this into monthly reminders so you can confirm each payment when it&apos;s due.
+                  </p>
                 </div>
-                <Switch checked={debtMode} onCheckedChange={setDebtMode} />
               </div>
 
-              {debtMode && (
+              {true && (
                 <div className="space-y-3 pt-2 border-t border-border/40">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Total Debt Amount</Label>
+                      <Label className="text-xs">Total amount borrowed</Label>
                       <Input
-                        type="number" inputMode="decimal" placeholder="30000"
+                        type="number" inputMode="decimal" placeholder="e.g. 30000"
                         value={debtTotal} onChange={(e) => setDebtTotal(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Monthly Installment</Label>
-                      <Input
-                        readOnly
-                        value={(() => {
-                          const dur = debtDuration > 0 ? debtDuration : Number(debtCustomDuration);
-                          const m = computeMonthly(Number(debtTotal), dur);
-                          return `${currency} ${m.toFixed(2)}`;
-                        })()}
-                        className="bg-muted/40 font-medium"
-                      />
+                      <Label className="text-xs">You&apos;ll pay every month</Label>
+                      <div className="h-10 rounded-md border border-primary/40 bg-primary/10 px-3 flex items-center justify-between">
+                        <span className="font-display text-base font-semibold text-foreground">
+                          {(() => {
+                            const dur = debtDuration > 0 ? debtDuration : Number(debtCustomDuration);
+                            const m = computeMonthly(Number(debtTotal), dur);
+                            return `${currency} ${m.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+                          })()}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Auto
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Repayment Duration</Label>
+                    <Label className="text-xs">For how many months?</Label>
                     <div className="grid grid-cols-4 gap-2">
                       {[2, 3, 4].map((m) => (
                         <button
                           key={m} type="button"
                           onClick={() => setDebtDuration(m)}
                           className={cn(
-                            "rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                            "rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
                             debtDuration === m
                               ? "border-primary/60 bg-primary/10 text-foreground"
                               : "border-border/50 hover:bg-accent/40 text-muted-foreground",
                           )}
                         >
-                          {m} Months
+                          {m} mo
                         </button>
                       ))}
                       <button
                         type="button"
                         onClick={() => setDebtDuration(0)}
                         className={cn(
-                          "rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                          "rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
                           debtDuration === 0
                             ? "border-primary/60 bg-primary/10 text-foreground"
                             : "border-border/50 hover:bg-accent/40 text-muted-foreground",
@@ -485,44 +520,70 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
                     </div>
                     {debtDuration === 0 && (
                       <Select value={debtCustomDuration} onValueChange={setDebtCustomDuration}>
-                        <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="Pick a duration" />
+                        </SelectTrigger>
                         <SelectContent>
                           {[5, 6, 9, 12, 18, 24, 36].map((m) => (
-                            <SelectItem key={m} value={String(m)}>{m} Months</SelectItem>
+                            <SelectItem key={m} value={String(m)}>{m} months</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">First Due Date</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Who is the lender?</Label>
+                    <Input
+                      placeholder="e.g. HDFC Bank, Rahul, Bajaj Finserv"
+                      value={debtLender}
+                      onChange={(e) => setDebtLender(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                      <Label className="text-xs">First installment date</Label>
                       <Input
                         type="date" value={debtFirstDue}
                         onChange={(e) => setDebtFirstDue(e.target.value)}
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Lender / Source</Label>
-                      <Input
-                        placeholder="e.g. HDFC Bank, Friend - Rahul"
-                        value={debtLender}
-                        onChange={(e) => setDebtLender(e.target.value)}
-                      />
-                    </div>
                   </div>
+
+                  {(() => {
+                    const dur = debtDuration > 0 ? debtDuration : Number(debtCustomDuration);
+                    const total = Number(debtTotal);
+                    if (!Number.isFinite(total) || total <= 0 || !dur || !debtFirstDue) return null;
+                    const start = new Date(debtFirstDue);
+                    const end = new Date(start);
+                    end.setMonth(end.getMonth() + dur - 1);
+                    const monthly = computeMonthly(total, dur);
+                    const fmt = (d: Date) =>
+                      d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+                    return (
+                      <div className="flex items-start gap-2 rounded-lg bg-background/60 border border-border/40 px-3 py-2">
+                        <CalendarDays className="w-3.5 h-3.5 text-muted-foreground mt-0.5" />
+                        <div className="text-[11px] text-muted-foreground leading-relaxed">
+                          <span className="text-foreground font-medium">
+                            {currency} {monthly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </span>{" "}
+                          × {dur} months · first payment{" "}
+                          <span className="text-foreground">{fmt(start)}</span>, last payment{" "}
+                          <span className="text-foreground">{fmt(end)}</span>.
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t border-border/40 bg-background/80 backdrop-blur">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </Button>
           <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving..." : isEdit ? "Save changes" : debtMode ? "Save Debt" : "Add"}
+            {busy ? "Saving…" : isEdit ? "Save changes" : debtMode ? "Save plan" : "Add expense"}
           </Button>
         </DialogFooter>
       </DialogContent>
