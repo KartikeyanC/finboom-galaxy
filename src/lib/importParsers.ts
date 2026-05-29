@@ -14,6 +14,7 @@ export type ImportedRow = {
   price: number;
   currency: string;
   rate: number; // FX to INR
+  broker?: string;
 };
 
 const HEADER_MAP: Record<string, keyof Omit<ImportedRow, "id" | "currency" | "rate">> = {
@@ -38,6 +39,20 @@ const HEADER_MAP: Record<string, keyof Omit<ImportedRow, "id" | "currency" | "ra
 };
 
 const FX: Record<string, number> = { INR: 1, USD: 83.5, EUR: 90, GBP: 105, AED: 22.7 };
+
+export const detectBrokerFromFilename = (name: string): string | undefined => {
+  const n = name.toLowerCase();
+  if (n.includes("zerodha") || n.includes("kite")) return "Zerodha";
+  if (n.includes("groww")) return "Groww";
+  if (n.includes("indmoney") || n.includes("ind money")) return "INDmoney";
+  if (n.includes("angel")) return "Angel One";
+  if (n.includes("upstox")) return "Upstox";
+  if (n.includes("kuvera")) return "Kuvera";
+  if (n.includes("coinswitch")) return "CoinSwitch";
+  if (n.includes("binance")) return "Binance";
+  if (n.includes("wazirx")) return "WazirX";
+  return undefined;
+};
 
 const detectCurrency = (s: string): string => {
   if (/\$|USD/i.test(s)) return "USD";
@@ -126,10 +141,14 @@ export async function parsePDF(file: File): Promise<ImportedRow[]> {
 
 export async function parseFile(file: File): Promise<ImportedRow[]> {
   const ext = file.name.split(".").pop()?.toLowerCase();
-  if (ext === "csv") return parseCSV(file);
-  if (ext === "xls" || ext === "xlsx") return parseExcel(file);
-  if (ext === "pdf") return parsePDF(file);
-  throw new Error(`Unsupported file type: .${ext}`);
+  const broker = detectBrokerFromFilename(file.name);
+  let rows: ImportedRow[];
+  if (ext === "csv") rows = await parseCSV(file);
+  else if (ext === "xls" || ext === "xlsx") rows = await parseExcel(file);
+  else if (ext === "pdf") rows = await parsePDF(file);
+  else throw new Error(`Unsupported file type: .${ext}`);
+  if (broker) rows = rows.map((r) => ({ ...r, broker }));
+  return rows;
 }
 
 export const SUPPORTED_EXT = [".csv", ".xls", ".xlsx", ".pdf"];
