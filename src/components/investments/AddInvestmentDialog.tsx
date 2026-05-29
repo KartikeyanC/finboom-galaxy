@@ -321,6 +321,13 @@ export default function AddInvestmentDialog({
                 onChange={(e) => set("name", e.target.value)}
               />
             </Field>
+            <Field label="Ticker (Google Finance format)">
+              <Input
+                placeholder="e.g. NSE:RELIANCE, BOM:500325, NASDAQ:AAPL"
+                value={form.ticker ?? ""}
+                onChange={(e) => set("ticker", e.target.value.toUpperCase())}
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Buying Price<CurrencyBadge /></>}>
                 <NumberInput
