@@ -399,6 +399,13 @@ export default function AddInvestmentDialog({
                 onChange={(e) => set("name", e.target.value)}
               />
             </Field>
+            <Field label="MFAPI Scheme Code (for live NAV)">
+              <Input
+                placeholder="e.g. 122639 — from api.mfapi.in"
+                value={form.scheme ?? ""}
+                onChange={(e) => set("scheme", e.target.value)}
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={<>Total Invested<CurrencyBadge /></>}>
                 {N("invested", "0.00")}
