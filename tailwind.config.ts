@@ -105,12 +105,22 @@ export default {
           from: { opacity: "0", transform: "translateY(12px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "flash-up": {
+          "0%": { backgroundColor: "hsl(142 76% 36% / 0.25)" },
+          "100%": { backgroundColor: "transparent" },
+        },
+        "flash-down": {
+          "0%": { backgroundColor: "hsl(0 84% 60% / 0.25)" },
+          "100%": { backgroundColor: "transparent" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
         "slide-up": "slide-up 0.5s ease-out",
+        "flash-up": "flash-up 0.9s ease-out",
+        "flash-down": "flash-down 0.9s ease-out",
       },
     },
   },
