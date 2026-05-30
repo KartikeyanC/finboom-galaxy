@@ -110,8 +110,7 @@ export default function ExpenseLedger() {
             Expense Ledger
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {filtered.length} {filtered.length === 1 ? "entry" : "entries"} across {days.length}{" "}
-            {days.length === 1 ? "day" : "days"}
+            {preFiltered.length} {preFiltered.length === 1 ? "entry" : "entries"} in view
           </p>
         </div>
         <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
