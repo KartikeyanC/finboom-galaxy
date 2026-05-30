@@ -21,6 +21,8 @@ import {
   type InvestmentRecord,
 } from "@/lib/investmentsStore";
 import { isLiveAsset, useLivePrices } from "@/lib/livePrices";
+import MatrixFilter from "@/components/filters/MatrixFilter";
+import { toINR } from "@/lib/finance";
 
 interface Props {
   records: InvestmentRecord[];
@@ -122,213 +124,224 @@ const PortfolioList = ({ records, onEdit, onDelete }: Props) => {
         </div>
       )}
 
-      {visibleRecords.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center py-14 px-6">
-          <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-4 text-muted-foreground">
-            <Wallet className="w-7 h-7" />
-          </div>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            {brokerFilter
-              ? `No assets held with ${brokerFilter}.`
-              : 'Your portfolio is empty. Click "Add New Investment" above to track your growth.'}
-          </p>
-        </div>
-      ) : (
-        <ul className="divide-y divide-border">
-          <AnimatePresence initial={false}>
-            {visibleRecords.map((r) => {
-              const invested = getInvested(r);
-              const tick = live[r.id];
-              const tracked = isLiveAsset(r.asset) && tick !== undefined;
-              const current = tracked ? tick.currentValue : getCurrent(r);
-              const delta = current - invested;
-              const positive = delta >= 0;
-              const pct = invested > 0 ? (delta / invested) * 100 : 0;
-              const direction = tick?.direction ?? "flat";
-              const flashClass =
-                direction === "up"
-                  ? "animate-flash-up text-emerald-500 rounded px-1"
-                  : direction === "down"
-                    ? "animate-flash-down text-rose-500 rounded px-1"
-                    : "text-foreground";
-              const isConfirming = confirmId === r.id;
-
-              return (
-                <motion.li
-                  key={r.id}
-                  layout
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="group relative px-5 py-4 hover:bg-muted/40 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
-                    {/* Left: name + badges */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-foreground truncate">
-                          {getRecordName(r)}
-                        </span>
-                        {r.broker && (
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] ${BROKER_TINTS[r.broker]}`}
-                          >
-                            via {r.broker}
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="text-[10px]">
-                          {ASSET_LABELS[r.asset]}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px]">
-                          {r.currency}
-                        </Badge>
-                        {r.goal && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-primary/40 text-primary"
-                          >
-                            {r.goal}
-                          </Badge>
-                        )}
-                        {tracked ? (
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] gap-1 ${
-                              positive
-                                ? "border-emerald-500/40 text-emerald-500 bg-emerald-500/5"
-                                : "border-rose-500/40 text-rose-500 bg-rose-500/5"
-                            }`}
-                          >
-                            {positive ? (
-                              <ArrowUpRight className="w-3 h-3" />
-                            ) : (
-                              <ArrowDownRight className="w-3 h-3" />
-                            )}
-                            {positive ? "+" : ""}
-                            {pct.toFixed(2)}% {positive ? "Profit" : "Loss"}
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] text-muted-foreground"
-                          >
-                            Fixed Rate
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Middle: values */}
-                    <div className="flex items-center gap-6 ml-auto">
-                      {tracked && (
-                        <div className="text-right">
-                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                            Current Price
-                          </div>
-                          <div
-                            key={tick.updatedAt}
-                            className={`text-sm font-semibold tabular-nums ${flashClass}`}
-                          >
-                            {formatMoney(tick.unitPrice, r.currency)}
-                          </div>
-                        </div>
-                      )}
-                      <div className="text-right">
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          Invested
-                        </div>
-                        <div className="text-sm font-bold text-foreground tabular-nums">
-                          {formatMoney(invested, r.currency)}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          Current
-                        </div>
-                        <div
-                          key={tick?.updatedAt ?? "static"}
-                          className={`text-sm font-bold tabular-nums ${
-                            tracked
-                              ? flashClass
-                              : positive
-                                ? "text-emerald-500"
-                                : "text-rose-500"
-                          }`}
-                        >
-                          {formatMoney(current, r.currency)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: actions */}
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                        onClick={() => onEdit(r)}
-                        aria-label="Edit investment"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-rose-500"
-                        onClick={() => setConfirmId(r.id)}
-                        aria-label="Delete investment"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Inline confirm */}
-                  <AnimatePresence>
-                    {isConfirming && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                          <span className="text-xs text-foreground">
-                            Are you sure you want to delete this record?
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => setConfirmId(null)}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-7 px-2 text-xs bg-rose-500 hover:bg-rose-500/90 text-white"
-                              onClick={() => {
-                                onDelete(r.id);
-                                setConfirmId(null);
-                              }}
-                            >
-                              Yes, Delete
-                            </Button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.li>
-              );
-            })}
-          </AnimatePresence>
-        </ul>
-      )}
+      <div className="px-5 pt-4">
+        <MatrixFilter<InvestmentRecord>
+          items={visibleRecords}
+          getDate={(r) => new Date(r.savedAt)}
+          getCategory={(r) => ASSET_LABELS[r.asset]}
+          getAmount={(r) => toINR(getCurrent(r), r.currency)}
+          allCategories={Object.values(ASSET_LABELS)}
+          currencyTag="INR"
+        >
+          {(filteredRecords) => (
+            filteredRecords.length === 0 ? (
+              <EmptyState brokerFilter={brokerFilter} />
+            ) : (
+              <PortfolioRows
+                records={filteredRecords}
+                live={live}
+                confirmId={confirmId}
+                setConfirmId={setConfirmId}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            )
+          )}
+        </MatrixFilter>
+      </div>
     </section>
   );
 };
 
 export default PortfolioList;
+
+function EmptyState({ brokerFilter }: { brokerFilter: Broker | null }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-14 px-6">
+      <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-4 text-muted-foreground">
+        <Wallet className="w-7 h-7" />
+      </div>
+      <p className="text-sm text-muted-foreground max-w-xs">
+        {brokerFilter
+          ? `No assets held with ${brokerFilter}.`
+          : 'Your portfolio is empty. Click "Add New Investment" above to track your growth.'}
+      </p>
+    </div>
+  );
+}
+
+function PortfolioRows({
+  records,
+  live,
+  confirmId,
+  setConfirmId,
+  onEdit,
+  onDelete,
+}: {
+  records: InvestmentRecord[];
+  live: ReturnType<typeof useLivePrices>["live"];
+  confirmId: string | null;
+  setConfirmId: (id: string | null) => void;
+  onEdit: (rec: InvestmentRecord) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <ul className="divide-y divide-border mt-3">
+      <AnimatePresence initial={false}>
+        {records.map((r) => {
+          const invested = getInvested(r);
+          const tick = live[r.id];
+          const tracked = isLiveAsset(r.asset) && tick !== undefined;
+          const current = tracked ? tick.currentValue : getCurrent(r);
+          const delta = current - invested;
+          const positive = delta >= 0;
+          const pct = invested > 0 ? (delta / invested) * 100 : 0;
+          const direction = tick?.direction ?? "flat";
+          const flashClass =
+            direction === "up"
+              ? "animate-flash-up text-emerald-500 rounded px-1"
+              : direction === "down"
+                ? "animate-flash-down text-rose-500 rounded px-1"
+                : "text-foreground";
+          const isConfirming = confirmId === r.id;
+
+          return (
+            <motion.li
+              key={r.id}
+              layout
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              className="group relative px-2 py-4 hover:bg-muted/40 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-foreground truncate">
+                      {getRecordName(r)}
+                    </span>
+                    {r.broker && (
+                      <Badge variant="outline" className={`text-[10px] ${BROKER_TINTS[r.broker]}`}>
+                        via {r.broker}
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="text-[10px]">
+                      {ASSET_LABELS[r.asset]}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {r.currency}
+                    </Badge>
+                    {r.goal && (
+                      <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                        {r.goal}
+                      </Badge>
+                    )}
+                    {tracked ? (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] gap-1 ${
+                          positive
+                            ? "border-emerald-500/40 text-emerald-500 bg-emerald-500/5"
+                            : "border-rose-500/40 text-rose-500 bg-rose-500/5"
+                        }`}
+                      >
+                        {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                        {positive ? "+" : ""}
+                        {pct.toFixed(2)}% {positive ? "Profit" : "Loss"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                        Fixed Rate
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-6 ml-auto">
+                  {tracked && (
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Current Price</div>
+                      <div key={tick.updatedAt} className={`text-sm font-semibold tabular-nums ${flashClass}`}>
+                        {formatMoney(tick.unitPrice, r.currency)}
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Invested</div>
+                    <div className="text-sm font-bold text-foreground tabular-nums">
+                      {formatMoney(invested, r.currency)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Current</div>
+                    <div
+                      key={tick?.updatedAt ?? "static"}
+                      className={`text-sm font-bold tabular-nums ${
+                        tracked ? flashClass : positive ? "text-emerald-500" : "text-rose-500"
+                      }`}
+                    >
+                      {formatMoney(current, r.currency)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                    onClick={() => onEdit(r)}
+                    aria-label="Edit investment"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-rose-500"
+                    onClick={() => setConfirmId(r.id)}
+                    aria-label="Delete investment"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <AnimatePresence>
+                {isConfirming && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+                      <span className="text-xs text-foreground">
+                        Are you sure you want to delete this record?
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setConfirmId(null)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 px-2 text-xs bg-rose-500 hover:bg-rose-500/90 text-white"
+                          onClick={() => {
+                            onDelete(r.id);
+                            setConfirmId(null);
+                          }}
+                        >
+                          Yes, Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.li>
+          );
+        })}
+      </AnimatePresence>
+    </ul>
+  );
+}
