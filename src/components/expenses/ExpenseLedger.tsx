@@ -32,6 +32,8 @@ import {
 } from "@/hooks/useTransactions";
 import { formatMoney, toINR } from "@/lib/finance";
 import { categoryBadgeClass } from "@/lib/categories";
+import MatrixFilter from "@/components/filters/MatrixFilter";
+import { EXPENSE_CATEGORIES } from "@/lib/finance";
 
 type ChipDef = { id: string; label: string; icon: string; match?: string[] };
 
@@ -84,7 +86,8 @@ export default function ExpenseLedger() {
   const [search, setSearch] = useState("");
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  const filtered = useMemo(() => {
+  // chip + search narrowing happens first; matrix filter handles date/category cross-filter
+  const preFiltered = useMemo(() => {
     const list = data ?? [];
     const chipDef = CHIPS.find((c) => c.id === chip);
     const q = search.trim().toLowerCase();
@@ -97,19 +100,6 @@ export default function ExpenseLedger() {
       return true;
     });
   }, [data, chip, search]);
-
-  const days = useMemo(() => {
-    const byDay = new Map<string, { date: Date; items: Transaction[] }>();
-    filtered.forEach((t) => {
-      const d = new Date(t.occurred_at);
-      const k = dayKey(d);
-      if (!byDay.has(k)) byDay.set(k, { date: d, items: [] });
-      byDay.get(k)!.items.push(t);
-    });
-    return Array.from(byDay.entries())
-      .map(([k, v]) => ({ key: k, date: v.date, items: v.items }))
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [filtered]);
 
   return (
     <div className="glass-card p-0 overflow-hidden">
@@ -153,33 +143,62 @@ export default function ExpenseLedger() {
         </div>
       </div>
 
-      {/* List */}
-      <div className="px-5 py-5 space-y-6">
+      {/* Matrix filter + list */}
+      <div className="px-5 py-5">
         {isLoading ? (
           <p className="text-center text-muted-foreground py-10 text-sm">Loading…</p>
-        ) : days.length === 0 ? (
-          <p className="text-center text-muted-foreground py-10 text-sm">
-            {data && data.length > 0
-              ? "No expenses match your filters."
-              : "No expenses yet. Click Add to log your first one."}
-          </p>
         ) : (
-          days.map((day) => (
-            <DayBlock
-              key={day.key}
-              dayKey={day.key}
-              date={day.date}
-              items={day.items}
-              searchOpen={searchOpen}
-              setSearchOpen={setSearchOpen}
-              search={search}
-              setSearch={setSearch}
-              openGroups={openGroups}
-              setOpenGroups={setOpenGroups}
-              onEdit={(t) => { setEditing(t); setDialogOpen(true); }}
-              onDelete={(id) => setDeleteId(id)}
-            />
-          ))
+          <MatrixFilter<Transaction>
+            items={preFiltered}
+            getDate={(t) => new Date(t.occurred_at)}
+            getCategory={(t) => t.category}
+            getAmount={(t) => toINR(Number(t.amount), t.currency)}
+            allCategories={[...EXPENSE_CATEGORIES]}
+            currencyTag="INR"
+          >
+            {(filtered) => {
+              const byDay = new Map<string, { date: Date; items: Transaction[] }>();
+              filtered.forEach((t) => {
+                const d = new Date(t.occurred_at);
+                const k = dayKey(d);
+                if (!byDay.has(k)) byDay.set(k, { date: d, items: [] });
+                byDay.get(k)!.items.push(t);
+              });
+              const days = Array.from(byDay.entries())
+                .map(([k, v]) => ({ key: k, date: v.date, items: v.items }))
+                .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+              if (days.length === 0) {
+                return (
+                  <p className="text-center text-muted-foreground py-10 text-sm">
+                    {data && data.length > 0
+                      ? "No expenses match your filters."
+                      : "No expenses yet. Click Add to log your first one."}
+                  </p>
+                );
+              }
+              return (
+                <div className="space-y-6 mt-4">
+                  {days.map((day) => (
+                    <DayBlock
+                      key={day.key}
+                      dayKey={day.key}
+                      date={day.date}
+                      items={day.items}
+                      searchOpen={searchOpen}
+                      setSearchOpen={setSearchOpen}
+                      search={search}
+                      setSearch={setSearch}
+                      openGroups={openGroups}
+                      setOpenGroups={setOpenGroups}
+                      onEdit={(t) => { setEditing(t); setDialogOpen(true); }}
+                      onDelete={(id) => setDeleteId(id)}
+                    />
+                  ))}
+                </div>
+              );
+            }}
+          </MatrixFilter>
         )}
       </div>
 
