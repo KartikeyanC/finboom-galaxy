@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import MetricCard from "@/components/dashboard/MetricCard";
-import TransactionsTable from "@/components/transactions/TransactionsTable";
 import { Receipt, TrendingDown, AlertCircle, CreditCard } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatCompact, toINR } from "@/lib/finance";
 import DebtLedger from "@/components/expenses/DebtLedger";
+import ExpenseLedger from "@/components/expenses/ExpenseLedger";
 
 const Expenses = () => {
   const { data: txns = [] } = useTransactions("expense");
@@ -52,7 +52,7 @@ const Expenses = () => {
 
       <DebtLedger />
 
-      <TransactionsTable type="expense" />
+      <ExpenseLedger />
     </div>
   );
 };
