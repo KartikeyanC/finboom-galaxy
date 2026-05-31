@@ -42,6 +42,7 @@ import {
 import { toast } from "sonner";
 import { buildInstallments, computeMonthly, useDebts, type DebtRecord } from "@/lib/debtsStore";
 import { useReminders, type ReminderRecord } from "@/lib/remindersStore";
+import DateTimeField from "@/components/transactions/DateTimeField";
 
 const schema = z.object({
   amount: z.number().positive("Amount must be positive").max(1e12),
@@ -74,7 +75,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const [currency, setCurrency] = useState("INR");
   const [category, setCategory] = useState<string>(defaultCategory);
   const [description, setDescription] = useState("");
-  const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString());
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatSub, setNewCatSub] = useState<IncomeSubtype>("active");
@@ -95,14 +96,14 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       setCurrency(initial.currency);
       setCategory(initial.category);
       setDescription(initial.description ?? "");
-      setOccurredAt(initial.occurred_at.slice(0, 10));
+      setOccurredAt(new Date(initial.occurred_at).toISOString());
     } else {
       setActiveType(type);
       setAmount("");
       setCurrency("INR");
       setCategory(type === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0]);
       setDescription("");
-      setOccurredAt(new Date().toISOString().slice(0, 10));
+      setOccurredAt(new Date().toISOString());
     }
     setDebtMode(false);
     setDebtTotal("");
@@ -123,12 +124,19 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
     if (debtMode && activeType === "expense") {
       return submitDebt();
     }
+    // Guardrail: if date is blank/corrupt, fall back to live system time.
+    let occurredSafe = occurredAt;
+    const checkDate = new Date(occurredSafe);
+    if (!occurredSafe || isNaN(checkDate.getTime())) {
+      occurredSafe = new Date().toISOString();
+      setOccurredAt(occurredSafe);
+    }
     const parsed = schema.safeParse({
       amount: Number(amount),
       currency,
       category,
       description: description || undefined,
-      occurred_at: occurredAt,
+      occurred_at: occurredSafe,
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
@@ -429,15 +437,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
               </PopoverContent>
             </Popover>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="occurred_at">Date</Label>
-            <Input
-              id="occurred_at"
-              type="date"
-              value={occurredAt}
-              onChange={(e) => setOccurredAt(e.target.value)}
-            />
-          </div>
+          <DateTimeField value={occurredAt} onChange={setOccurredAt} />
           <div className="space-y-1.5">
             <Label htmlFor="description">Note (optional)</Label>
             <Input
