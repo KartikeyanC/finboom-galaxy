@@ -19,6 +19,7 @@ import {
 } from "@/lib/incomeSeed";
 import { ACTIVE_INCOME, PASSIVE_INCOME, useCustomCategories } from "@/lib/categories";
 import { useCreateRecurring } from "@/hooks/useRecurring";
+import DateTimeField from "@/components/transactions/DateTimeField";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name required").max(60),
@@ -58,6 +59,7 @@ export default function AddIncomeDialog({ onAdd }: Props) {
   const [frequency, setFrequency] = useState<IncomeFrequency>("monthly");
   const [icon, setIcon] = useState<string>("Coins");
   const [notes, setNotes] = useState("");
+  const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString());
   const createRecurring = useCreateRecurring();
   const custom = useCustomCategories();
   const [newCatOpen, setNewCatOpen] = useState(false);
@@ -68,6 +70,7 @@ export default function AddIncomeDialog({ onAdd }: Props) {
     setType("active"); setCategory(ACTIVE_INCOME[0]); setName("");
     setAmount(""); setCurrency("INR"); setRate(String(DEFAULT_FX.INR));
     setFrequency("monthly"); setIcon("Coins"); setNotes("");
+    setOccurredAt(new Date().toISOString());
   }, [open]);
 
   const handleCurrency = (v: string) => {
@@ -114,6 +117,10 @@ export default function AddIncomeDialog({ onAdd }: Props) {
       return;
     }
     const d = parsed.data;
+    const safeISO = (() => {
+      const dt = new Date(occurredAt);
+      return isNaN(dt.getTime()) ? new Date().toISOString() : dt.toISOString();
+    })();
     onAdd({
       name: d.name,
       amount: d.amount,
@@ -133,7 +140,7 @@ export default function AddIncomeDialog({ onAdd }: Props) {
       currency: d.currency,
       fx_rate: d.exchangeRateToINR,
       frequency: d.frequency,
-      next_due_date: new Date().toISOString().slice(0, 10),
+      next_due_date: safeISO.slice(0, 10),
       icon: d.icon,
       notes: d.notes ?? null,
     });
@@ -256,6 +263,12 @@ export default function AddIncomeDialog({ onAdd }: Props) {
               </SelectContent>
             </Select>
           </div>
+
+          <DateTimeField
+            value={occurredAt}
+            onChange={setOccurredAt}
+            label="Received On"
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="inc-rate">Exchange rate to INR</Label>
