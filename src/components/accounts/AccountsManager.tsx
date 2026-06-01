@@ -991,13 +991,14 @@ export default function AccountsManager() {
                             <label
                               key={m.id}
                               className={cn(
-                                "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors",
+                                "flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors",
                                 checked
-                                  ? "border-primary/60 bg-primary/10 text-primary"
-                                  : "border-border/60 hover:border-border",
+                                  ? "border-emerald-500/50 bg-emerald-500/10 text-foreground"
+                                  : "border-border/60 bg-slate-500/5 text-muted-foreground hover:border-border",
                               )}
                             >
-                              <Checkbox
+                              <span className="truncate">{m.label}</span>
+                              <Switch
                                 checked={checked}
                                 onCheckedChange={() =>
                                   setInviteMenus((curr) =>
@@ -1006,8 +1007,8 @@ export default function AccountsManager() {
                                       : [...curr, m.id],
                                   )
                                 }
+                                className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-600"
                               />
-                              <span className="truncate">{m.label}</span>
                             </label>
                           );
                         })}
@@ -1096,24 +1097,25 @@ export default function AccountsManager() {
                                   Clear
                                 </button>
                               </div>
-                              <div className="grid grid-cols-2 gap-1.5 max-h-60 overflow-auto">
+                              <div className="grid grid-cols-1 gap-1.5 max-h-60 overflow-auto">
                                 {ACCESS_MENUS.map((m) => {
                                   const checked = c.menuAccess.includes(m.id);
                                   return (
                                     <label
                                       key={m.id}
                                       className={cn(
-                                        "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer transition-colors",
+                                        "flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer transition-colors",
                                         checked
-                                          ? "border-primary/60 bg-primary/10 text-primary"
-                                          : "border-border/60 hover:border-border",
+                                          ? "border-emerald-500/50 bg-emerald-500/10 text-foreground"
+                                          : "border-border/60 bg-slate-500/5 text-muted-foreground hover:border-border",
                                       )}
                                     >
-                                      <Checkbox
+                                      <span className="truncate">{m.label}</span>
+                                      <Switch
                                         checked={checked}
                                         onCheckedChange={() => toggleCollaboratorMenu(c.id, m.id)}
+                                        className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-600"
                                       />
-                                      <span className="truncate">{m.label}</span>
                                     </label>
                                   );
                                 })}
