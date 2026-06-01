@@ -167,18 +167,25 @@ export default function ExpenseLedger() {
         <div className="flex items-center gap-2 px-5 py-2.5 overflow-x-auto no-scrollbar touch-pan-x">
           {CHIPS.map((c) => {
             const active = chip === c.id;
+            const Icon = c.icon;
             return (
               <button
                 key={c.id}
                 onClick={() => setChip(c.id)}
                 className={cn(
-                  "shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium border transition-all",
+                  "shrink-0 inline-flex items-center gap-1.5 rounded-full pl-2.5 pr-3.5 py-1.5 text-xs font-medium border transition-all",
                   active
                     ? "bg-primary text-primary-foreground border-primary shadow-sm"
                     : "bg-muted/40 text-muted-foreground border-border/50 hover:bg-muted hover:text-foreground",
                 )}
               >
-                <span className="text-sm leading-none">{c.icon}</span>
+                <Icon
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0",
+                    active ? "text-primary-foreground" : c.tint,
+                  )}
+                  strokeWidth={2.25}
+                />
                 <span>{c.label}</span>
               </button>
             );
