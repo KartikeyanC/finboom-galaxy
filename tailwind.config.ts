@@ -113,6 +113,15 @@ export default {
           "0%": { backgroundColor: "hsl(0 84% 60% / 0.25)" },
           "100%": { backgroundColor: "transparent" },
         },
+        "scan-line": {
+          "0%": { top: "0%" },
+          "50%": { top: "calc(100% - 4px)" },
+          "100%": { top: "0%" },
+        },
+        "fade-in": {
+          from: { opacity: "0", transform: "translateY(4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -121,6 +130,8 @@ export default {
         "slide-up": "slide-up 0.5s ease-out",
         "flash-up": "flash-up 0.9s ease-out",
         "flash-down": "flash-down 0.9s ease-out",
+        "scan-line": "scan-line 1.6s ease-in-out infinite",
+        "fade-in": "fade-in 0.3s ease-out",
       },
     },
   },

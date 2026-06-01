@@ -12,6 +12,7 @@ import {
   Upload,
   Landmark,
   CreditCard,
+  ScanLine,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -43,6 +44,7 @@ const mainItems = [
 const toolItems = [
   { title: "Calculator", url: "/app/calculator", icon: Calculator },
   { title: "Import", url: "/app/import", icon: Upload },
+  { title: "Bill Scan", url: "/app/bill-scan", icon: ScanLine },
   { title: "Reminders", url: "/app/reminders", icon: Bell },
   { title: "Billing", url: "/app/billing", icon: CreditCard },
   { title: "Settings", url: "/app/settings", icon: Settings },
