@@ -251,6 +251,21 @@ export default function AccountsManager() {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<CollaboratorRole>("viewer");
+  const { setProfiles } = useAccess();
+
+  // Sync collaborator permissions into the global access context so the
+  // sidebar and route guards can enforce them.
+  useEffect(() => {
+    const profiles: AccessProfile[] = accounts.flatMap((acc) =>
+      acc.collaborators.map((c) => ({
+        id: `${acc.id}:${c.id}`,
+        name: `${c.name} · ${acc.name || "Account"}`,
+        role: c.role,
+        menus: c.menuAccess,
+      })),
+    );
+    setProfiles(profiles);
+  }, [accounts, setProfiles]);
 
   const addCollaborator = () => {
     const name = inviteName.trim();
