@@ -271,6 +271,7 @@ export default function AccountsManager() {
       collaborators: [
         ...f.collaborators,
         { id: crypto.randomUUID(), name, email, role: inviteRole },
+        ,
       ],
     }));
     setInviteName("");
