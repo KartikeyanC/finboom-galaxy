@@ -152,6 +152,69 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          billing_interval: string | null
+          cancel_at: string | null
+          canceled_at: string | null
+          created_at: string
+          currency: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          paddle_customer_id: string | null
+          paddle_price_id: string | null
+          paddle_product_id: string | null
+          paddle_subscription_id: string | null
+          plan_name: string | null
+          raw: Json | null
+          status: string
+          unit_amount: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_interval?: string | null
+          cancel_at?: string | null
+          canceled_at?: string | null
+          created_at?: string
+          currency?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          paddle_customer_id?: string | null
+          paddle_price_id?: string | null
+          paddle_product_id?: string | null
+          paddle_subscription_id?: string | null
+          plan_name?: string | null
+          raw?: Json | null
+          status?: string
+          unit_amount?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_interval?: string | null
+          cancel_at?: string | null
+          canceled_at?: string | null
+          created_at?: string
+          currency?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          paddle_customer_id?: string | null
+          paddle_price_id?: string | null
+          paddle_product_id?: string | null
+          paddle_subscription_id?: string | null
+          plan_name?: string | null
+          raw?: Json | null
+          status?: string
+          unit_amount?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
