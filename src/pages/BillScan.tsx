@@ -46,11 +46,10 @@ const VENDOR_MAP: { pattern: RegExp; category: string; merchant: string }[] = [
 ];
 
 const SAMPLE_ITEMS = [
-  { name: "Coffee", category: "Food & Dining", amount: 250 },
-  { name: "Sandwich", category: "Food & Dining", amount: 320 },
-  { name: "Mug", category: "Shopping", amount: 600 },
-  { name: "Notebook", category: "Shopping", amount: 180 },
-  { name: "Service Fee", category: "Subscriptions", amount: 50 },
+  { name: "Mushroom 1pk", category: "Shopping", amount: 120 },
+  { name: "Carrot 1kg", category: "Shopping", amount: 46 },
+  { name: "Dustbin", category: "Shopping", amount: 146 },
+  { name: "Juice", category: "Food & Dining", amount: 90 },
 ];
 
 type ScannedRow = {
@@ -106,15 +105,6 @@ export default function BillScanPage() {
       const today = new Date().toISOString().slice(0, 10);
       // generate a deterministic-ish total
       const total = Math.round(400 + (f.size % 3500));
-      const lumpsum: ScannedRow[] = [
-        {
-          id: crypto.randomUUID(),
-          name: detected.merchant,
-          category: detected.category,
-          amount: total,
-          date: today,
-        },
-      ];
       const items: ScannedRow[] = SAMPLE_ITEMS.map((s) => ({
         id: crypto.randomUUID(),
         name: s.name,
@@ -122,6 +112,16 @@ export default function BillScanPage() {
         amount: s.amount,
         date: today,
       }));
+      const itemsTotal = items.reduce((a, b) => a + b.amount, 0);
+      const lumpsum: ScannedRow[] = [
+        {
+          id: crypto.randomUUID(),
+          name: detected.merchant,
+          category: detected.category,
+          amount: itemsTotal || total,
+          date: today,
+        },
+      ];
       setRows(lineItemMode ? items : lumpsum);
       setIsScanning(false);
       setScanned(true);
@@ -337,7 +337,7 @@ export default function BillScanPage() {
                     <Input
                       value={r.name}
                       onChange={(e) => updateRow(r.id, { name: e.target.value })}
-                      className="h-9 flex-1"
+                      className="h-9 flex-1 bg-white/5 border border-slate-800"
                       placeholder="Item name"
                     />
                     <button
