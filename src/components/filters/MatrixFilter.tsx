@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import { CalendarIcon, Check, ChevronDown, Layers, X } from "lucide-react";
+import { CalendarIcon, Check, ChevronDown, Layers, X, History, Sunrise } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -92,11 +92,20 @@ export default function MatrixFilter<T>({
   currencyTag = "INR",
   children,
 }: Props<T>) {
-  const [preset, setPreset] = useState<DatePreset>("all");
+  const [preset, setPreset] = useState<DatePreset>("today");
   const [custom, setCustom] = useState<DateRange | undefined>();
   const [cats, setCats] = useState<string[]>([]);
   const [datePopOpen, setDatePopOpen] = useState(false);
   const [catPopOpen, setCatPopOpen] = useState(false);
+  // Midnight ticker — forces "today" range to roll over without reload.
+  const [dayKey, setDayKey] = useState(() => new Date().toDateString());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const k = new Date().toDateString();
+      setDayKey((prev) => (prev === k ? prev : k));
+    }, 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Decorate items once for cheap reuse
   const meta: Item[] = useMemo(
@@ -104,16 +113,20 @@ export default function MatrixFilter<T>({
     [items, getDate, getCategory, getAmount],
   );
 
-  const activeRange = useMemo(() => presetRange(preset, custom), [preset, custom]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const activeRange = useMemo(() => presetRange(preset, custom), [preset, custom, dayKey]);
 
-  // Categories available given current DATE selection (drives category dropdown options)
-  const availableCats = useMemo(() => {
-    const seen = new Set<string>();
+  // Categories available + per-category counts given current DATE selection.
+  const { availableCats, catCounts } = useMemo(() => {
+    const counts = new Map<string, number>();
     meta.forEach((m) => {
-      if (preset === "all" || inRange(m.date, activeRange)) seen.add(m.category);
+      if (preset === "all" || inRange(m.date, activeRange)) {
+        counts.set(m.category, (counts.get(m.category) ?? 0) + 1);
+      }
     });
     const master = allCategories ?? Array.from(new Set(meta.map((m) => m.category)));
-    return master.filter((c) => seen.has(c)).sort();
+    const list = master.filter((c) => (counts.get(c) ?? 0) > 0).sort();
+    return { availableCats: list, catCounts: counts };
   }, [meta, preset, activeRange, allCategories]);
 
   // Counts per date preset given current CATEGORY selection (drives chips on date dropdown)
@@ -167,6 +180,14 @@ export default function MatrixFilter<T>({
   const catLabel = cats.length === 0 ? "All categories" : cats.length === 1 ? cats[0] : `${cats.length} categories`;
 
   const isActive = preset !== "all" || cats.length > 0;
+  // "Today" is the fresh-slate default. Anything else is a historical view.
+  const isHistorical = preset !== "today" || cats.length > 0;
+
+  const returnToToday = () => {
+    setPreset("today");
+    setCustom(undefined);
+    setCats([]);
+  };
 
   return (
     <div className="space-y-3">
@@ -258,6 +279,7 @@ export default function MatrixFilter<T>({
               ) : (
                 availableCats.map((c) => {
                   const on = cats.includes(c);
+                  const n = catCounts.get(c) ?? 0;
                   return (
                     <button
                       key={c}
@@ -280,6 +302,16 @@ export default function MatrixFilter<T>({
                         </span>
                         <span className="truncate">{c}</span>
                       </span>
+                      <span
+                        className={cn(
+                          "ml-2 shrink-0 inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10px] font-semibold tabular-nums",
+                          on
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground/70",
+                        )}
+                      >
+                        {n}
+                      </span>
                     </button>
                   );
                 })
@@ -294,6 +326,29 @@ export default function MatrixFilter<T>({
           </Button>
         )}
       </div>
+
+      {/* Historical view banner */}
+      {isHistorical && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2 text-xs">
+          <span className="flex items-center gap-2 text-primary font-medium">
+            <History className="w-3.5 h-3.5" />
+            Viewing Past Records · {dateLabel}
+            {cats.length > 0 && (
+              <span className="text-primary/80 font-normal">
+                · {cats.length === 1 ? cats[0] : `${cats.length} categories`}
+              </span>
+            )}
+          </span>
+          <Button
+            size="sm"
+            onClick={returnToToday}
+            className="h-7 px-3 text-xs gap-1.5"
+          >
+            <Sunrise className="w-3.5 h-3.5" />
+            Return to Today's Slate
+          </Button>
+        </div>
+      )}
 
       {/* Cumulative ribbon */}
       <div className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/30 px-3.5 py-2 text-xs">
