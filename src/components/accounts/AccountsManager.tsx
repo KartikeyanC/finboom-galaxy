@@ -979,7 +979,7 @@ export default function AccountsManager() {
                       {form.collaborators.map((c) => (
                         <div
                           key={c.id}
-                          className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-2.5"
+                          className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/40 p-2.5"
                         >
                           <div
                             className={cn(
@@ -996,6 +996,7 @@ export default function AccountsManager() {
                             <div className="text-[11px] text-muted-foreground truncate">
                               {c.email}
                             </div>
+                            <PermissionBadges menus={c.menuAccess} />
                           </div>
                           <Select
                             value={c.role}
