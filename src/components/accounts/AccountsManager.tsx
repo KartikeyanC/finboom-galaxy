@@ -149,6 +149,53 @@ export const ACCESS_MENUS: { id: string; label: string }[] = [
 ];
 const ALL_MENU_IDS = ACCESS_MENUS.map((m) => m.id);
 
+function PermissionBadges({ menus }: { menus: string[] }) {
+  if (menus.length === ALL_MENU_IDS.length) {
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        <Badge
+          variant="outline"
+          className="text-[10px] gap-1 border-emerald-500/40 text-emerald-400 bg-emerald-500/10"
+        >
+          <Check className="h-2.5 w-2.5" />
+          All Modules Granted
+        </Badge>
+      </div>
+    );
+  }
+  if (menus.length === 0) {
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        <Badge
+          variant="outline"
+          className="text-[10px] border-destructive/40 text-destructive bg-destructive/10"
+        >
+          No module access
+        </Badge>
+      </div>
+    );
+  }
+  const labels = menus
+    .map((id) => ACCESS_MENUS.find((m) => m.id === id)?.label)
+    .filter((x): x is string => Boolean(x));
+  const visible = labels.slice(0, 3);
+  const overflow = labels.length - visible.length;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {visible.map((l) => (
+        <Badge key={l} variant="secondary" className="text-[10px] px-1.5 py-0">
+          {l}
+        </Badge>
+      ))}
+      {overflow > 0 && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+          +{overflow} more
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 const emptyForm = (): FormState => ({
   type: "bank",
   name: "",
