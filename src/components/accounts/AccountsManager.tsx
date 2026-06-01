@@ -251,6 +251,7 @@ export default function AccountsManager() {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<CollaboratorRole>("viewer");
+  const [inviteMenus, setInviteMenus] = useState<string[]>([...ALL_MENU_IDS]);
   const { setProfiles } = useAccess();
 
   // Sync collaborator permissions into the global access context so the
@@ -286,12 +287,13 @@ export default function AccountsManager() {
       ...f,
       collaborators: [
         ...f.collaborators,
-        { id: crypto.randomUUID(), name, email, role: inviteRole, menuAccess: [...ALL_MENU_IDS] },
+        { id: crypto.randomUUID(), name, email, role: inviteRole, menuAccess: [...inviteMenus] },
       ],
     }));
     setInviteName("");
     setInviteEmail("");
     setInviteRole("viewer");
+    setInviteMenus([...ALL_MENU_IDS]);
     toast.success(`Invited ${name} as ${inviteRole}`);
   };
 
