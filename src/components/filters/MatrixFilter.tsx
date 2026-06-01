@@ -209,7 +209,7 @@ export default function MatrixFilter<T>({
             align="start"
             className={cn(
               "p-0 overflow-hidden transition-[width] duration-200",
-              customOpen ? "w-[600px]" : "w-[280px]",
+              customOpen ? "w-[560px]" : "w-[280px]",
             )}
           >
             <div className="flex">
@@ -307,6 +307,13 @@ export default function MatrixFilter<T>({
                       setPreset("custom");
                     }}
                     className={cn("p-0 pointer-events-auto")}
+                    classNames={{
+                      head_cell:
+                        "text-muted-foreground rounded-md w-8 font-normal text-[0.7rem]",
+                      cell:
+                        "h-8 w-8 text-center text-xs p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                      day: "h-8 w-8 p-0 font-normal text-xs rounded-md hover:bg-muted aria-selected:opacity-100",
+                    }}
                   />
                 </div>
               )}
