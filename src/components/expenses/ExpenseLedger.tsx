@@ -255,218 +255,61 @@ function DayBlock({
   dayKey: dKey,
   date,
   items,
-  searchOpen,
-  setSearchOpen,
-  search,
-  setSearch,
-  openGroups,
-  setOpenGroups,
   onEdit,
   onDelete,
 }: {
   dayKey: string;
   date: Date;
   items: Transaction[];
-  searchOpen: boolean;
-  setSearchOpen: (v: boolean) => void;
-  search: string;
-  setSearch: (v: string) => void;
-  openGroups: Record<string, boolean>;
-  setOpenGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
 }) {
   const dayTotal = items.reduce((s, t) => s + toINR(Number(t.amount), t.currency), 0);
 
-  const slots = useMemo(() => {
-    const bySlot: Record<Slot, Transaction[]> = { morning: [], afternoon: [], evening: [] };
-    items.forEach((t) => bySlot[slotFor(new Date(t.occurred_at))].push(t));
-    return (Object.keys(SLOT_META) as Slot[])
-      .map((s) => ({ slot: s, items: bySlot[s] }))
-      .filter((b) => b.items.length > 0);
-  }, [items]);
+  // Flat list sorted latest-first; slot label rendered inline per row.
+  const sorted = useMemo(
+    () =>
+      [...items].sort(
+        (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
+      ),
+    [items],
+  );
 
   return (
     <section>
-      <div className="flex items-center justify-between gap-3 mb-2.5">
-        <div className="flex items-center gap-2">
-          <h4 className="font-display text-sm font-semibold text-foreground">
+      {/* Thin date ribbon */}
+      <div className="flex items-center justify-between gap-3 px-3 py-1.5 mb-1.5 rounded-md bg-white/[0.03] border border-border/30">
+        <div className="flex items-center gap-2 min-w-0">
+          <h4 className="font-display text-xs font-semibold text-foreground uppercase tracking-wider">
             {formatDayLabel(date)}
           </h4>
-          <span className="text-xs text-foreground/60">· {items.length} {items.length === 1 ? "entry" : "entries"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <AnimatePresence initial={false}>
-            {searchOpen && (
-              <motion.div
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 180, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="overflow-hidden"
-              >
-                <Input
-                  autoFocus
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Type 2+ letters…"
-                  className="h-8 text-xs"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => {
-              if (searchOpen) setSearch("");
-              setSearchOpen(!searchOpen);
-            }}
-            aria-label="Search expenses"
-          >
-            {searchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-          </Button>
-          <span className="font-display text-sm font-bold text-foreground tabular-nums">
-            ₹{dayTotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+          <span className="text-[11px] text-foreground/55 tabular-nums">
+            · {items.length} {items.length === 1 ? "entry" : "entries"}
           </span>
         </div>
+        <span className="font-display text-sm font-bold text-foreground tabular-nums">
+          ₹{dayTotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+        </span>
       </div>
 
-      <div className="space-y-3">
-        {slots.map(({ slot, items: slotItems }) => (
-          <SlotBlock
-            key={slot}
-            dayKey={dKey}
-            slot={slot}
-            items={slotItems}
-            openGroups={openGroups}
-            setOpenGroups={setOpenGroups}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ----------------------- Slot block ----------------------- */
-
-function SlotBlock({
-  dayKey: dKey,
-  slot,
-  items,
-  openGroups,
-  setOpenGroups,
-  onEdit,
-  onDelete,
-}: {
-  dayKey: string;
-  slot: Slot;
-  items: Transaction[];
-  openGroups: Record<string, boolean>;
-  setOpenGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  onEdit: (t: Transaction) => void;
-  onDelete: (id: string) => void;
-}) {
-  const meta = SLOT_META[slot];
-  const Icon = meta.icon;
-
-  // group by category to collapse duplicates
-  const groups = useMemo(() => {
-    const map = new Map<string, Transaction[]>();
-    items.forEach((t) => {
-      if (!map.has(t.category)) map.set(t.category, []);
-      map.get(t.category)!.push(t);
-    });
-    return Array.from(map.entries()).map(([category, txns]) => ({ category, txns }));
-  }, [items]);
-
-  return (
-    <div className="rounded-xl border border-border/40 overflow-hidden bg-white/[0.025]">
-      <div className={cn("flex items-center gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wider font-semibold", meta.tint)}>
-        <Icon className="w-3.5 h-3.5" />
-        <span>{meta.label}</span>
-      </div>
-
-      <div className="divide-y divide-border/30">
+      {/* Unified rounded card with all day rows stacked */}
+      <div className="rounded-lg border border-border/40 bg-white/[0.02] overflow-hidden divide-y divide-border/30 transition-colors hover:border-border/60">
         <AnimatePresence initial={false} mode="popLayout">
-          {groups.map(({ category, txns }) => {
-            const key = `${dKey}-${slot}-${category}`;
-            const collapsed = txns.length >= 2;
-            const open = !!openGroups[key];
-            const total = txns.reduce((s, t) => s + toINR(Number(t.amount), t.currency), 0);
-
-            if (!collapsed) {
-              return (
-                <motion.div
-                  key={key}
-                  layout
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                >
-                  <Row t={txns[0]} onEdit={onEdit} onDelete={onDelete} />
-                </motion.div>
-              );
-            }
-
-            return (
-              <motion.div key={key} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <button
-                  onClick={() => setOpenGroups((s) => ({ ...s, [key]: !s[key] }))}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted/30 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium",
-                        categoryBadgeClass("expense", category),
-                      )}
-                    >
-                      {category}
-                    </span>
-                    <span className="text-xs text-foreground/60 truncate">
-                      ({txns.length} {txns.length === 1 ? "entry" : "entries"})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-sm font-semibold tabular-nums">
-                      ₹{total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "w-4 h-4 text-muted-foreground transition-transform",
-                        open && "rotate-180",
-                      )}
-                    />
-                  </div>
-                </button>
-                <AnimatePresence initial={false}>
-                  {open && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden bg-muted/20"
-                    >
-                      <div className="divide-y divide-border/20">
-                        {txns.map((t) => (
-                          <Row key={t.id} t={t} onEdit={onEdit} onDelete={onDelete} compact />
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
+          {sorted.map((t) => (
+            <motion.div
+              key={t.id}
+              layout
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16 }}
+            >
+              <Row t={t} onEdit={onEdit} onDelete={onDelete} />
+            </motion.div>
+          ))}
         </AnimatePresence>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -476,63 +319,74 @@ function Row({
   t,
   onEdit,
   onDelete,
-  compact,
 }: {
   t: Transaction;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
-  compact?: boolean;
 }) {
   const d = new Date(t.occurred_at);
   const amount = formatMoney(Number(t.amount), t.currency);
+  const slot = slotFor(d);
+  const slotMeta = SLOT_META[slot];
+  const SlotIcon = slotMeta.icon;
+  const title = t.description?.trim() || t.category;
+  const hasDescription = !!t.description?.trim();
   return (
     <div
-      className={cn(
-        "group/row flex items-center gap-3 px-3 hover:bg-muted/20 transition-colors",
-        compact ? "py-1.5 pl-6" : "py-2.5",
-      )}
+      className="group/row flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2 hover:bg-muted/20 transition-colors"
     >
       {/* Left cluster: time + category + description, tightly grouped */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
+        <span
+          className={cn("inline-flex items-center", slotMeta.tint)}
+          title={slotMeta.short}
+        >
+          <SlotIcon className="w-3 h-3" />
+        </span>
         <span className="text-[11px] font-mono text-foreground/65 shrink-0 tabular-nums">
           {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
-        {!compact && (
-          <span
-            className={cn(
-              "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium shrink-0",
-              categoryBadgeClass("expense", t.category),
-            )}
-          >
-            {t.category}
-          </span>
-        )}
-        <span className="text-sm text-foreground/90 truncate min-w-0">
-          {t.description ?? <span className="text-muted-foreground">—</span>}
+        <span
+          className={cn(
+            "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium shrink-0",
+            categoryBadgeClass("expense", t.category),
+          )}
+        >
+          {t.category}
+        </span>
+        <span className="text-sm text-foreground font-medium truncate min-w-0">
+          {title}
+          {!hasDescription && (
+            <span className="ml-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-normal">
+              · no note
+            </span>
+          )}
         </span>
       </div>
-      <span className="font-display text-sm font-semibold tabular-nums text-coral/90 shrink-0">
-        − {amount}
-      </span>
-      <div className="flex items-center gap-0.5 shrink-0 opacity-100 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 md:h-7 md:w-7"
-          onClick={() => onEdit(t)}
-          aria-label="Edit"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 md:h-7 md:w-7 text-coral hover:text-coral"
-          onClick={() => onDelete(t.id)}
-          aria-label="Delete"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
+      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0">
+        <span className="font-display text-sm font-semibold tabular-nums text-coral/90">
+          − {amount}
+        </span>
+        <div className="flex items-center gap-0.5 opacity-100 sm:opacity-30 sm:group-hover/row:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 sm:h-7 sm:w-7"
+            onClick={() => onEdit(t)}
+            aria-label="Edit"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 sm:h-7 sm:w-7 text-coral hover:text-coral"
+            onClick={() => onDelete(t.id)}
+            aria-label="Delete"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
