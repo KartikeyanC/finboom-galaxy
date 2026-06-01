@@ -65,6 +65,170 @@
     --sidebar-border: 220 14% 14%;
     --sidebar-ring: 160 60% 45%;
   }
+
+  /* ============ THEME: Crisp Light ============ */
+  [data-theme="light"] {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --card-elevated: 210 40% 98%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 160 70% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 18%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 40%;
+
+    --accent: 210 40% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 70% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 35 90% 48%;
+    --warning-foreground: 0 0% 100%;
+
+    --coral: 12 80% 55%;
+    --coral-foreground: 0 0% 100%;
+
+    --border: 220 13% 86%;
+    --input: 220 13% 82%;
+    --ring: 160 70% 36%;
+
+    --sidebar-background: 210 40% 98%;
+    --sidebar-foreground: 222 30% 25%;
+    --sidebar-primary: 160 70% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 94%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 160 70% 36%;
+  }
+
+  /* ============ THEME: Emerald Growth ============ */
+  [data-theme="emerald"] {
+    --background: 165 40% 6%;
+    --foreground: 160 25% 92%;
+
+    --card: 165 30% 10%;
+    --card-foreground: 160 25% 92%;
+    --card-elevated: 165 28% 13%;
+
+    --popover: 165 30% 10%;
+    --popover-foreground: 160 25% 92%;
+
+    --primary: 160 70% 42%;
+    --primary-foreground: 165 40% 6%;
+
+    --secondary: 170 30% 14%;
+    --secondary-foreground: 160 25% 80%;
+
+    --muted: 170 25% 13%;
+    --muted-foreground: 165 15% 55%;
+
+    --accent: 175 60% 22%;
+    --accent-foreground: 160 30% 95%;
+
+    --border: 165 25% 18%;
+    --input: 165 25% 18%;
+    --ring: 175 70% 45%;
+
+    --sidebar-background: 165 35% 7%;
+    --sidebar-foreground: 160 20% 75%;
+    --sidebar-primary: 175 70% 45%;
+    --sidebar-primary-foreground: 165 40% 6%;
+    --sidebar-accent: 170 30% 14%;
+    --sidebar-accent-foreground: 160 25% 92%;
+    --sidebar-border: 165 25% 14%;
+    --sidebar-ring: 175 70% 45%;
+  }
+
+  /* ============ THEME: Classic Midnight Blue ============ */
+  [data-theme="midnight"] {
+    --background: 222 60% 11%;
+    --foreground: 210 30% 88%;
+
+    --card: 222 50% 14%;
+    --card-foreground: 210 30% 88%;
+    --card-elevated: 222 45% 17%;
+
+    --popover: 222 50% 14%;
+    --popover-foreground: 210 30% 88%;
+
+    --primary: 210 80% 65%;
+    --primary-foreground: 222 60% 11%;
+
+    --secondary: 222 40% 18%;
+    --secondary-foreground: 210 25% 75%;
+
+    --muted: 222 35% 17%;
+    --muted-foreground: 215 20% 60%;
+
+    --accent: 210 50% 28%;
+    --accent-foreground: 210 40% 95%;
+
+    --border: 215 40% 25%;
+    --input: 215 40% 25%;
+    --ring: 210 80% 65%;
+
+    --sidebar-background: 222 55% 9%;
+    --sidebar-foreground: 210 25% 75%;
+    --sidebar-primary: 210 80% 65%;
+    --sidebar-primary-foreground: 222 60% 11%;
+    --sidebar-accent: 222 40% 17%;
+    --sidebar-accent-foreground: 210 30% 88%;
+    --sidebar-border: 215 40% 22%;
+    --sidebar-ring: 210 80% 65%;
+  }
+
+  /* ============ THEME: Royal Amethyst ============ */
+  [data-theme="amethyst"] {
+    --background: 270 30% 8%;
+    --foreground: 280 20% 92%;
+
+    --card: 270 25% 12%;
+    --card-foreground: 280 20% 92%;
+    --card-elevated: 270 22% 15%;
+
+    --popover: 270 25% 12%;
+    --popover-foreground: 280 20% 92%;
+
+    --primary: 270 75% 65%;
+    --primary-foreground: 270 30% 8%;
+
+    --secondary: 270 20% 18%;
+    --secondary-foreground: 280 15% 80%;
+
+    --muted: 270 18% 16%;
+    --muted-foreground: 275 12% 60%;
+
+    --accent: 280 60% 30%;
+    --accent-foreground: 280 25% 95%;
+
+    --border: 270 25% 22%;
+    --input: 270 25% 22%;
+    --ring: 280 90% 70%;
+
+    --sidebar-background: 270 28% 9%;
+    --sidebar-foreground: 280 15% 75%;
+    --sidebar-primary: 280 90% 70%;
+    --sidebar-primary-foreground: 270 30% 8%;
+    --sidebar-accent: 270 20% 16%;
+    --sidebar-accent-foreground: 280 20% 92%;
+    --sidebar-border: 270 25% 18%;
+    --sidebar-ring: 280 90% 70%;
+  }
 }
 
 @layer base {
