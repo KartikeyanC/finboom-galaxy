@@ -279,6 +279,7 @@ export default function MatrixFilter<T>({
               ) : (
                 availableCats.map((c) => {
                   const on = cats.includes(c);
+                  const n = catCounts.get(c) ?? 0;
                   return (
                     <button
                       key={c}
@@ -300,6 +301,16 @@ export default function MatrixFilter<T>({
                           {on && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                         </span>
                         <span className="truncate">{c}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          "ml-2 shrink-0 inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10px] font-semibold tabular-nums",
+                          on
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground/70",
+                        )}
+                      >
+                        {n}
                       </span>
                     </button>
                   );
