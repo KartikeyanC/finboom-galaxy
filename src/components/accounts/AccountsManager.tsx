@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Wallet,
   Landmark,
@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAccess, type AccessProfile } from "@/contexts/AccessContext";
 
 type AccountType =
   | "bank"
