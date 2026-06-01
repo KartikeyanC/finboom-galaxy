@@ -11,6 +11,7 @@ import {
   Zap,
   Upload,
   Landmark,
+  CreditCard,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -43,6 +44,7 @@ const toolItems = [
   { title: "Calculator", url: "/app/calculator", icon: Calculator },
   { title: "Import", url: "/app/import", icon: Upload },
   { title: "Reminders", url: "/app/reminders", icon: Bell },
+  { title: "Billing", url: "/app/billing", icon: CreditCard },
   { title: "Settings", url: "/app/settings", icon: Settings },
 ];
 

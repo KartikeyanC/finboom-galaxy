@@ -21,6 +21,7 @@ import ProfilePage from "./pages/Profile.tsx";
 import NotificationsPage from "./pages/Notifications.tsx";
 import ImportPage from "./pages/Import.tsx";
 import AccountsPage from "./pages/Accounts.tsx";
+import BillingPage from "./pages/Billing.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
@@ -58,6 +59,7 @@ const App = () => (
                       <Route path="/notifications" element={<NotificationsPage />} />
                       <Route path="/import" element={<ImportPage />} />
                       <Route path="/accounts" element={<AccountsPage />} />
+                      <Route path="/billing" element={<BillingPage />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<Navigate to="/app" replace />} />
                     </Routes>
