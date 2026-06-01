@@ -1,6 +1,22 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Pencil, Plus, Trash2, Search, Sunrise, Sun, Moon, X } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  Trash2,
+  Search,
+  Sunrise,
+  Sun,
+  Moon,
+  X,
+  Sparkles,
+  UtensilsCrossed,
+  Bus,
+  ShoppingBasket,
+  Clapperboard,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -25,15 +41,21 @@ import { categoryBadgeClass } from "@/lib/categories";
 import MatrixFilter from "@/components/filters/MatrixFilter";
 import { EXPENSE_CATEGORIES } from "@/lib/finance";
 
-type ChipDef = { id: string; label: string; icon: string; match?: string[] };
+type ChipDef = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  tint: string;
+  match?: string[];
+};
 
 const CHIPS: ChipDef[] = [
-  { id: "all", label: "All", icon: "✨" },
-  { id: "food", label: "Food & Dining", icon: "🍔", match: ["Food & Dining"] },
-  { id: "transport", label: "Transport", icon: "🚗", match: ["Transport"] },
-  { id: "groceries", label: "Groceries", icon: "🛒", match: ["Groceries", "Shopping"] },
-  { id: "entertainment", label: "Entertainment", icon: "🍿", match: ["Entertainment"] },
-  { id: "bills", label: "Bills", icon: "⚡", match: ["Utilities", "Subscriptions", "Rent"] },
+  { id: "all", label: "All", icon: Sparkles, tint: "text-amber-300" },
+  { id: "food", label: "Food & Dining", icon: UtensilsCrossed, tint: "text-yellow-300", match: ["Food & Dining"] },
+  { id: "transport", label: "Transport", icon: Bus, tint: "text-orange-300", match: ["Transport"] },
+  { id: "groceries", label: "Groceries", icon: ShoppingBasket, tint: "text-pink-300", match: ["Groceries", "Shopping"] },
+  { id: "entertainment", label: "Entertainment", icon: Clapperboard, tint: "text-indigo-300", match: ["Entertainment"] },
+  { id: "bills", label: "Bills", icon: Zap, tint: "text-violet-300", match: ["Utilities", "Subscriptions", "Rent"] },
 ];
 
 type Slot = "morning" | "afternoon" | "evening";
@@ -145,18 +167,25 @@ export default function ExpenseLedger() {
         <div className="flex items-center gap-2 px-5 py-2.5 overflow-x-auto no-scrollbar touch-pan-x">
           {CHIPS.map((c) => {
             const active = chip === c.id;
+            const Icon = c.icon;
             return (
               <button
                 key={c.id}
                 onClick={() => setChip(c.id)}
                 className={cn(
-                  "shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium border transition-all",
+                  "shrink-0 inline-flex items-center gap-1.5 rounded-full pl-2.5 pr-3.5 py-1.5 text-xs font-medium border transition-all",
                   active
                     ? "bg-primary text-primary-foreground border-primary shadow-sm"
                     : "bg-muted/40 text-muted-foreground border-border/50 hover:bg-muted hover:text-foreground",
                 )}
               >
-                <span className="text-sm leading-none">{c.icon}</span>
+                <Icon
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0",
+                    active ? "text-primary-foreground" : c.tint,
+                  )}
+                  strokeWidth={2.25}
+                />
                 <span>{c.label}</span>
               </button>
             );
