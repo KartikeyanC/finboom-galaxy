@@ -1,16 +1,26 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { Bell, LogOut, Search } from "lucide-react";
+import { Bell, LogOut, Search, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useNavigate } from "react-router-dom";
+import { useAccess } from "@/contexts/AccessContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   useRealtimeSync();
+  const { profiles, viewAsId, setViewAsId, activeProfile } = useAccess();
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -27,6 +37,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {profiles.length > 0 && (
+                <Select
+                  value={viewAsId ?? "__owner__"}
+                  onValueChange={(v) => setViewAsId(v === "__owner__" ? null : v)}
+                >
+                  <SelectTrigger className="h-8 w-[200px] text-xs">
+                    <Eye className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__owner__">Owner (full access)</SelectItem>
+                    {profiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}{" "}
+                        <span className="text-muted-foreground">· {p.role}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {activeProfile && (
+                <Badge
+                  variant="outline"
+                  className="hidden md:inline-flex border-amber-500/40 text-amber-400 bg-amber-500/10 text-[10px]"
+                >
+                  Restricted view
+                </Badge>
+              )}
               <span className="text-xs text-muted-foreground hidden sm:block font-display">April 2026</span>
               <Link
                 to="/app/notifications"
