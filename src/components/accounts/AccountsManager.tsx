@@ -15,6 +15,14 @@ import {
   CalendarIcon,
   Pencil,
   X,
+  Users,
+  Lock,
+  ChevronDown,
+  ChevronUp,
+  Mail,
+  ShieldCheck,
+  Eye,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -109,6 +117,18 @@ type FormState = {
   color: ColorId;
   icon: string;
   purposes: string[];
+  collaborators: Collaborator[];
+  dateLockEnabled: boolean;
+  lockStart: Date | undefined;
+  lockEnd: Date | undefined;
+};
+
+export type CollaboratorRole = "admin" | "viewer";
+export type Collaborator = {
+  id: string;
+  name: string;
+  email: string;
+  role: CollaboratorRole;
 };
 
 const emptyForm = (): FormState => ({
@@ -126,6 +146,10 @@ const emptyForm = (): FormState => ({
   color: "emerald",
   icon: "wallet",
   purposes: [],
+  collaborators: [],
+  dateLockEnabled: false,
+  lockStart: undefined,
+  lockEnd: undefined,
 });
 
 type SavedAccount = FormState & { id: string };
