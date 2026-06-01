@@ -15,6 +15,14 @@ import {
   CalendarIcon,
   Pencil,
   X,
+  Users,
+  Lock,
+  ChevronDown,
+  ChevronUp,
+  Mail,
+  ShieldCheck,
+  Eye,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -33,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -109,6 +118,18 @@ type FormState = {
   color: ColorId;
   icon: string;
   purposes: string[];
+  collaborators: Collaborator[];
+  dateLockEnabled: boolean;
+  lockStart: Date | undefined;
+  lockEnd: Date | undefined;
+};
+
+export type CollaboratorRole = "admin" | "viewer";
+export type Collaborator = {
+  id: string;
+  name: string;
+  email: string;
+  role: CollaboratorRole;
 };
 
 const emptyForm = (): FormState => ({
@@ -126,6 +147,10 @@ const emptyForm = (): FormState => ({
   color: "emerald",
   icon: "wallet",
   purposes: [],
+  collaborators: [],
+  dateLockEnabled: false,
+  lockStart: undefined,
+  lockEnd: undefined,
 });
 
 type SavedAccount = FormState & { id: string };
@@ -205,6 +230,53 @@ export default function AccountsManager() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<CollaboratorRole>("viewer");
+
+  const addCollaborator = () => {
+    const name = inviteName.trim();
+    const email = inviteEmail.trim();
+    if (!name || !email) {
+      toast.error("Enter name and email");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Invalid email address");
+      return;
+    }
+    if (form.collaborators.some((c) => c.email.toLowerCase() === email.toLowerCase())) {
+      toast.error("This email is already a collaborator");
+      return;
+    }
+    setForm((f) => ({
+      ...f,
+      collaborators: [
+        ...f.collaborators,
+        { id: crypto.randomUUID(), name, email, role: inviteRole },
+      ],
+    }));
+    setInviteName("");
+    setInviteEmail("");
+    setInviteRole("viewer");
+    toast.success(`Invited ${name} as ${inviteRole}`);
+  };
+
+  const removeCollaborator = (id: string) =>
+    setForm((f) => ({ ...f, collaborators: f.collaborators.filter((c) => c.id !== id) }));
+
+  const updateCollaboratorRole = (id: string, role: CollaboratorRole) =>
+    setForm((f) => ({
+      ...f,
+      collaborators: f.collaborators.map((c) => (c.id === id ? { ...c, role } : c)),
+    }));
+
+  const lockInvalid =
+    form.dateLockEnabled &&
+    form.lockStart &&
+    form.lockEnd &&
+    form.lockStart > form.lockEnd;
 
   const addPurpose = () => {
     const v = newPurpose.trim();
@@ -281,6 +353,16 @@ export default function AccountsManager() {
     if (!form.name.trim()) {
       toast.error("Please enter an account name");
       return;
+    }
+    if (form.dateLockEnabled) {
+      if (!form.lockStart || !form.lockEnd) {
+        toast.error("Pick both start and end dates for the work window");
+        return;
+      }
+      if (form.lockStart > form.lockEnd) {
+        toast.error("Start date must be before end date");
+        return;
+      }
     }
     if (editingAccountId) {
       setAccounts((a) =>
@@ -697,6 +779,222 @@ export default function AccountsManager() {
               </div>
             </div>
 
+            {/* Account Share & Permissions Center */}
+            <div className="rounded-xl border border-border/60 bg-card/30 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShareOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/40 transition"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-medium">Account Share & Permissions Center</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {form.collaborators.length} collaborator
+                      {form.collaborators.length === 1 ? "" : "s"}
+                      {form.dateLockEnabled ? " · Date-lock active" : ""}
+                    </div>
+                  </div>
+                </div>
+                {shareOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+
+              {shareOpen && (
+                <div className="border-t border-border/60 p-4 space-y-5 animate-fade-in">
+                  {/* Invite member */}
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Invite Member
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_140px_auto] gap-2">
+                      <Input
+                        value={inviteName}
+                        onChange={(e) => setInviteName(e.target.value)}
+                        placeholder="Collaborator name"
+                      />
+                      <div className="relative">
+                        <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          type="email"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          placeholder="email@domain.com"
+                          className="pl-8"
+                        />
+                      </div>
+                      <Select
+                        value={inviteRole}
+                        onValueChange={(v) => setInviteRole(v as CollaboratorRole)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">
+                            <span className="inline-flex items-center gap-2">
+                              <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Admin
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="viewer">
+                            <span className="inline-flex items-center gap-2">
+                              <Eye className="h-3.5 w-3.5 text-muted-foreground" /> Viewer
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" onClick={addCollaborator}>
+                        <Plus className="h-4 w-4" /> Invite
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Admins can edit & log transactions. Viewers can only see balances.
+                    </p>
+                  </div>
+
+                  {/* Collaborator list */}
+                  {form.collaborators.length > 0 && (
+                    <div className="space-y-2">
+                      {form.collaborators.map((c) => (
+                        <div
+                          key={c.id}
+                          className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-2.5"
+                        >
+                          <div
+                            className={cn(
+                              "h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold",
+                              c.role === "admin"
+                                ? "bg-primary/15 text-primary"
+                                : "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {c.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{c.name}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {c.email}
+                            </div>
+                          </div>
+                          <Select
+                            value={c.role}
+                            onValueChange={(v) =>
+                              updateCollaboratorRole(c.id, v as CollaboratorRole)
+                            }
+                          >
+                            <SelectTrigger className="h-8 w-28 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="viewer">Viewer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => removeCollaborator(c.id)}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Date lock window */}
+                  <div className="rounded-lg border border-border/60 bg-background/40 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Lock className="h-4 w-4 text-primary" />
+                        <div>
+                          <div className="text-sm font-medium">
+                            Enforce Date-Restricted Work Window
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            Block transactions outside the approved dates.
+                          </div>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={form.dateLockEnabled}
+                        onCheckedChange={(v) => set("dateLockEnabled", v)}
+                      />
+                    </div>
+
+                    {form.dateLockEnabled && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "justify-start text-left font-normal",
+                                  !form.lockStart && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {form.lockStart ? format(form.lockStart, "PPP") : "Start date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={form.lockStart}
+                                onSelect={(d) => set("lockStart", d)}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "justify-start text-left font-normal",
+                                  !form.lockEnd && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {form.lockEnd ? format(form.lockEnd, "PPP") : "End date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={form.lockEnd}
+                                onSelect={(d) => set("lockEnd", d)}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        {lockInvalid && (
+                          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 text-destructive p-2 text-xs">
+                            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span>
+                              This account ledger is locked for editing outside the specified
+                              operational dates. Start date must be before end date.
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2 pt-2">
               {editingAccountId ? (
                 <>
@@ -787,6 +1085,32 @@ export default function AccountsManager() {
                                   {p}
                                 </Badge>
                               ))
+                            )}
+                            {a.collaborators.map((c) => (
+                              <Badge
+                                key={c.id}
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px] gap-1",
+                                  c.role === "admin"
+                                    ? "border-primary/40 text-primary bg-primary/10"
+                                    : "border-border/60 text-muted-foreground"
+                                )}
+                                title={`${c.email} · ${c.role}`}
+                              >
+                                <Users className="h-2.5 w-2.5" />
+                                {c.role === "admin" ? "Co-Admin" : "Viewer"}: {c.name.split(" ")[0]}
+                              </Badge>
+                            ))}
+                            {a.dateLockEnabled && a.lockStart && a.lockEnd && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] gap-1 border-amber-500/40 text-amber-400 bg-amber-500/10"
+                                title={`Locked ${format(a.lockStart, "PP")} → ${format(a.lockEnd, "PP")}`}
+                              >
+                                <CalendarIcon className="h-2.5 w-2.5" />
+                                {format(a.lockStart, "dd MMM")} – {format(a.lockEnd, "dd MMM")}
+                              </Badge>
                             )}
                           </div>
                         </div>
