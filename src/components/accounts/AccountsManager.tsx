@@ -149,6 +149,53 @@ export const ACCESS_MENUS: { id: string; label: string }[] = [
 ];
 const ALL_MENU_IDS = ACCESS_MENUS.map((m) => m.id);
 
+function PermissionBadges({ menus }: { menus: string[] }) {
+  if (menus.length === ALL_MENU_IDS.length) {
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        <Badge
+          variant="outline"
+          className="text-[10px] gap-1 border-emerald-500/40 text-emerald-400 bg-emerald-500/10"
+        >
+          <Check className="h-2.5 w-2.5" />
+          All Modules Granted
+        </Badge>
+      </div>
+    );
+  }
+  if (menus.length === 0) {
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        <Badge
+          variant="outline"
+          className="text-[10px] border-destructive/40 text-destructive bg-destructive/10"
+        >
+          No module access
+        </Badge>
+      </div>
+    );
+  }
+  const labels = menus
+    .map((id) => ACCESS_MENUS.find((m) => m.id === id)?.label)
+    .filter((x): x is string => Boolean(x));
+  const visible = labels.slice(0, 3);
+  const overflow = labels.length - visible.length;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {visible.map((l) => (
+        <Badge key={l} variant="secondary" className="text-[10px] px-1.5 py-0">
+          {l}
+        </Badge>
+      ))}
+      {overflow > 0 && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+          +{overflow} more
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 const emptyForm = (): FormState => ({
   type: "bank",
   name: "",
@@ -251,6 +298,7 @@ export default function AccountsManager() {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<CollaboratorRole>("viewer");
+  const [inviteMenus, setInviteMenus] = useState<string[]>([...ALL_MENU_IDS]);
   const { setProfiles } = useAccess();
 
   // Sync collaborator permissions into the global access context so the
@@ -286,12 +334,13 @@ export default function AccountsManager() {
       ...f,
       collaborators: [
         ...f.collaborators,
-        { id: crypto.randomUUID(), name, email, role: inviteRole, menuAccess: [...ALL_MENU_IDS] },
+        { id: crypto.randomUUID(), name, email, role: inviteRole, menuAccess: [...inviteMenus] },
       ],
     }));
     setInviteName("");
     setInviteEmail("");
     setInviteRole("viewer");
+    setInviteMenus([...ALL_MENU_IDS]);
     toast.success(`Invited ${name} as ${inviteRole}`);
   };
 
@@ -911,6 +960,64 @@ export default function AccountsManager() {
                     <p className="text-[11px] text-muted-foreground">
                       Admins can edit & log transactions. Viewers can only see balances.
                     </p>
+
+                    {/* Grant Module Permissions */}
+                    <div className="mt-3 rounded-lg border border-border/60 bg-background/40 p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <Label className="text-xs font-semibold">
+                            Grant Module Permissions
+                          </Label>
+                          <p className="text-[10px] text-muted-foreground">
+                            Pick exactly which feature pages this collaborator can open.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setInviteMenus((m) =>
+                              m.length === ALL_MENU_IDS.length ? [] : [...ALL_MENU_IDS],
+                            )
+                          }
+                          className="text-[11px] font-medium text-primary hover:underline whitespace-nowrap"
+                        >
+                          Toggle All
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {ACCESS_MENUS.map((m) => {
+                          const checked = inviteMenus.includes(m.id);
+                          return (
+                            <label
+                              key={m.id}
+                              className={cn(
+                                "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors",
+                                checked
+                                  ? "border-primary/60 bg-primary/10 text-primary"
+                                  : "border-border/60 hover:border-border",
+                              )}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() =>
+                                  setInviteMenus((curr) =>
+                                    curr.includes(m.id)
+                                      ? curr.filter((x) => x !== m.id)
+                                      : [...curr, m.id],
+                                  )
+                                }
+                              />
+                              <span className="truncate">{m.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {inviteRole === "viewer"
+                          ? "Viewer: read-only access to the selected pages."
+                          : "Admin: full read, write, edit & delete on the selected pages."}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Collaborator list */}
@@ -919,7 +1026,7 @@ export default function AccountsManager() {
                       {form.collaborators.map((c) => (
                         <div
                           key={c.id}
-                          className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-2.5"
+                          className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/40 p-2.5"
                         >
                           <div
                             className={cn(
@@ -936,6 +1043,7 @@ export default function AccountsManager() {
                             <div className="text-[11px] text-muted-foreground truncate">
                               {c.email}
                             </div>
+                            <PermissionBadges menus={c.menuAccess} />
                           </div>
                           <Select
                             value={c.role}

@@ -16,6 +16,10 @@ type AccessContextValue = {
   /** null means full access (owner). Otherwise list of allowed menu ids. */
   allowedMenus: string[] | null;
   canAccess: (menuId: string | undefined) => boolean;
+  /** Whether the active profile can mutate the given module. */
+  canWrite: (menuId: string | undefined) => boolean;
+  /** True when a restricted (viewer) profile is currently active. */
+  isReadOnly: boolean;
 };
 
 const STORAGE_PROFILES = "finroots.access.profiles";
@@ -95,6 +99,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     [allowedMenus],
   );
 
+  const isReadOnly = !!activeProfile && activeProfile.role === "viewer";
+
+  const canWrite = useCallback(
+    (menuId: string | undefined) => {
+      if (!activeProfile) return true; // owner
+      if (activeProfile.role === "viewer") return false;
+      // admin profile: can write only on modules they have access to
+      return canAccess(menuId);
+    },
+    [activeProfile, canAccess],
+  );
+
   const value = useMemo<AccessContextValue>(
     () => ({
       profiles,
@@ -104,8 +120,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       activeProfile,
       allowedMenus,
       canAccess,
+      canWrite,
+      isReadOnly,
     }),
-    [profiles, setProfiles, viewAsId, setViewAsId, activeProfile, allowedMenus, canAccess],
+    [profiles, setProfiles, viewAsId, setViewAsId, activeProfile, allowedMenus, canAccess, canWrite, isReadOnly],
   );
 
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;

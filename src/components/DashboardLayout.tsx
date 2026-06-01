@@ -1,6 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { Bell, LogOut, Search, Eye } from "lucide-react";
+import { Bell, LogOut, Search, Eye, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navigate = useNavigate();
   useRealtimeSync();
   const { profiles, viewAsId, setViewAsId, activeProfile } = useAccess();
+  const isReadOnly = !!activeProfile && activeProfile.role === "viewer";
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -98,6 +99,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
           </header>
+
+          {isReadOnly && (
+            <div className="border-b border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs px-4 sm:px-6 py-2 flex items-center gap-2">
+              <Lock className="h-3.5 w-3.5" />
+              Read-only view as <strong className="font-semibold">{activeProfile?.name}</strong>.
+              Add, edit and delete actions are disabled for this collaborator.
+            </div>
+          )}
 
           <main className="flex-1 overflow-auto">
             {children}
