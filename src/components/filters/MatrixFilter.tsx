@@ -209,7 +209,7 @@ export default function MatrixFilter<T>({
             align="start"
             className={cn(
               "p-0 overflow-hidden transition-[width] duration-200",
-              customOpen ? "w-[540px]" : "w-[280px]",
+              customOpen ? "w-[600px]" : "w-[280px]",
             )}
           >
             <div className="flex">
