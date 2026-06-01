@@ -1,16 +1,6 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Pencil,
-  Plus,
-  Trash2,
-  Search,
-  ChevronDown,
-  Sunrise,
-  Sun,
-  Moon,
-  X,
-} from "lucide-react";
+import { Pencil, Plus, Trash2, Search, Sunrise, Sun, Moon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -47,10 +37,10 @@ const CHIPS: ChipDef[] = [
 ];
 
 type Slot = "morning" | "afternoon" | "evening";
-const SLOT_META: Record<Slot, { label: string; icon: typeof Sunrise; tint: string }> = {
-  morning: { label: "Morning Spends · 6 AM – 12 PM", icon: Sunrise, tint: "bg-amber-500/5 text-amber-300/90" },
-  afternoon: { label: "Afternoon Spends · 12 PM – 5 PM", icon: Sun, tint: "bg-orange-500/5 text-orange-300/90" },
-  evening: { label: "Evening & Night · 5 PM – 6 AM", icon: Moon, tint: "bg-indigo-500/5 text-indigo-300/90" },
+const SLOT_META: Record<Slot, { short: string; icon: typeof Sunrise; tint: string }> = {
+  morning:   { short: "Morning",   icon: Sunrise, tint: "text-amber-300/90" },
+  afternoon: { short: "Afternoon", icon: Sun,     tint: "text-orange-300/90" },
+  evening:   { short: "Evening",   icon: Moon,    tint: "text-indigo-300/90" },
 };
 
 function slotFor(d: Date): Slot {
@@ -84,7 +74,6 @@ export default function ExpenseLedger() {
   const [chip, setChip] = useState<string>("all");
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   // chip + search narrowing happens first; matrix filter handles date/category cross-filter
   const preFiltered = useMemo(() => {
@@ -113,9 +102,42 @@ export default function ExpenseLedger() {
             {preFiltered.length} {preFiltered.length === 1 ? "entry" : "entries"} in view
           </p>
         </div>
-        <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="w-4 h-4 mr-1" /> Add expense
-        </Button>
+        <div className="flex items-center gap-2">
+          <AnimatePresence initial={false}>
+            {searchOpen && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 200, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="overflow-hidden"
+              >
+                <Input
+                  autoFocus
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Type 2+ letters…"
+                  className="h-8 text-xs"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              if (searchOpen) setSearch("");
+              setSearchOpen(!searchOpen);
+            }}
+            aria-label="Search expenses"
+          >
+            {searchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+          </Button>
+          <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+            <Plus className="w-4 h-4 mr-1" /> Add expense
+          </Button>
+        </div>
       </div>
 
       {/* Sticky filter chip rail */}
@@ -184,12 +206,6 @@ export default function ExpenseLedger() {
                       dayKey={day.key}
                       date={day.date}
                       items={day.items}
-                      searchOpen={searchOpen}
-                      setSearchOpen={setSearchOpen}
-                      search={search}
-                      setSearch={setSearch}
-                      openGroups={openGroups}
-                      setOpenGroups={setOpenGroups}
                       onEdit={(t) => { setEditing(t); setDialogOpen(true); }}
                       onDelete={(id) => setDeleteId(id)}
                     />
