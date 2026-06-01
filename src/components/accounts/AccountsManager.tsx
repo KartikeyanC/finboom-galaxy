@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Eye,
   AlertTriangle,
+  Settings2,
   type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -130,7 +131,22 @@ export type Collaborator = {
   name: string;
   email: string;
   role: CollaboratorRole;
+  menuAccess: string[];
 };
+
+export const ACCESS_MENUS: { id: string; label: string }[] = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "income", label: "Income" },
+  { id: "expenses", label: "Expenses" },
+  { id: "investments", label: "Investments" },
+  { id: "budget", label: "Budget" },
+  { id: "goals", label: "Goals" },
+  { id: "reminders", label: "Reminders" },
+  { id: "calculator", label: "Calculator" },
+  { id: "bill-scan", label: "Bill Scan" },
+  { id: "import", label: "Import" },
+];
+const ALL_MENU_IDS = ACCESS_MENUS.map((m) => m.id);
 
 const emptyForm = (): FormState => ({
   type: "bank",
@@ -254,7 +270,7 @@ export default function AccountsManager() {
       ...f,
       collaborators: [
         ...f.collaborators,
-        { id: crypto.randomUUID(), name, email, role: inviteRole },
+        { id: crypto.randomUUID(), name, email, role: inviteRole, menuAccess: [...ALL_MENU_IDS] },
       ],
     }));
     setInviteName("");
@@ -270,6 +286,29 @@ export default function AccountsManager() {
     setForm((f) => ({
       ...f,
       collaborators: f.collaborators.map((c) => (c.id === id ? { ...c, role } : c)),
+    }));
+
+  const toggleCollaboratorMenu = (id: string, menuId: string) =>
+    setForm((f) => ({
+      ...f,
+      collaborators: f.collaborators.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              menuAccess: c.menuAccess.includes(menuId)
+                ? c.menuAccess.filter((m) => m !== menuId)
+                : [...c.menuAccess, menuId],
+            }
+          : c,
+      ),
+    }));
+
+  const setCollaboratorMenuAll = (id: string, all: boolean) =>
+    setForm((f) => ({
+      ...f,
+      collaborators: f.collaborators.map((c) =>
+        c.id === id ? { ...c, menuAccess: all ? [...ALL_MENU_IDS] : [] } : c,
+      ),
     }));
 
   const lockInvalid =
@@ -896,6 +935,70 @@ export default function AccountsManager() {
                               <SelectItem value="viewer">Viewer</SelectItem>
                             </SelectContent>
                           </Select>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs"
+                              >
+                                <Settings2 className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Menu Access</span>
+                                <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                                  {c.menuAccess.length}/{ALL_MENU_IDS.length}
+                                </Badge>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-64 p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-xs font-medium">
+                                  Menus accessible to {c.name.split(" ")[0]}
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between mb-2 gap-2">
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-primary hover:underline"
+                                  onClick={() => setCollaboratorMenuAll(c.id, true)}
+                                >
+                                  Select all
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-muted-foreground hover:underline"
+                                  onClick={() => setCollaboratorMenuAll(c.id, false)}
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1.5 max-h-60 overflow-auto">
+                                {ACCESS_MENUS.map((m) => {
+                                  const checked = c.menuAccess.includes(m.id);
+                                  return (
+                                    <label
+                                      key={m.id}
+                                      className={cn(
+                                        "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer transition-colors",
+                                        checked
+                                          ? "border-primary/60 bg-primary/10 text-primary"
+                                          : "border-border/60 hover:border-border",
+                                      )}
+                                    >
+                                      <Checkbox
+                                        checked={checked}
+                                        onCheckedChange={() => toggleCollaboratorMenu(c.id, m.id)}
+                                      />
+                                      <span className="truncate">{m.label}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-2 text-[10px] text-muted-foreground">
+                                Controls which sidebar menus this collaborator can open for this account.
+                              </p>
+                            </PopoverContent>
+                          </Popover>
                           <Button
                             size="icon"
                             variant="ghost"
