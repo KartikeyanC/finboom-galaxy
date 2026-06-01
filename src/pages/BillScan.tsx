@@ -116,6 +116,8 @@ export default function BillScanPage() {
         category: s.category,
         amount: s.amount,
         date: today,
+        qty: s.qty,
+        unit: s.unit as Unit,
       }));
       const itemsTotal = items.reduce((a, b) => a + b.amount, 0);
       const lumpsum: ScannedRow[] = [
@@ -125,6 +127,8 @@ export default function BillScanPage() {
           category: detected.category,
           amount: itemsTotal || total,
           date: today,
+          qty: 1,
+          unit: "pc",
         },
       ];
       setRows(lineItemMode ? items : lumpsum);
@@ -147,6 +151,8 @@ export default function BillScanPage() {
           category: s.category,
           amount: s.amount,
           date: today,
+          qty: s.qty,
+          unit: s.unit as Unit,
         }))
       );
     } else if (!lineItemMode && rows.length > 1) {
@@ -158,6 +164,8 @@ export default function BillScanPage() {
           category: detected.category,
           amount: total,
           date: today,
+          qty: 1,
+          unit: "pc",
         },
       ]);
     }
@@ -352,12 +360,12 @@ export default function BillScanPage() {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-12 gap-2">
                     <Select
                       value={r.category}
                       onValueChange={(v) => updateRow(r.id, { category: v })}
                     >
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger className="h-9 text-xs col-span-4">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -371,16 +379,38 @@ export default function BillScanPage() {
                     </Select>
                     <Input
                       type="number"
+                      value={r.qty}
+                      onChange={(e) => updateRow(r.id, { qty: Number(e.target.value) || 0 })}
+                      className="h-9 col-span-2 bg-white/5 border border-slate-800"
+                      placeholder="Qty"
+                    />
+                    <Select
+                      value={r.unit}
+                      onValueChange={(v) => updateRow(r.id, { unit: v as Unit })}
+                    >
+                      <SelectTrigger className="h-9 text-xs col-span-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UNITS.map((u) => (
+                          <SelectItem key={u} value={u}>
+                            {u}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
                       value={r.amount}
                       onChange={(e) => updateRow(r.id, { amount: Number(e.target.value) || 0 })}
-                      className="h-9"
+                      className="h-9 col-span-2"
                       placeholder="Amount"
                     />
                     <Input
                       type="date"
                       value={r.date}
                       onChange={(e) => updateRow(r.id, { date: e.target.value })}
-                      className="h-9"
+                      className="h-9 col-span-2"
                     />
                   </div>
                 </div>
