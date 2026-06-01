@@ -270,8 +270,7 @@ export default function AccountsManager() {
       ...f,
       collaborators: [
         ...f.collaborators,
-        { id: crypto.randomUUID(), name, email, role: inviteRole },
-        ,
+        { id: crypto.randomUUID(), name, email, role: inviteRole, menuAccess: [...ALL_MENU_IDS] },
       ],
     }));
     setInviteName("");
@@ -287,6 +286,29 @@ export default function AccountsManager() {
     setForm((f) => ({
       ...f,
       collaborators: f.collaborators.map((c) => (c.id === id ? { ...c, role } : c)),
+    }));
+
+  const toggleCollaboratorMenu = (id: string, menuId: string) =>
+    setForm((f) => ({
+      ...f,
+      collaborators: f.collaborators.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              menuAccess: c.menuAccess.includes(menuId)
+                ? c.menuAccess.filter((m) => m !== menuId)
+                : [...c.menuAccess, menuId],
+            }
+          : c,
+      ),
+    }));
+
+  const setCollaboratorMenuAll = (id: string, all: boolean) =>
+    setForm((f) => ({
+      ...f,
+      collaborators: f.collaborators.map((c) =>
+        c.id === id ? { ...c, menuAccess: all ? [...ALL_MENU_IDS] : [] } : c,
+      ),
     }));
 
   const lockInvalid =
