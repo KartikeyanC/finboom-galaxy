@@ -1076,6 +1076,32 @@ export default function AccountsManager() {
                                 </Badge>
                               ))
                             )}
+                            {a.collaborators.map((c) => (
+                              <Badge
+                                key={c.id}
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px] gap-1",
+                                  c.role === "admin"
+                                    ? "border-primary/40 text-primary bg-primary/10"
+                                    : "border-border/60 text-muted-foreground"
+                                )}
+                                title={`${c.email} · ${c.role}`}
+                              >
+                                <Users className="h-2.5 w-2.5" />
+                                {c.role === "admin" ? "Co-Admin" : "Viewer"}: {c.name.split(" ")[0]}
+                              </Badge>
+                            ))}
+                            {a.dateLockEnabled && a.lockStart && a.lockEnd && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] gap-1 border-amber-500/40 text-amber-400 bg-amber-500/10"
+                                title={`Locked ${format(a.lockStart, "PP")} → ${format(a.lockEnd, "PP")}`}
+                              >
+                                <CalendarIcon className="h-2.5 w-2.5" />
+                                {format(a.lockStart, "dd MMM")} – {format(a.lockEnd, "dd MMM")}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
