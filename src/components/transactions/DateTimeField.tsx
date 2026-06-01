@@ -103,7 +103,13 @@ export default function DateTimeField({ value, onChange, label = "Transaction Da
             </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[320px] p-3 space-y-3">
+        <PopoverContent
+          side="right"
+          align="start"
+          sideOffset={8}
+          collisionPadding={12}
+          className="w-[320px] p-3 space-y-3"
+        >
           {/* Chips */}
           <div className="grid grid-cols-3 gap-2">
             <button
