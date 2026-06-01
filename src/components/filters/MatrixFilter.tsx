@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import { CalendarIcon, Check, ChevronDown, Layers, X, History, Sunrise } from "lucide-react";
+import { CalendarIcon, Check, ChevronDown, ChevronRight, Layers, X, History, Sunrise } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -97,6 +97,7 @@ export default function MatrixFilter<T>({
   const [cats, setCats] = useState<string[]>([]);
   const [datePopOpen, setDatePopOpen] = useState(false);
   const [catPopOpen, setCatPopOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   // Midnight ticker — forces "today" range to roll over without reload.
   const [dayKey, setDayKey] = useState(() => new Date().toDateString());
   useEffect(() => {
@@ -204,44 +205,111 @@ export default function MatrixFilter<T>({
               <ChevronDown className="w-3.5 h-3.5 opacity-60" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-[260px] p-2">
-            <div className="space-y-0.5">
-              {(["all", "today", "yesterday", "7d", "month"] as DatePreset[]).map((p) => {
-                const c = presetCounts[p];
-                const dim = c === 0 && p !== "all";
-                return (
-                  <button
-                    key={p}
-                    onClick={() => { setPreset(p); if (p !== "custom") setCustom(undefined); setDatePopOpen(false); }}
+          <PopoverContent
+            align="start"
+            className={cn(
+              "p-0 overflow-hidden transition-[width] duration-200",
+              customOpen ? "w-[540px]" : "w-[280px]",
+            )}
+          >
+            <div className="flex">
+              {/* Left: presets stack */}
+              <div className="w-[280px] shrink-0 p-2 space-y-0.5">
+                <p className="px-2 pt-1 pb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Quick presets
+                </p>
+                {(["all", "today", "yesterday", "7d", "month"] as DatePreset[]).map((p) => {
+                  const c = presetCounts[p];
+                  const dim = c === 0 && p !== "all";
+                  const selected = preset === p;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => {
+                        setPreset(p);
+                        setCustom(undefined);
+                        setCustomOpen(false);
+                        setDatePopOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-md text-sm transition-colors",
+                        selected
+                          ? "bg-primary/15 text-primary font-medium"
+                          : "hover:bg-muted text-foreground/90",
+                        dim && "opacity-50",
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="w-3.5 h-3.5 flex items-center justify-center">
+                          {selected && <Check className="w-3.5 h-3.5" />}
+                        </span>
+                        <span>{PRESET_LABEL[p]}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-semibold tabular-nums",
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground/70",
+                        )}
+                      >
+                        {c} {c === 1 ? "entry" : "entries"}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {/* Custom range accordion trigger */}
+                <button
+                  onClick={() => setCustomOpen((v) => !v)}
+                  className={cn(
+                    "mt-1 w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-md text-sm transition-colors border-t border-border/40 pt-3",
+                    preset === "custom"
+                      ? "bg-primary/15 text-primary font-medium"
+                      : "hover:bg-muted text-foreground/90",
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <ChevronRight
+                      className={cn(
+                        "w-3.5 h-3.5 transition-transform",
+                        customOpen && "rotate-90",
+                      )}
+                    />
+                    <span>Custom range</span>
+                  </span>
+                  <span
                     className={cn(
-                      "w-full flex items-center justify-between px-2.5 py-2 rounded-md text-sm transition-colors",
-                      preset === p ? "bg-primary/15 text-primary font-medium" : "hover:bg-muted",
-                      dim && "opacity-50",
+                      "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-semibold tabular-nums",
+                      preset === "custom"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground/70",
                     )}
                   >
-                    <span className="flex items-center gap-2">
-                      {preset === p && <Check className="w-3.5 h-3.5" />}
-                      <span className={preset === p ? "" : "ml-[18px]"}>{PRESET_LABEL[p]}</span>
-                    </span>
-                    <span className="text-[10px] text-muted-foreground tabular-nums">
-                      {c} {c === 1 ? "entry" : "entries"}
-                    </span>
-                  </button>
-                );
-              })}
-              <div className="px-2 pt-2 pb-1 border-t border-border/40 mt-1">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Custom range
-                  <span className="ml-1.5 normal-case tracking-normal">({presetCounts.custom} entries)</span>
-                </p>
-                <Calendar
-                  mode="range"
-                  numberOfMonths={1}
-                  selected={custom}
-                  onSelect={(r) => { setCustom(r); setPreset("custom"); }}
-                  className={cn("p-0 pointer-events-auto")}
-                />
+                    {presetCounts.custom}{" "}
+                    {presetCounts.custom === 1 ? "entry" : "entries"}
+                  </span>
+                </button>
               </div>
+
+              {/* Right: calendar canvas (only when customOpen) */}
+              {customOpen && (
+                <div className="border-l border-border/40 p-3 bg-muted/20">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                    Pick a date range
+                  </p>
+                  <Calendar
+                    mode="range"
+                    numberOfMonths={1}
+                    selected={custom}
+                    onSelect={(r) => {
+                      setCustom(r);
+                      setPreset("custom");
+                    }}
+                    className={cn("p-0 pointer-events-auto")}
+                  />
+                </div>
+              )}
             </div>
           </PopoverContent>
         </Popover>
