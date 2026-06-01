@@ -400,7 +400,7 @@ export default function AccountsManager() {
   };
 
   return (
-    <div className="space-y-6 px-5 mx-auto">
+    <div className="space-y-6 px-5 sm:px-8 lg:px-12 mx-auto">
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight">Accounts & Wallets</h1>
         <p className="text-sm text-muted-foreground">
