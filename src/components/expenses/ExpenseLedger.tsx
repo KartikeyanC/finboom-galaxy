@@ -277,7 +277,7 @@ function DayBlock({
           <h4 className="font-display text-sm font-semibold text-foreground">
             {formatDayLabel(date)}
           </h4>
-          <span className="text-xs text-muted-foreground">· {items.length} entries</span>
+          <span className="text-xs text-foreground/60">· {items.length} {items.length === 1 ? "entry" : "entries"}</span>
         </div>
         <div className="flex items-center gap-2">
           <AnimatePresence initial={false}>
@@ -368,7 +368,7 @@ function SlotBlock({
   }, [items]);
 
   return (
-    <div className="rounded-xl border border-border/40 overflow-hidden">
+    <div className="rounded-xl border border-border/40 overflow-hidden bg-white/[0.025]">
       <div className={cn("flex items-center gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wider font-semibold", meta.tint)}>
         <Icon className="w-3.5 h-3.5" />
         <span>{meta.label}</span>
@@ -412,8 +412,8 @@ function SlotBlock({
                     >
                       {category}
                     </span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      ({txns.length} entries)
+                    <span className="text-xs text-foreground/60 truncate">
+                      ({txns.length} {txns.length === 1 ? "entry" : "entries"})
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -468,41 +468,52 @@ function Row({
   compact?: boolean;
 }) {
   const d = new Date(t.occurred_at);
+  const amount = formatMoney(Number(t.amount), t.currency);
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-3 hover:bg-muted/20 transition-colors",
+        "group/row flex items-center gap-3 px-3 hover:bg-muted/20 transition-colors",
         compact ? "py-1.5 pl-6" : "py-2.5",
       )}
     >
-      <span className="text-[11px] font-mono text-muted-foreground w-12 shrink-0 tabular-nums">
-        {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-      </span>
-      {!compact && (
-        <span
-          className={cn(
-            "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium shrink-0",
-            categoryBadgeClass("expense", t.category),
-          )}
-        >
-          {t.category}
+      {/* Left cluster: time + category + description, tightly grouped */}
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <span className="text-[11px] font-mono text-foreground/65 shrink-0 tabular-nums">
+          {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
-      )}
-      <span className="text-sm text-foreground/90 truncate flex-1 min-w-0">
-        {t.description ?? <span className="text-muted-foreground">—</span>}
+        {!compact && (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium shrink-0",
+              categoryBadgeClass("expense", t.category),
+            )}
+          >
+            {t.category}
+          </span>
+        )}
+        <span className="text-sm text-foreground/90 truncate min-w-0">
+          {t.description ?? <span className="text-muted-foreground">—</span>}
+        </span>
+      </div>
+      <span className="font-display text-sm font-semibold tabular-nums text-coral/90 shrink-0">
+        − {amount}
       </span>
-      <span className="font-display text-sm font-semibold tabular-nums">
-        {formatMoney(Number(t.amount), t.currency)}
-      </span>
-      <div className="flex items-center gap-0.5 shrink-0">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(t)}>
+      <div className="flex items-center gap-0.5 shrink-0 opacity-100 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 md:h-7 md:w-7"
+          onClick={() => onEdit(t)}
+          aria-label="Edit"
+        >
           <Pencil className="w-3.5 h-3.5" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-coral hover:text-coral"
+          className="h-10 w-10 md:h-7 md:w-7 text-coral hover:text-coral"
           onClick={() => onDelete(t.id)}
+          aria-label="Delete"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </Button>
