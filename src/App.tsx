@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import DashboardLayout from "@/components/DashboardLayout";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AccessProvider } from "@/contexts/AccessContext";
+import { MenuGuard } from "@/components/MenuGuard";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Income from "./pages/Income.tsx";
@@ -36,6 +38,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <AccessProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
@@ -46,22 +49,22 @@ const App = () => (
                 <ProtectedRoute>
                   <DashboardLayout>
                     <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/income" element={<Income />} />
-                      <Route path="/expenses" element={<Expenses />} />
-                      <Route path="/investments" element={<Investments />} />
-                      <Route path="/budget" element={<Budget />} />
-                      <Route path="/goals" element={<Goals />} />
-                      <Route path="/calculator" element={<CalculatorPage />} />
+                      <Route path="/" element={<MenuGuard menuId="dashboard"><Index /></MenuGuard>} />
+                      <Route path="/income" element={<MenuGuard menuId="income"><Income /></MenuGuard>} />
+                      <Route path="/expenses" element={<MenuGuard menuId="expenses"><Expenses /></MenuGuard>} />
+                      <Route path="/investments" element={<MenuGuard menuId="investments"><Investments /></MenuGuard>} />
+                      <Route path="/budget" element={<MenuGuard menuId="budget"><Budget /></MenuGuard>} />
+                      <Route path="/goals" element={<MenuGuard menuId="goals"><Goals /></MenuGuard>} />
+                      <Route path="/calculator" element={<MenuGuard menuId="calculator"><CalculatorPage /></MenuGuard>} />
                       <Route path="/calculators" element={<Navigate to="/app/calculator" replace />} />
-                      <Route path="/reminders" element={<RemindersPage />} />
+                      <Route path="/reminders" element={<MenuGuard menuId="reminders"><RemindersPage /></MenuGuard>} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="/profile" element={<ProfilePage />} />
                       <Route path="/notifications" element={<NotificationsPage />} />
-                      <Route path="/import" element={<ImportPage />} />
+                      <Route path="/import" element={<MenuGuard menuId="import"><ImportPage /></MenuGuard>} />
                       <Route path="/accounts" element={<AccountsPage />} />
                       <Route path="/billing" element={<BillingPage />} />
-                      <Route path="/bill-scan" element={<BillScanPage />} />
+                      <Route path="/bill-scan" element={<MenuGuard menuId="bill-scan"><BillScanPage /></MenuGuard>} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<Navigate to="/app" replace />} />
                     </Routes>
@@ -71,6 +74,7 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </AccessProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
