@@ -230,6 +230,53 @@ export default function AccountsManager() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<CollaboratorRole>("viewer");
+
+  const addCollaborator = () => {
+    const name = inviteName.trim();
+    const email = inviteEmail.trim();
+    if (!name || !email) {
+      toast.error("Enter name and email");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Invalid email address");
+      return;
+    }
+    if (form.collaborators.some((c) => c.email.toLowerCase() === email.toLowerCase())) {
+      toast.error("This email is already a collaborator");
+      return;
+    }
+    setForm((f) => ({
+      ...f,
+      collaborators: [
+        ...f.collaborators,
+        { id: crypto.randomUUID(), name, email, role: inviteRole },
+      ],
+    }));
+    setInviteName("");
+    setInviteEmail("");
+    setInviteRole("viewer");
+    toast.success(`Invited ${name} as ${inviteRole}`);
+  };
+
+  const removeCollaborator = (id: string) =>
+    setForm((f) => ({ ...f, collaborators: f.collaborators.filter((c) => c.id !== id) }));
+
+  const updateCollaboratorRole = (id: string, role: CollaboratorRole) =>
+    setForm((f) => ({
+      ...f,
+      collaborators: f.collaborators.map((c) => (c.id === id ? { ...c, role } : c)),
+    }));
+
+  const lockInvalid =
+    form.dateLockEnabled &&
+    form.lockStart &&
+    form.lockEnd &&
+    form.lockStart > form.lockEnd;
 
   const addPurpose = () => {
     const v = newPurpose.trim();
