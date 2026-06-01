@@ -46,11 +46,14 @@ const VENDOR_MAP: { pattern: RegExp; category: string; merchant: string }[] = [
 ];
 
 const SAMPLE_ITEMS = [
-  { name: "Mushroom 1pk", category: "Shopping", amount: 120 },
-  { name: "Carrot 1kg", category: "Shopping", amount: 46 },
-  { name: "Dustbin", category: "Shopping", amount: 146 },
-  { name: "Juice", category: "Food & Dining", amount: 90 },
+  { name: "Mushroom", category: "Shopping", amount: 120, qty: 1, unit: "pk" },
+  { name: "Carrot", category: "Shopping", amount: 46, qty: 1, unit: "kg" },
+  { name: "Dustbin", category: "Shopping", amount: 146, qty: 1, unit: "pc" },
+  { name: "Juice", category: "Food & Dining", amount: 90, qty: 500, unit: "ml" },
 ];
+
+const UNITS = ["pc", "pk", "kg", "g", "L", "ml"] as const;
+type Unit = (typeof UNITS)[number];
 
 type ScannedRow = {
   id: string;
@@ -58,6 +61,8 @@ type ScannedRow = {
   category: string;
   amount: number;
   date: string;
+  qty: number;
+  unit: Unit;
 };
 
 function detectMerchant(filename: string) {
