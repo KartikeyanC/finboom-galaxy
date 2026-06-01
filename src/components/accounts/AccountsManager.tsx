@@ -354,6 +354,16 @@ export default function AccountsManager() {
       toast.error("Please enter an account name");
       return;
     }
+    if (form.dateLockEnabled) {
+      if (!form.lockStart || !form.lockEnd) {
+        toast.error("Pick both start and end dates for the work window");
+        return;
+      }
+      if (form.lockStart > form.lockEnd) {
+        toast.error("Start date must be before end date");
+        return;
+      }
+    }
     if (editingAccountId) {
       setAccounts((a) =>
         a.map((x) => (x.id === editingAccountId ? { ...form, id: editingAccountId } : x)),
