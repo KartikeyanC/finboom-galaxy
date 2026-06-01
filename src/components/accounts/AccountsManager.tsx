@@ -913,6 +913,64 @@ export default function AccountsManager() {
                     <p className="text-[11px] text-muted-foreground">
                       Admins can edit & log transactions. Viewers can only see balances.
                     </p>
+
+                    {/* Grant Module Permissions */}
+                    <div className="mt-3 rounded-lg border border-border/60 bg-background/40 p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <Label className="text-xs font-semibold">
+                            Grant Module Permissions
+                          </Label>
+                          <p className="text-[10px] text-muted-foreground">
+                            Pick exactly which feature pages this collaborator can open.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setInviteMenus((m) =>
+                              m.length === ALL_MENU_IDS.length ? [] : [...ALL_MENU_IDS],
+                            )
+                          }
+                          className="text-[11px] font-medium text-primary hover:underline whitespace-nowrap"
+                        >
+                          Toggle All
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {ACCESS_MENUS.map((m) => {
+                          const checked = inviteMenus.includes(m.id);
+                          return (
+                            <label
+                              key={m.id}
+                              className={cn(
+                                "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors",
+                                checked
+                                  ? "border-primary/60 bg-primary/10 text-primary"
+                                  : "border-border/60 hover:border-border",
+                              )}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() =>
+                                  setInviteMenus((curr) =>
+                                    curr.includes(m.id)
+                                      ? curr.filter((x) => x !== m.id)
+                                      : [...curr, m.id],
+                                  )
+                                }
+                              />
+                              <span className="truncate">{m.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {inviteRole === "viewer"
+                          ? "Viewer: read-only access to the selected pages."
+                          : "Admin: full read, write, edit & delete on the selected pages."}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Collaborator list */}
