@@ -12,7 +12,7 @@ import {
   Landmark,
   CreditCard,
   ScanLine,
-  BanknoteArrowDown,
+  HandCoins,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -34,7 +34,7 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/app", icon: LayoutDashboard },
   { title: "Income", url: "/app/income", icon: Wallet },
-  { title: "Expenses", url: "/app/expenses", icon: BanknoteArrowDown },
+  { title: "Expenses", url: "/app/expenses", icon: HandCoins },
   { title: "Investments", url: "/app/investments", icon: TrendingUp },
   { title: "Budget", url: "/app/budget", icon: PieChart },
   { title: "Goals", url: "/app/goals", icon: Target },
