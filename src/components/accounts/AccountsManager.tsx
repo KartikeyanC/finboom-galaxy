@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Wallet,
   Landmark,
@@ -15,15 +15,6 @@ import {
   CalendarIcon,
   Pencil,
   X,
-  Users,
-  Lock,
-  ChevronDown,
-  ChevronUp,
-  Mail,
-  ShieldCheck,
-  Eye,
-  AlertTriangle,
-  Settings2,
   type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -31,7 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -41,11 +31,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useAccess, type AccessProfile } from "@/contexts/AccessContext";
 
 type AccountType =
   | "bank"
