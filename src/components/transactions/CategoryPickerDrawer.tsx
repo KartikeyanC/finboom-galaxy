@@ -1,11 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -69,8 +63,8 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
       : "Choose category";
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           type="button"
           variant="outline"
@@ -85,25 +79,29 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
           </span>
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
         </Button>
-      </DrawerTrigger>
-      <DrawerContent className="max-h-[85vh]">
-        <DrawerHeader className="px-4 pt-2 pb-3 text-left">
-          <DrawerTitle className="text-base font-display">Pick a category</DrawerTitle>
-          <div className="relative mt-2">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      </DialogTrigger>
+      <DialogContent
+        className="p-0 gap-0 sm:max-w-2xl max-h-[520px] overflow-hidden flex flex-col rounded-2xl"
+      >
+        {/* Search header */}
+        <div className="p-3 border-b border-border/60">
+          <div className="relative flex items-center">
+            <Search className="w-4 h-4 absolute left-3 text-muted-foreground" />
             <Input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search items (e.g., Fuel, Rent)..."
-              className="pl-8 h-9 text-sm"
+              placeholder="Search categories (e.g., Fuel, Rent)..."
+              className="pl-9 h-10 text-sm"
             />
           </div>
-        </DrawerHeader>
+        </div>
 
-        <div className="flex flex-1 min-h-[55vh] max-h-[65vh] border-t border-border/40">
+        {/* Two-pane picker */}
+        <div className="flex flex-1 min-h-[340px] overflow-hidden">
           {/* Left pane */}
-          <div className="w-[42%] sm:w-[34%] overflow-y-auto bg-muted/30 border-r border-border/40">
+          <div className="w-1/3 overflow-y-auto border-r border-border/60 bg-background">
+            <div className="p-2 space-y-1">
             {(q ? filteredGroups : EXPENSE_CATEGORY_GROUPS).map((g) => {
               const isActive = !q && g.name === activeGroup.name;
               return (
@@ -115,21 +113,22 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
                     setQuery("");
                   }}
                   className={cn(
-                    "w-full flex items-center gap-2 px-3 py-3 text-left text-sm transition-colors border-l-2",
+                    "w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm rounded-lg border transition-colors",
                     isActive
-                      ? "bg-primary/10 border-primary text-foreground font-medium"
+                      ? "bg-primary/10 border-primary/30 text-primary font-medium"
                       : "border-transparent text-muted-foreground hover:bg-accent/40 hover:text-foreground",
                   )}
                 >
-                  <span className="text-lg leading-none">{g.icon}</span>
+                  <span className="text-base leading-none shrink-0">{g.icon}</span>
                   <span className="truncate leading-tight">{g.name}</span>
                 </button>
               );
             })}
+            </div>
           </div>
 
           {/* Right pane */}
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="w-2/3 overflow-y-auto p-3 bg-background">
             {rightSubs.length === 0 ? (
               <div className="h-full grid place-items-center text-xs text-muted-foreground">
                 No matches. Try a different search.
@@ -144,16 +143,16 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
                       type="button"
                       onClick={() => handlePick(parent, sub)}
                       className={cn(
-                        "rounded-lg border px-3 py-2.5 text-left text-sm transition-all",
-                        "flex flex-col gap-0.5",
+                        "rounded-lg border px-3 py-2.5 text-left text-xs font-medium transition-all",
+                        "flex flex-col gap-0.5 bg-muted/30",
                         selected
-                          ? "border-primary bg-primary/10 text-foreground shadow-sm"
-                          : "border-border/60 bg-background hover:border-primary/40 hover:bg-accent/40",
+                          ? "border-primary/60 bg-primary/10 text-foreground shadow-sm"
+                          : "border-border/60 text-foreground/90 hover:border-primary/50 hover:bg-primary/5",
                       )}
                     >
                       <span className="flex items-center gap-1.5 leading-tight">
-                        {q && <span className="text-base">{icon}</span>}
-                        <span className="truncate font-medium">{sub}</span>
+                        {q && <span className="text-sm">{icon}</span>}
+                        <span className="truncate">{sub}</span>
                       </span>
                       {q && (
                         <span className="text-[10px] text-muted-foreground truncate">
@@ -167,7 +166,23 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
             )}
           </div>
         </div>
-      </DrawerContent>
-    </Drawer>
+
+        {/* Footer */}
+        <div className="px-4 py-2.5 bg-muted/40 border-t border-border/60 flex justify-between items-center">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+            {q
+              ? `Searching across ${EXPENSE_CATEGORY_GROUPS.length} categories`
+              : `Selecting for: ${activeGroup.name}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
