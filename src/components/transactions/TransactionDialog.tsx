@@ -334,6 +334,16 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
           </div>
           <div className="space-y-2">
             <Label>Category</Label>
+            {activeType === "expense" ? (
+              <CategoryPickerDrawer
+                value={subcategory}
+                category={category}
+                onSelect={(parent, sub) => {
+                  setCategory(parent);
+                  setSubcategory(sub);
+                }}
+              />
+            ) : (
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -359,6 +369,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
                 )}
               </SelectContent>
             </Select>
+            )}
             <Popover open={newCatOpen} onOpenChange={setNewCatOpen}>
               <PopoverTrigger asChild>
                 <Button
