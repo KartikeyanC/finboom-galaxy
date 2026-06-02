@@ -43,6 +43,8 @@ import { toast } from "sonner";
 import { buildInstallments, computeMonthly, useDebts, type DebtRecord } from "@/lib/debtsStore";
 import { useReminders, type ReminderRecord } from "@/lib/remindersStore";
 import DateTimeField from "@/components/transactions/DateTimeField";
+import CategoryPickerDrawer from "@/components/transactions/CategoryPickerDrawer";
+import { findGroupForSub } from "@/lib/expenseSubcategories";
 
 const schema = z.object({
   amount: z.number().positive("Amount must be positive").max(1e12),
@@ -74,6 +76,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [category, setCategory] = useState<string>(defaultCategory);
+  const [subcategory, setSubcategory] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString());
   const [newCatOpen, setNewCatOpen] = useState(false);
@@ -95,13 +98,24 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       setAmount(String(initial.amount));
       setCurrency(initial.currency);
       setCategory(initial.category);
-      setDescription(initial.description ?? "");
+      // Try to recover a subcategory previously stored as a "Sub · note" prefix.
+      const desc = initial.description ?? "";
+      const sepIdx = desc.indexOf(" · ");
+      const candidate = sepIdx > -1 ? desc.slice(0, sepIdx) : desc;
+      if (candidate && findGroupForSub(candidate)) {
+        setSubcategory(candidate);
+        setDescription(sepIdx > -1 ? desc.slice(sepIdx + 3) : "");
+      } else {
+        setSubcategory(null);
+        setDescription(desc);
+      }
       setOccurredAt(new Date(initial.occurred_at).toISOString());
     } else {
       setActiveType(type);
       setAmount("");
       setCurrency("INR");
       setCategory(type === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0]);
+      setSubcategory(null);
       setDescription("");
       setOccurredAt(new Date().toISOString());
     }
@@ -135,7 +149,12 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       amount: Number(amount),
       currency,
       category,
-      description: description || undefined,
+      description:
+        activeType === "expense" && subcategory
+          ? description
+            ? `${subcategory} · ${description}`
+            : subcategory
+          : description || undefined,
       occurred_at: occurredSafe,
     });
     if (!parsed.success) {
