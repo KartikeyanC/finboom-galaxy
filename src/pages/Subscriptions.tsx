@@ -1,0 +1,174 @@
+import { useMemo, useState } from "react";
+import { Plus, Trash2, Repeat, TrendingDown, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  annualEquivalent, monthlyEquivalent, useSubscriptions, type BillingFrequency, type SubscriptionRecord,
+} from "@/lib/subscriptionsStore";
+import { formatMoney } from "@/lib/finance";
+import { cn } from "@/lib/utils";
+
+function freqMeta(f: BillingFrequency) {
+  if (f === "monthly") return { label: "Monthly", tone: "bg-sky-500/10 text-sky-500 border-sky-500/20" };
+  if (f === "annual") return { label: "Annual", tone: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
+  return { label: "Weekly", tone: "bg-amber-500/10 text-amber-500 border-amber-500/20" };
+}
+
+function daysUntil(iso: string) {
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  const d = new Date(iso); d.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - t.getTime()) / 86400000);
+}
+
+function AddDialog({ onAdd }: { onAdd: (s: Omit<SubscriptionRecord, "id" | "createdAt">) => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<Omit<SubscriptionRecord, "id" | "createdAt">>({
+    name: "", icon: "💳", amount: 0, currency: "INR", frequency: "monthly", renewalDate: new Date().toISOString().slice(0, 10), status: "active",
+  });
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Add Subscription</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Add Subscription</DialogTitle></DialogHeader>
+        <div className="grid gap-3 py-2">
+          <div className="grid grid-cols-[80px_1fr] gap-3">
+            <div className="space-y-1.5"><Label>Icon</Label><Input value={form.icon} maxLength={2} onChange={(e) => setForm({ ...form, icon: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Service Name</Label><Input value={form.name} placeholder="Netflix" onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>Amount (₹)</Label><Input type="number" value={form.amount || ""} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} /></div>
+            <div className="space-y-1.5">
+              <Label>Frequency</Label>
+              <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v as BillingFrequency })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="annual">Annual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5"><Label>Next Renewal Date</Label><Input type="date" value={form.renewalDate} onChange={(e) => setForm({ ...form, renewalDate: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button disabled={!form.name || form.amount <= 0} onClick={() => { onAdd(form); setOpen(false); }}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const Subscriptions = () => {
+  const { items, add, update, remove } = useSubscriptions();
+
+  const sorted = useMemo(() => [...items].sort((a, b) => +new Date(a.renewalDate) - +new Date(b.renewalDate)), [items]);
+
+  const active = items.filter((i) => i.status === "active");
+  const monthlyTotal = active.reduce((s, i) => s + monthlyEquivalent(i), 0);
+  const annualTotal = active.reduce((s, i) => s + annualEquivalent(i), 0);
+  const cancelCount = items.filter((i) => i.status === "cancel").length;
+
+  return (
+    <div className="px-6 sm:px-8 py-8 space-y-8 max-w-[1400px] mx-auto">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Subscriptions</span>
+          <h1 className="font-display text-3xl font-bold text-foreground mt-1">Subscriptions Hub</h1>
+          <p className="text-muted-foreground mt-2 max-w-lg">Stop silent leaks — track every recurring charge sorted by next renewal date.</p>
+        </div>
+        <AddDialog onAdd={add} />
+      </header>
+
+      <div className="rounded-2xl border border-border/60 bg-gradient-to-r from-primary/10 via-card to-chart-2/5 p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Repeat className="w-3.5 h-3.5" /> Monthly Burn</div>
+            <div className="text-3xl font-display font-bold mt-1 tabular-nums">{formatMoney(monthlyTotal)}</div>
+            <div className="text-xs text-muted-foreground mt-1">{active.length} active services</div>
+          </div>
+          <div className="sm:border-l sm:pl-6 border-border/60">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5" /> Projected Annual</div>
+            <div className="text-3xl font-display font-bold mt-1 tabular-nums">{formatMoney(annualTotal)}</div>
+            <div className="text-xs text-muted-foreground mt-1">If nothing changes</div>
+          </div>
+          <div className="sm:border-l sm:pl-6 border-border/60">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Marked for Cancel</div>
+            <div className="text-3xl font-display font-bold mt-1 tabular-nums">{cancelCount}</div>
+            <div className="text-xs text-muted-foreground mt-1">Pending review</div>
+          </div>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <Repeat className="w-8 h-8 text-primary" />
+          </div>
+          <h3 className="font-display text-xl font-semibold">No subscriptions tracked yet</h3>
+          <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">Add your streaming, SaaS and membership charges to see where money quietly disappears.</p>
+          <div className="mt-5 inline-block"><AddDialog onAdd={add} /></div>
+        </div>
+      ) : (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <h2 className="font-display text-lg font-semibold">Upcoming Renewals</h2>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card divide-y divide-border/60">
+            {sorted.map((s) => {
+              const d = daysUntil(s.renewalDate);
+              const meta = freqMeta(s.frequency);
+              const urgent = d >= 0 && d <= 7;
+              const overdue = d < 0;
+              const cancelled = s.status === "cancel";
+              return (
+                <div key={s.id} className={cn("p-4 sm:p-5 flex flex-wrap items-center gap-4 transition", cancelled && "opacity-60")}>
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0", "bg-muted/50")}>{s.icon || "💳"}</div>
+                  <div className="flex-1 min-w-[160px]">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">{s.name}</span>
+                      <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", meta.tone)}>{meta.label}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Renews {new Date(s.renewalDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} ·{" "}
+                      <span className={cn(overdue ? "text-destructive font-medium" : urgent ? "text-amber-500 font-medium" : "")}>
+                        {overdue ? `${Math.abs(d)}d overdue` : d === 0 ? "today" : `in ${d}d`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-display font-bold tabular-nums">{formatMoney(s.amount)}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">/{s.frequency === "annual" ? "yr" : s.frequency === "weekly" ? "wk" : "mo"}</div>
+                  </div>
+                  <div className="flex items-center gap-3 pl-2 border-l border-border/60">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <Switch checked={s.status === "active"} onCheckedChange={(v) => update(s.id, { status: v ? "active" : "cancel" })} />
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.status === "active" ? "Active" : "Cancel"}</span>
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => remove(s.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
+export default Subscriptions;

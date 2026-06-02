@@ -9,6 +9,10 @@ export const ACCESS_MENUS: { id: string; label: string }[] = [
   { id: "calculator", label: "Calculator" },
   { id: "bill-scan", label: "Bill Scan" },
   { id: "import", label: "Import" },
+  { id: "insurance", label: "Insurance" },
+  { id: "budget-allocator", label: "Budget Allocator" },
+  { id: "net-worth", label: "Net Worth" },
+  { id: "subscriptions", label: "Subscriptions" },
 ];
 
 export const ALL_MENU_IDS = ACCESS_MENUS.map((m) => m.id);

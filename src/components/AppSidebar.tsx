@@ -13,6 +13,10 @@ import {
   CreditCard,
   ScanLine,
   HandCoins,
+  ShieldCheck,
+  Scale,
+  Repeat,
+  Sliders,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -43,6 +47,13 @@ const mainItems = [
   { title: "Accounts", url: "/app/accounts", icon: Landmark, menuId: "accounts" },
 ];
 
+const wealthItems = [
+  { title: "Net Worth", url: "/app/net-worth", icon: Scale, menuId: "net-worth" },
+  { title: "Insurance", url: "/app/insurance", icon: ShieldCheck, menuId: "insurance" },
+  { title: "Allocator", url: "/app/budget-allocator", icon: Sliders, menuId: "budget-allocator" },
+  { title: "Subscriptions", url: "/app/subscriptions", icon: Repeat, menuId: "subscriptions" },
+];
+
 const toolItems = [
   { title: "Calculator", url: "/app/calculator", icon: Calculator, menuId: "calculator" },
   { title: "Import", url: "/app/import", icon: Upload, menuId: "import" },
@@ -60,6 +71,7 @@ export function AppSidebar() {
   const { canAccess } = useAccess();
   const visibleMain = mainItems.filter((i) => canAccess(i.menuId));
   const visibleTools = toolItems.filter((i) => canAccess(i.menuId));
+  const visibleWealth = wealthItems.filter((i) => canAccess(i.menuId));
 
   const isActive = (path: string) => currentPath === path;
 
@@ -92,6 +104,34 @@ export function AppSidebar() {
                     isActive={isActive(item.url)}
                     tooltip={item.title}
                   >
+                    <NavLink
+                      to={item.url}
+                      end
+                      className={cn(
+                        "hover:bg-accent/60 rounded-lg transition-all duration-200",
+                        collapsed && "justify-center"
+                      )}
+                      activeClassName="bg-primary/10 text-primary font-medium border border-primary/20"
+                    >
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-semibold px-3">
+            Wealth
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {visibleWealth.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                     <NavLink
                       to={item.url}
                       end
