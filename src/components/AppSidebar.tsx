@@ -71,6 +71,7 @@ export function AppSidebar() {
   const { canAccess } = useAccess();
   const visibleMain = mainItems.filter((i) => canAccess(i.menuId));
   const visibleTools = toolItems.filter((i) => canAccess(i.menuId));
+  const visibleWealth = wealthItems.filter((i) => canAccess(i.menuId));
 
   const isActive = (path: string) => currentPath === path;
 
