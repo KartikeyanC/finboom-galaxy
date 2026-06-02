@@ -533,8 +533,10 @@ export function TransactionImporter() {
           <div>
             <h3 className="font-display text-base font-bold">Upload File</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              {source === "broker"
-                ? `Drop the exported ${broker.label} file (CSV, XLS, XLSX, or PDF).`
+              {section === "assets" && source === "broker"
+                ? broker
+                  ? `Drop the exported ${broker.label} file (CSV, XLS, XLSX, or PDF).`
+                  : "Select a platform above, then drop the exported file (CSV, XLS, XLSX, or PDF)."
                 : "Drop CSV, XLS, XLSX, or PDF statements to auto-extract rows."}
             </p>
           </div>
