@@ -10,6 +10,9 @@ import {
   AlertTriangle,
   Plus,
   RotateCcw,
+  Search,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +20,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -231,7 +243,8 @@ export function TransactionImporter() {
   const [section, setSection] = useState<Section>("assets");
   const [source, setSource] = useState<Source>("broker");
   const [mode, setMode] = useState<Mode>("append");
-  const [profile, setProfile] = useState(BROKERS[0].value);
+  const [profile, setProfile] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -239,7 +252,9 @@ export function TransactionImporter() {
   const createTxn = useCreateTransaction();
 
   const allBrokers = useMemo(() => [...BROKERS, CUSTOM_BROKER], []);
-  const broker = allBrokers.find((b) => b.value === profile) ?? BROKERS[0];
+  const broker = allBrokers.find((b) => b.value === profile) ?? null;
+  const topBrokers = useMemo(() => BROKERS.slice(0, 3), []);
+  const isTopPick = (v: string) => topBrokers.some((b) => b.value === v);
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const list = Array.from(files);
@@ -310,7 +325,7 @@ export function TransactionImporter() {
           amount,
           currency: "INR",
           category: r.asset || "Imported",
-          description: `${profile} • ${r.asset} ${r.quantity} @ ${r.price} ${r.currency}`,
+          description: `${profile ?? "Import"} • ${r.asset} ${r.quantity} @ ${r.price} ${r.currency}`,
           occurred_at,
         });
         ok++;
