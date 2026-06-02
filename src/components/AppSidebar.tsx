@@ -17,6 +17,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAccess } from "@/contexts/AccessContext";
+import { cn } from "@/lib/utils";
 
 import {
   Sidebar,
@@ -64,10 +65,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/40">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center glow-primary flex-shrink-0">
-            <Zap className="w-5 h-5 text-primary-foreground" />
+      <SidebarHeader className={cn(collapsed ? "p-2" : "p-4")}> 
+        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}> 
+          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center glow-primary flex-shrink-0">
+            <Zap className="w-4 h-4 text-primary-foreground" />
           </div>
           {!collapsed && (
             <span className="font-display text-lg font-bold text-gradient-primary">
@@ -94,7 +95,10 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="hover:bg-accent/60 rounded-lg transition-all duration-200"
+                      className={cn(
+                        "hover:bg-accent/60 rounded-lg transition-all duration-200",
+                        collapsed && "justify-center"
+                      )}
                       activeClassName="bg-primary/10 text-primary font-medium border border-primary/20"
                     >
                       <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -123,7 +127,10 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="hover:bg-accent/60 rounded-lg transition-all duration-200"
+                      className={cn(
+                        "hover:bg-accent/60 rounded-lg transition-all duration-200",
+                        collapsed && "justify-center"
+                      )}
                       activeClassName="bg-primary/10 text-primary font-medium border border-primary/20"
                     >
                       <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -137,8 +144,8 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        <div className="flex items-center gap-3">
+      <SidebarFooter className={cn(collapsed ? "p-2" : "p-4")}> 
+        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}> 
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/60 to-chart-2/60 flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-bold text-foreground">AK</span>
           </div>
