@@ -347,29 +347,46 @@ export function TransactionImporter() {
         </p>
       </div>
 
-      {/* Section tabs */}
-      <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
-        <TabsList>
-          <TabsTrigger value="assets">Assets</TabsTrigger>
-          <TabsTrigger value="income">Income &amp; Expenses</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* Source + mode segmented controls */}
-      <div className="flex flex-wrap gap-3">
-        <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
-          <TabsList>
-            <TabsTrigger value="broker">Import from Broker</TabsTrigger>
-            <TabsTrigger value="standard">Standard Import</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
-          <TabsList>
-            <TabsTrigger value="append">Append</TabsTrigger>
-            <TabsTrigger value="update">Update by Name</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      {/* Consolidated segmented header */}
+      <Card className="p-4 bg-card/60 backdrop-blur border-border/60">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Dataset
+            </span>
+            <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
+              <TabsList>
+                <TabsTrigger value="assets">Assets</TabsTrigger>
+                <TabsTrigger value="income">Income &amp; Expenses</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          {section === "assets" && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Source
+              </span>
+              <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
+                <TabsList>
+                  <TabsTrigger value="broker">Import from Broker</TabsTrigger>
+                  <TabsTrigger value="standard">Standard Import</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          )}
+          <div className="flex flex-col gap-1 md:ml-auto">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Write mode
+            </span>
+            <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+              <TabsList>
+                <TabsTrigger value="append">Append</TabsTrigger>
+                <TabsTrigger value="update">Update by Name</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+      </Card>
 
       {/* Mode banner — slides down on Update by Name */}
       {mode === "update" && (
@@ -384,44 +401,110 @@ export function TransactionImporter() {
         </div>
       )}
 
-      {/* Broker grid */}
-      {source === "broker" && (
+      {/* Progressive platform selector (Assets + Broker only) */}
+      {section === "assets" && source === "broker" && (
         <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
-          <h3 className="font-display text-base font-bold mb-4">Select Broker</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {allBrokers.map((b) => {
+          <div className="flex flex-col gap-2 mb-4">
+            <h3 className="font-display text-base font-bold">Select Your Platform or Broker</h3>
+            <p className="text-xs text-muted-foreground">
+              Pick a top platform or search the full list to load tailored export steps.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {topBrokers.map((b) => {
               const active = b.value === profile;
-              const isCustom = b.value === "__custom__";
               return (
                 <button
                   key={b.value}
                   type="button"
                   onClick={() => setProfile(b.value)}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all",
+                    "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all min-h-[44px]",
                     active
                       ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/40"
                       : "border-border/60 bg-secondary/30 hover:border-primary/40 hover:bg-secondary/50",
-                    isCustom && "col-span-2",
                   )}
                 >
                   <span
                     className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white shrink-0"
                     style={{ backgroundColor: b.brand }}
                   >
-                    {isCustom ? <Plus className="w-4 h-4" /> : b.initial}
+                    {b.initial}
                   </span>
                   <span className="text-sm font-medium truncate">{b.label}</span>
                 </button>
               );
             })}
+
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all min-h-[44px]",
+                    profile && !isTopPick(profile)
+                      ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/40"
+                      : "border-dashed border-border/60 bg-secondary/20 hover:border-primary/40 hover:bg-secondary/40",
+                  )}
+                >
+                  <span className="w-7 h-7 rounded-md flex items-center justify-center bg-secondary/60 shrink-0">
+                    <Search className="w-3.5 h-3.5 text-muted-foreground" />
+                  </span>
+                  <span className="text-sm font-medium truncate flex-1">
+                    {profile && !isTopPick(profile)
+                      ? broker?.label
+                      : "More Brokers / Custom"}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-[280px] p-0"
+                sideOffset={8}
+              >
+                <Command>
+                  <CommandInput placeholder="Search platforms…" />
+                  <CommandList>
+                    <CommandEmpty>No platform found.</CommandEmpty>
+                    <CommandGroup>
+                      {allBrokers.map((b) => {
+                        const isCustom = b.value === "__custom__";
+                        const active = b.value === profile;
+                        return (
+                          <CommandItem
+                            key={b.value}
+                            value={b.label}
+                            onSelect={() => {
+                              setProfile(b.value);
+                              setPickerOpen(false);
+                            }}
+                            className="gap-2.5"
+                          >
+                            <span
+                              className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                              style={{ backgroundColor: b.brand }}
+                            >
+                              {isCustom ? <Plus className="w-3.5 h-3.5" /> : b.initial}
+                            </span>
+                            <span className="flex-1 truncate">{b.label}</span>
+                            {active && <Check className="w-4 h-4 text-emerald-500" />}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </Card>
       )}
 
-      {/* How-to-export */}
-      {source === "broker" && (
-        <Card className="p-6 bg-card/60 backdrop-blur border-border/60">
+      {/* How-to-export — appears only after platform selected */}
+      {section === "assets" && source === "broker" && broker && (
+        <div className="rounded-xl border border-border/60 bg-slate-900/50 p-6 animate-in slide-in-from-top-2 fade-in">
           <h3 className="font-display text-base font-bold mb-3">
             How to Export from {broker.label}
           </h3>
@@ -441,7 +524,7 @@ export function TransactionImporter() {
             ))}
           </ol>
           <p className="text-xs text-muted-foreground mt-4">{broker.footnote}</p>
-        </Card>
+        </div>
       )}
 
       {/* Dropzone */}
