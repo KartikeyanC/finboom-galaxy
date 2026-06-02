@@ -13,6 +13,10 @@ import {
   CreditCard,
   ScanLine,
   HandCoins,
+  ShieldCheck,
+  Scale,
+  Repeat,
+  Sliders,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -41,6 +45,13 @@ const mainItems = [
   { title: "Budget", url: "/app/budget", icon: PieChart, menuId: "budget" },
   { title: "Goals", url: "/app/goals", icon: Target, menuId: "goals" },
   { title: "Accounts", url: "/app/accounts", icon: Landmark, menuId: "accounts" },
+];
+
+const wealthItems = [
+  { title: "Net Worth", url: "/app/net-worth", icon: Scale, menuId: "net-worth" },
+  { title: "Insurance", url: "/app/insurance", icon: ShieldCheck, menuId: "insurance" },
+  { title: "Allocator", url: "/app/budget-allocator", icon: Sliders, menuId: "budget-allocator" },
+  { title: "Subscriptions", url: "/app/subscriptions", icon: Repeat, menuId: "subscriptions" },
 ];
 
 const toolItems = [
