@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Slider } from "@/components/ui/slider";
+import * as SliderPrimitive from "@radix-ui/react-slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -43,10 +43,37 @@ function load(): AllocatorState {
 }
 
 const BUCKET_META: Record<AllocationKey, { label: string; subtitle: string; tone: string; bar: string }> = {
-  needs: { label: "Needs", subtitle: "Essentials & must-pays", tone: "border-sky-500/30 bg-sky-500/5", bar: "bg-sky-500" },
-  wants: { label: "Wants", subtitle: "Lifestyle & freedom", tone: "border-amber-500/30 bg-amber-500/5", bar: "bg-amber-500" },
-  savings: { label: "Savings & Goals", subtitle: "Future wealth", tone: "border-emerald-500/30 bg-emerald-500/5", bar: "bg-emerald-500" },
+  needs: { label: "Needs", subtitle: "Essentials & must-pays", tone: "border-sky-500/30 bg-sky-500/[0.06]", bar: "bg-sky-500" },
+  wants: { label: "Wants", subtitle: "Lifestyle & freedom", tone: "border-fuchsia-500/30 bg-fuchsia-500/[0.06]", bar: "bg-fuchsia-500" },
+  savings: { label: "Savings & Goals", subtitle: "Future wealth", tone: "border-emerald-500/30 bg-emerald-500/[0.06]", bar: "bg-emerald-500" },
 };
+
+const NEON: Record<AllocationKey, { range: string; thumb: string; glow: string; text: string }> = {
+  needs:   { range: "bg-sky-500 shadow-[0_0_12px_hsl(199_89%_55%/0.7)]",       thumb: "border-sky-400 shadow-[0_0_14px_hsl(199_89%_55%/0.9)]",       glow: "shadow-[0_0_24px_hsl(199_89%_55%/0.35)]", text: "text-sky-500" },
+  wants:   { range: "bg-fuchsia-500 shadow-[0_0_12px_hsl(292_84%_61%/0.7)]",   thumb: "border-fuchsia-400 shadow-[0_0_14px_hsl(292_84%_61%/0.9)]",   glow: "shadow-[0_0_24px_hsl(292_84%_61%/0.35)]", text: "text-fuchsia-500" },
+  savings: { range: "bg-emerald-500 shadow-[0_0_12px_hsl(160_84%_45%/0.7)]",   thumb: "border-emerald-400 shadow-[0_0_14px_hsl(160_84%_45%/0.9)]",   glow: "shadow-[0_0_24px_hsl(160_84%_45%/0.35)]", text: "text-emerald-500" },
+};
+
+function NeonSlider({ value, onChange, tone }: { value: number; onChange: (v: number) => void; tone: AllocationKey }) {
+  const n = NEON[tone];
+  return (
+    <SliderPrimitive.Root
+      value={[value]} max={100} step={1}
+      onValueChange={([v]) => onChange(v)}
+      className="relative flex w-full touch-none select-none items-center mt-4"
+    >
+      <SliderPrimitive.Track className="relative h-2.5 w-full grow overflow-hidden rounded-full bg-muted">
+        <SliderPrimitive.Range className={cn("absolute h-full rounded-full transition-all", n.range)} />
+      </SliderPrimitive.Track>
+      <SliderPrimitive.Thumb
+        className={cn(
+          "block h-5 w-5 rounded-full border-2 bg-background ring-offset-background transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          n.thumb,
+        )}
+      />
+    </SliderPrimitive.Root>
+  );
+}
 
 const BudgetAllocator = () => {
   const [state, setState] = useState<AllocatorState>(() => load());
@@ -55,19 +82,21 @@ const BudgetAllocator = () => {
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
   }, [state]);
 
-  // Adjusts other two sliders proportionally so total stays 100.
-  const adjust = (key: AllocationKey, value: number) => {
+  // Adjusts other two sliders proportionally so total stays EXACTLY 100.
+  const adjust = (key: AllocationKey, raw: number) => {
+    const value = Math.max(0, Math.min(100, Math.round(raw)));
     const others = (["needs", "wants", "savings"] as AllocationKey[]).filter((k) => k !== key);
-    const remaining = Math.max(0, 100 - value);
+    const remaining = 100 - value;
     const currentOther = others.reduce((s, k) => s + state[k], 0);
-    let next: AllocatorState = { ...state, [key]: value };
+    const next: AllocatorState = { ...state, [key]: value };
     if (currentOther === 0) {
-      next[others[0]] = Math.round(remaining / 2);
-      next[others[1]] = remaining - next[others[0]];
+      const half = Math.floor(remaining / 2);
+      next[others[0]] = half;
+      next[others[1]] = remaining - half;
     } else {
       const a = Math.round((state[others[0]] / currentOther) * remaining);
-      next[others[0]] = a;
-      next[others[1]] = remaining - a;
+      next[others[0]] = Math.max(0, Math.min(remaining, a));
+      next[others[1]] = remaining - next[others[0]];
     }
     setState(next);
   };
@@ -126,9 +155,11 @@ const BudgetAllocator = () => {
                     <div className="font-display font-semibold">{meta.label}</div>
                     <div className="text-[11px] text-muted-foreground">{meta.subtitle}</div>
                   </div>
-                  <div className="text-2xl font-display font-bold tabular-nums">{state[k]}<span className="text-sm text-muted-foreground">%</span></div>
+                  <div className={cn("text-2xl font-display font-bold tabular-nums", NEON[k].text)}>
+                    {state[k]}<span className="text-sm text-muted-foreground">%</span>
+                  </div>
                 </div>
-                <Slider value={[state[k]]} max={100} step={1} className="mt-4" onValueChange={([v]) => adjust(k, v)} />
+                <NeonSlider value={state[k]} onChange={(v) => adjust(k, v)} tone={k} />
                 <div className="text-xs text-muted-foreground mt-3 flex items-center justify-between">
                   <span>Target</span>
                   <span className="font-semibold text-foreground">{formatMoney(bucketAmounts[k])}</span>
