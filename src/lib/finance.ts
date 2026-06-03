@@ -66,10 +66,7 @@ export function formatMoney(amount: number, currency: string = "INR") {
 
 export function formatCompact(amount: number, currency: string = "INR") {
   const sym = CURRENCY_SYMBOL[currency] ?? "";
-  if (amount >= 10000000) return `${sym}${(amount / 10000000).toFixed(2)}Cr`;
-  if (amount >= 100000) return `${sym}${(amount / 100000).toFixed(2)}L`;
-  if (amount >= 1000) return `${sym}${(amount / 1000).toFixed(1)}K`;
-  return `${sym}${amount.toFixed(0)}`;
+  return `${sym}${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
 /** Rough FX → INR for cross-currency aggregation (display only). */

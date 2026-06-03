@@ -93,7 +93,7 @@ const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, 
         </div>
         <p className="text-sm text-muted-foreground mt-1">
           {SYMBOL[stream.currency]}
-          {stream.amount.toLocaleString("en-US")} {stream.currency}
+          {stream.amount.toLocaleString("en-IN")} {stream.currency}
         </p>
       </div>
 

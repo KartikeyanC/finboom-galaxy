@@ -16,11 +16,8 @@ const TREND_DATA = [
   { month: "Dec", netWorth: 1280000, assets: 1650000, liabilities: 370000 },
 ];
 
-const formatValue = (val: number) => {
-  if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
-  if (val >= 1000) return `₹${(val / 1000).toFixed(0)}K`;
-  return `₹${val}`;
-};
+const formatValue = (val: number) =>
+  `₹${Math.round(val).toLocaleString("en-IN")}`;
 
 const NetWorthTrend = () => {
   return (

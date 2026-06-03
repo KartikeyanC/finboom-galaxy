@@ -17,11 +17,8 @@ const GOALS: Goal[] = [
   { name: "New Laptop", target: 120000, current: 96000, deadline: "Jun 2025", color: "hsl(280, 60%, 55%)" },
 ];
 
-const formatCurrency = (val: number) => {
-  if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
-  if (val >= 1000) return `₹${(val / 1000).toFixed(0)}K`;
-  return `₹${val}`;
-};
+const formatCurrency = (val: number) =>
+  `₹${Math.round(val).toLocaleString("en-IN")}`;
 
 const GoalTracker = () => {
   return (

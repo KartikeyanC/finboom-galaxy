@@ -17,10 +17,8 @@ const INVESTMENTS: Investment[] = [
   { name: "Emergency Fund", value: 210000, change: 0, color: "hsl(190, 70%, 50%)" },
 ];
 
-const formatCurrency = (val: number) => {
-  if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
-  return `₹${(val / 1000).toFixed(0)}K`;
-};
+const formatCurrency = (val: number) =>
+  `₹${Math.round(val).toLocaleString("en-IN")}`;
 
 const totalInvestment = INVESTMENTS.reduce((a, b) => a + b.value, 0);
 
