@@ -44,6 +44,49 @@ import { formatMoney } from "@/lib/finance";
 
 const CATEGORY_ORDER: InsuranceCategory[] = ["health", "life", "vehicle", "gadget", "other"];
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+function KpiCard({
+  label,
+  value,
+  icon,
+  tone,
+  subline,
+  ring,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  tone: "emerald" | "amber" | "destructive";
+  subline?: string;
+  ring?: boolean;
+}) {
+  const toneMap = {
+    emerald: { wrap: "bg-emerald-500/10 text-emerald-500", ring: "ring-emerald-500/20", border: "" },
+    amber: { wrap: "bg-amber-500/10 text-amber-500", ring: "ring-amber-500/20", border: "" },
+    destructive: { wrap: "bg-destructive/10 text-destructive", ring: "ring-destructive/20", border: "border-destructive/30" },
+  }[tone];
+  return (
+    <div
+      className={cn(
+        "p-5 bg-card border border-border rounded-2xl flex items-center gap-5 transition-colors",
+        ring && `ring-1 ${toneMap.ring} ${toneMap.border}`,
+      )}
+    >
+      <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", toneMap.wrap)}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
+        <div className="flex items-baseline gap-2">
+          <p className={cn("text-2xl font-bold font-display", tone === "destructive" ? "text-destructive" : "text-foreground")}>{value}</p>
+          {subline && <span className={cn("text-[10px] font-semibold", `text-${tone === "destructive" ? "destructive" : tone + "-500"}`)}>{subline}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const CATEGORY_ICON: Record<InsuranceCategory, { Icon: typeof HeartPulse; wrap: string }> = {
   health: { Icon: HeartPulse, wrap: "bg-teal-500/15 text-teal-500 dark:text-teal-400" },
   life: { Icon: Heart, wrap: "bg-sky-500/15 text-sky-500 dark:text-sky-400" },
