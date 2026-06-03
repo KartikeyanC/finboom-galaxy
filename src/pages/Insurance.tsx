@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Paperclip, ShieldCheck, AlertTriangle, Trash2, Pencil, FileText, X, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -114,8 +114,7 @@ function PolicyDialog({
 }) {
   const [form, setForm] = useState<PolicyFormData>(initial);
 
-  // reset when reopened with new initial
-  useMemo(() => {
+  useEffect(() => {
     if (open) setForm(initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
