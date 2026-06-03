@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { Plus, Paperclip, ShieldCheck, AlertTriangle, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Paperclip, ShieldCheck, AlertTriangle, Trash2, Pencil, FileText, X, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +19,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   CATEGORY_META,
@@ -70,9 +84,9 @@ function CountdownRing({ days }: { days: number }) {
   );
 }
 
-function AddPolicyDialog({ onAdd }: { onAdd: (p: Omit<InsurancePolicy, "id" | "createdAt">) => void }) {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Omit<InsurancePolicy, "id" | "createdAt">>({
+type PolicyFormData = Omit<InsurancePolicy, "id" | "createdAt">;
+
+const EMPTY_FORM: PolicyFormData = {
     category: "health",
     provider: "",
     policyNumber: "",
@@ -80,19 +94,36 @@ function AddPolicyDialog({ onAdd }: { onAdd: (p: Omit<InsurancePolicy, "id" | "c
     premium: 0,
     dueDate: new Date().toISOString().slice(0, 10),
     documentName: "",
+  documentDataUrl: "",
+  documentMime: "",
     notes: "",
-  });
+};
+
+function PolicyDialog({
+  open,
+  onOpenChange,
+  initial,
+  onSubmit,
+  mode,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  initial: PolicyFormData;
+  onSubmit: (p: PolicyFormData) => void;
+  mode: "create" | "edit";
+}) {
+  const [form, setForm] = useState<PolicyFormData>(initial);
+
+  useEffect(() => {
+    if (open) setForm(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" className="gap-1.5">
-          <Plus className="w-4 h-4" /> Add Policy
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Insurance Policy</DialogTitle>
+          <DialogTitle>{mode === "create" ? "Add Insurance Policy" : "Edit Insurance Policy"}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 py-2">
           <div className="grid grid-cols-2 gap-3">
@@ -108,12 +139,31 @@ function AddPolicyDialog({ onAdd }: { onAdd: (p: Omit<InsurancePolicy, "id" | "c
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Due Date</Label>
-              <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+              <Label>Renewal Due Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal h-10", !form.dueDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {form.dueDate ? format(new Date(form.dueDate), "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={form.dueDate ? new Date(form.dueDate) : undefined}
+                    onSelect={(d) => d && setForm({ ...form, dueDate: d.toISOString().slice(0, 10) })}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Provider</Label>
+            <Label>Insurance Provider</Label>
             <Input value={form.provider} placeholder="e.g. Star Health" onChange={(e) => setForm({ ...form, provider: e.target.value })} />
           </div>
           <div className="space-y-1.5">
@@ -126,22 +176,18 @@ function AddPolicyDialog({ onAdd }: { onAdd: (p: Omit<InsurancePolicy, "id" | "c
               <Input type="number" value={form.sumInsured || ""} onChange={(e) => setForm({ ...form, sumInsured: Number(e.target.value) })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Premium (₹)</Label>
+              <Label>Premium Cost (₹)</Label>
               <Input type="number" value={form.premium || ""} onChange={(e) => setForm({ ...form, premium: Number(e.target.value) })} />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Document name (optional)</Label>
-            <Input value={form.documentName} placeholder="policy.pdf" onChange={(e) => setForm({ ...form, documentName: e.target.value })} />
-          </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             disabled={!form.provider || !form.policyNumber}
-            onClick={() => { onAdd(form); setOpen(false); }}
+            onClick={() => { onSubmit(form); onOpenChange(false); }}
           >
-            Save Policy
+            {mode === "create" ? "Save Policy" : "Update Policy"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -150,7 +196,45 @@ function AddPolicyDialog({ onAdd }: { onAdd: (p: Omit<InsurancePolicy, "id" | "c
 }
 
 const Insurance = () => {
-  const { items, add, remove } = useInsurance();
+  const { items, add, update, remove } = useInsurance();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<InsurancePolicy | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [previewPolicy, setPreviewPolicy] = useState<InsurancePolicy | null>(null);
+
+  const openCreate = () => { setEditing(null); setDialogOpen(true); };
+  const openEdit = (p: InsurancePolicy) => { setEditing(p); setDialogOpen(true); };
+
+  const handleSubmit = (data: PolicyFormData) => {
+    if (editing) {
+      update(editing.id, data);
+      toast.success("Policy updated");
+    } else {
+      add(data);
+      toast.success("Policy added");
+    }
+  };
+
+  const handleFilePick = (policy: InsurancePolicy) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        update(policy.id, {
+          documentName: file.name,
+          documentDataUrl: String(reader.result),
+          documentMime: file.type,
+        });
+        toast.success(`Attached ${file.name}`);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
 
   const grouped = useMemo(() => {
     const g: Record<InsuranceCategory, InsurancePolicy[]> = {
@@ -173,7 +257,9 @@ const Insurance = () => {
             Track every active policy, renewal countdowns, and document vault links in one secure dashboard.
           </p>
         </div>
-        <AddPolicyDialog onAdd={add} />
+        <Button size="sm" className="gap-1.5" onClick={openCreate}>
+          <Plus className="w-4 h-4" /> Add New Policy
+        </Button>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -195,7 +281,7 @@ const Insurance = () => {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState onAdd={() => {}} />
+        <EmptyState onAdd={openCreate} />
       ) : (
         <div className="space-y-8">
           {CATEGORY_ORDER.filter((c) => grouped[c].length > 0).map((cat) => {
@@ -246,14 +332,48 @@ const Insurance = () => {
                             <AlertTriangle className="w-3.5 h-3.5" /> Action Required: Renew Premium
                           </div>
                         )}
-                        <div className="mt-4 flex items-center justify-between">
-                          <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs">
-                            <Paperclip className="w-3.5 h-3.5" />
-                            {p.documentName ? "View Policy Doc" : "Attach Doc"}
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => remove(p.id)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                        <div className="mt-4 flex items-center justify-between gap-2">
+                          {p.documentDataUrl ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 h-8 text-xs border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                              onClick={() => setPreviewPolicy(p)}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              📄 View Document
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 h-8 text-xs"
+                              onClick={() => handleFilePick(p)}
+                            >
+                              <Paperclip className="w-3.5 h-3.5" />
+                              Upload Policy Doc
+                            </Button>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={() => openEdit(p)}
+                              aria-label="Edit policy"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteId(p.id)}
+                              aria-label="Delete policy"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -264,9 +384,86 @@ const Insurance = () => {
           })}
         </div>
       )}
+
+      <PolicyDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        initial={editing ?? EMPTY_FORM}
+        mode={editing ? "edit" : "create"}
+        onSubmit={handleSubmit}
+      />
+
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete policy?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this policy allocation? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteId) {
+                  remove(deleteId);
+                  toast.success("Policy removed");
+                }
+                setDeleteId(null);
+              }}
+            >
+              Delete Policy
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <DocumentPreviewModal policy={previewPolicy} onClose={() => setPreviewPolicy(null)} />
     </div>
   );
 };
+
+function DocumentPreviewModal({ policy, onClose }: { policy: InsurancePolicy | null; onClose: () => void }) {
+  const open = !!policy;
+  const isPdf = policy?.documentMime?.includes("pdf") || policy?.documentName?.toLowerCase().endsWith(".pdf");
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3 bg-card">
+          <div className="min-w-0">
+            <DialogTitle className="text-sm font-semibold truncate">{policy?.documentName || "Policy Document"}</DialogTitle>
+            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+              {policy?.provider} · {policy?.policyNumber}
+            </div>
+          </div>
+          <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={onClose}>
+            <X className="w-3.5 h-3.5" /> Close Document Preview
+          </Button>
+        </div>
+        <div className="bg-muted/30 h-[75vh] overflow-auto flex items-center justify-center">
+          {policy?.documentDataUrl ? (
+            isPdf ? (
+              <iframe
+                src={policy.documentDataUrl}
+                title={policy.documentName}
+                className="w-full h-full border-0 bg-background"
+              />
+            ) : (
+              <img
+                src={policy.documentDataUrl}
+                alt={policy.documentName}
+                className="max-w-full max-h-full object-contain"
+              />
+            )
+          ) : (
+            <div className="text-sm text-muted-foreground">No document attached</div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (

@@ -12,6 +12,8 @@ export interface InsurancePolicy {
   /** ISO YYYY-MM-DD */
   dueDate: string;
   documentName?: string;
+  documentDataUrl?: string;
+  documentMime?: string;
   notes?: string;
   createdAt: string;
 }
