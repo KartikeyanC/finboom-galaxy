@@ -15,6 +15,7 @@ import {
 } from "@/lib/subscriptionsStore";
 import { formatMoney } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { resolveBrand } from "@/lib/subscriptionBrands";
 
 function freqMeta(f: BillingFrequency) {
   if (f === "monthly") return { label: "Monthly", tone: "bg-sky-500/10 text-sky-500 border-sky-500/20" };
@@ -134,8 +135,65 @@ const Subscriptions = () => {
               const overdue = d < 0;
               const cancelled = s.status === "cancel";
               return (
-                <div key={s.id} className={cn("p-4 sm:p-5 flex flex-wrap items-center gap-4 transition", cancelled && "opacity-60")}>
-                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0", "bg-muted/50")}>{s.icon || "💳"}</div>
+                <SubscriptionRow
+                  key={s.id}
+                  s={s}
+                  d={d}
+                  meta={meta}
+                  urgent={urgent}
+                  overdue={overdue}
+                  cancelled={cancelled}
+                  onToggle={(v) => update(s.id, { status: v ? "active" : "cancel" })}
+                  onRemove={() => remove(s.id)}
+                />
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
+function SubscriptionRow({
+  s,
+  d,
+  meta,
+  urgent,
+  overdue,
+  cancelled,
+  onToggle,
+  onRemove,
+}: {
+  s: SubscriptionRecord;
+  d: number;
+  meta: { label: string; tone: string };
+  urgent: boolean;
+  overdue: boolean;
+  cancelled: boolean;
+  onToggle: (v: boolean) => void;
+  onRemove: () => void;
+}) {
+  const brand = resolveBrand(s.name);
+  const { Icon } = brand;
+  return (
+    <div
+      className={cn(
+        "group relative p-4 sm:p-5 flex flex-wrap items-center gap-4 transition-all",
+        "hover:bg-muted/30",
+        cancelled && "opacity-60",
+      )}
+    >
+      <div
+        className={cn(
+          "relative w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
+          "bg-gradient-to-br ring-1 transition-transform group-hover:scale-105",
+          brand.gradient,
+          brand.ring,
+        )}
+      >
+        <Icon className={cn("w-5 h-5", brand.iconClass)} strokeWidth={2.25} />
+      </div>
                   <div className="flex-1 min-w-[160px]">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-foreground">{s.name}</span>
@@ -154,21 +212,15 @@ const Subscriptions = () => {
                   </div>
                   <div className="flex items-center gap-3 pl-2 border-l border-border/60">
                     <div className="flex flex-col items-center gap-0.5">
-                      <Switch checked={s.status === "active"} onCheckedChange={(v) => update(s.id, { status: v ? "active" : "cancel" })} />
+                      <Switch checked={s.status === "active"} onCheckedChange={onToggle} />
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.status === "active" ? "Active" : "Cancel"}</span>
                     </div>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => remove(s.id)}>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </div>
   );
-};
+}
 
 export default Subscriptions;
