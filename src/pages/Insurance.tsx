@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Paperclip, ShieldCheck, AlertTriangle, Trash2, Pencil, FileText, X, CalendarIcon } from "lucide-react";
+import { Plus, Paperclip, ShieldCheck, AlertTriangle, Trash2, Pencil, FileText, X, CalendarIcon, Clock, Heart, HeartPulse, Car, Smartphone, Package } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +43,57 @@ import {
 import { formatMoney } from "@/lib/finance";
 
 const CATEGORY_ORDER: InsuranceCategory[] = ["health", "life", "vehicle", "gadget", "other"];
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+function KpiCard({
+  label,
+  value,
+  icon,
+  tone,
+  subline,
+  ring,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  tone: "emerald" | "amber" | "destructive";
+  subline?: string;
+  ring?: boolean;
+}) {
+  const toneMap = {
+    emerald: { wrap: "bg-emerald-500/10 text-emerald-500", ring: "ring-emerald-500/20", border: "" },
+    amber: { wrap: "bg-amber-500/10 text-amber-500", ring: "ring-amber-500/20", border: "" },
+    destructive: { wrap: "bg-destructive/10 text-destructive", ring: "ring-destructive/20", border: "border-destructive/30" },
+  }[tone];
+  return (
+    <div
+      className={cn(
+        "p-5 bg-card border border-border rounded-2xl flex items-center gap-5 transition-colors",
+        ring && `ring-1 ${toneMap.ring} ${toneMap.border}`,
+      )}
+    >
+      <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", toneMap.wrap)}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
+        <div className="flex items-baseline gap-2">
+          <p className={cn("text-2xl font-bold font-display", tone === "destructive" ? "text-destructive" : "text-foreground")}>{value}</p>
+          {subline && <span className={cn("text-[10px] font-semibold", `text-${tone === "destructive" ? "destructive" : tone + "-500"}`)}>{subline}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const CATEGORY_ICON: Record<InsuranceCategory, { Icon: typeof HeartPulse; wrap: string }> = {
+  health: { Icon: HeartPulse, wrap: "bg-teal-500/15 text-teal-500 dark:text-teal-400" },
+  life: { Icon: Heart, wrap: "bg-sky-500/15 text-sky-500 dark:text-sky-400" },
+  vehicle: { Icon: Car, wrap: "bg-amber-500/15 text-amber-500 dark:text-amber-400" },
+  gadget: { Icon: Smartphone, wrap: "bg-violet-500/15 text-violet-500 dark:text-violet-400" },
+  other: { Icon: Package, wrap: "bg-muted text-muted-foreground" },
+};
 
 function CountdownRing({ days }: { days: number }) {
   const overdue = days < 0;
@@ -248,132 +299,160 @@ const Insurance = () => {
   const urgentCount = items.filter((p) => { const d = daysUntil(p.dueDate); return d >= 0 && d < 15; }).length;
 
   return (
-    <div className="px-6 sm:px-8 py-8 space-y-8 max-w-[1400px] mx-auto">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Insurance</span>
-          <h1 className="font-display text-3xl font-bold text-foreground mt-1">Insurance Center</h1>
-          <p className="text-muted-foreground mt-2 max-w-lg">
-            Track every active policy, renewal countdowns, and document vault links in one secure dashboard.
+    <div className="px-6 sm:px-10 py-10 space-y-12 max-w-[1400px] mx-auto">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">Management</span>
+          <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">Insurance Center</h1>
+          <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
+            Monitor active coverage, renewal timelines, and policy documentation across your entire financial portfolio.
           </p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={openCreate}>
+        <Button onClick={openCreate} className="gap-2 px-5 py-2.5 font-semibold shadow-lg shadow-primary/20">
           <Plus className="w-4 h-4" /> Add New Policy
         </Button>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-border/60 bg-card p-4">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">Active Policies</div>
-          <div className="text-2xl font-display font-bold mt-1 flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-emerald-500" />{items.length}</div>
-        </div>
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-          <div className="text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400">Renewing in 15 days</div>
-          <div className="text-2xl font-display font-bold mt-1">{urgentCount}</div>
-        </div>
-        <div className={cn("rounded-xl border p-4", overdueCount > 0 ? "border-destructive/40 bg-destructive/5" : "border-border/60 bg-card")}>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">Overdue</div>
-          <div className="text-2xl font-display font-bold mt-1 flex items-center gap-2">
-            {overdueCount > 0 && <AlertTriangle className="w-5 h-5 text-destructive" />}
-            {overdueCount}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <KpiCard
+          label="Active Policies"
+          value={pad2(items.length)}
+          icon={<ShieldCheck className="w-6 h-6" />}
+          tone="emerald"
+        />
+        <KpiCard
+          label="Renewing Soon"
+          value={pad2(urgentCount)}
+          icon={<Clock className="w-6 h-6" />}
+          tone="amber"
+          subline="IN 15 DAYS"
+          ring={urgentCount > 0}
+        />
+        <KpiCard
+          label="Overdue Policies"
+          value={pad2(overdueCount)}
+          icon={<AlertTriangle className="w-6 h-6" />}
+          tone="destructive"
+          ring={overdueCount > 0}
+        />
       </div>
 
       {items.length === 0 ? (
         <EmptyState onAdd={openCreate} />
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-12">
           {CATEGORY_ORDER.filter((c) => grouped[c].length > 0).map((cat) => {
             const meta = CATEGORY_META[cat];
+            const { Icon, wrap } = CATEGORY_ICON[cat];
             return (
-              <section key={cat} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium", meta.tone)}>
-                    <span>{meta.emoji}</span>{meta.label}
+              <section key={cat}>
+                <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
+                  <span className={cn("w-9 h-9 rounded-lg flex items-center justify-center", wrap)}>
+                    <Icon className="w-4 h-4" />
                   </span>
-                  <span className="text-xs text-muted-foreground">{grouped[cat].length} active</span>
+                  <h2 className="text-lg font-semibold font-display">{meta.label} Insurance</h2>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-wider">
+                    {grouped[cat].length} Active
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {grouped[cat].map((p) => {
                     const d = daysUntil(p.dueDate);
                     const overdue = d < 0;
+                    const urgent = !overdue && d < 15;
                     return (
                       <div
                         key={p.id}
                         className={cn(
-                          "relative rounded-xl border bg-card p-5 transition-all",
-                          overdue ? "border-destructive/50 animate-pulse-slow" : d < 15 ? "border-amber-500/40" : "border-border/60",
+                          "group relative rounded-2xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/20",
+                          overdue
+                            ? "border-destructive/40 shadow-lg shadow-destructive/5"
+                            : urgent
+                              ? "border-amber-500/40 ring-1 ring-amber-500/20"
+                              : "border-border hover:border-border/80",
                         )}
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-3 mb-6">
                           <div className="min-w-0">
-                            <div className="text-sm font-semibold text-foreground truncate">{p.provider}</div>
-                            <div className="text-xs text-muted-foreground font-mono mt-0.5 truncate">{p.policyNumber}</div>
+                            <h3 className="text-lg font-bold text-foreground leading-tight truncate">{p.provider}</h3>
+                            <p className="text-[11px] text-muted-foreground font-mono tracking-tight mt-1 truncate">{p.policyNumber}</p>
                           </div>
-                          <CountdownRing days={d} />
+                          {overdue ? (
+                            <div className="w-12 h-12 rounded-full border-2 border-destructive flex items-center justify-center shrink-0">
+                              <span className="text-[10px] font-black text-destructive tracking-wider">DUE</span>
+                            </div>
+                          ) : (
+                            <CountdownRing days={d} />
+                          )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="grid grid-cols-2 gap-y-4 gap-x-2 mb-6">
                           <div>
-                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Sum Insured</div>
-                            <div className="text-sm font-semibold mt-0.5">{formatMoney(p.sumInsured)}</div>
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Sum Insured</div>
+                            <div className="text-sm font-semibold text-foreground">{formatMoney(p.sumInsured)}</div>
                           </div>
                           <div>
-                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Premium</div>
-                            <div className="text-sm font-semibold mt-0.5">{formatMoney(p.premium)}</div>
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Premium</div>
+                            <div className="text-sm font-semibold text-foreground">{formatMoney(p.premium)}</div>
                           </div>
-                          <div className="col-span-2">
-                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Premium Due</div>
-                            <div className="text-sm font-semibold mt-0.5">{new Date(p.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
+                          <div className="col-span-2 pt-3 border-t border-border/60">
+                            <div className={cn(
+                              "text-[10px] uppercase tracking-wider font-bold mb-1",
+                              overdue ? "text-destructive" : urgent ? "text-amber-500" : "text-muted-foreground",
+                            )}>Premium Due Date</div>
+                            <div className={cn(
+                              "text-sm font-bold",
+                              overdue ? "text-destructive" : "text-foreground",
+                            )}>{new Date(p.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
                           </div>
                         </div>
                         {overdue && (
-                          <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive flex items-center gap-2">
-                            <AlertTriangle className="w-3.5 h-3.5" /> Action Required: Renew Premium
+                          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
+                            <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-bold text-destructive uppercase leading-none mb-1">Action Required</div>
+                              <div className="text-xs text-destructive/90">Renew Premium</div>
+                            </div>
                           </div>
                         )}
-                        <div className="mt-4 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
                           {p.documentDataUrl ? (
                             <Button
                               size="sm"
                               variant="outline"
-                              className="gap-1.5 h-8 text-xs border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                              className="flex-1 gap-1.5 h-9 text-xs font-semibold border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
                               onClick={() => setPreviewPolicy(p)}
                             >
                               <FileText className="w-3.5 h-3.5" />
-                              📄 View Document
+                              View Document
                             </Button>
                           ) : (
                             <Button
                               size="sm"
-                              variant="outline"
-                              className="gap-1.5 h-8 text-xs"
+                              variant="secondary"
+                              className="flex-1 gap-1.5 h-9 text-xs font-semibold"
                               onClick={() => handleFilePick(p)}
                             >
-                              <Paperclip className="w-3.5 h-3.5" />
-                              Upload Policy Doc
+                              <Paperclip className="w-3.5 h-3.5" /> Upload Doc
                             </Button>
                           )}
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-muted-foreground hover:text-primary"
-                              onClick={() => openEdit(p)}
-                              aria-label="Edit policy"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => setDeleteId(p.id)}
-                              aria-label="Delete policy"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted"
+                            onClick={() => openEdit(p)}
+                            aria-label="Edit policy"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteId(p.id)}
+                            aria-label="Delete policy"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     );
