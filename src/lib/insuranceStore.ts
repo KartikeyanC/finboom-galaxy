@@ -2,13 +2,30 @@ import { useCallback, useEffect, useState } from "react";
 
 export type InsuranceCategory = "health" | "life" | "vehicle" | "gadget" | "other";
 
+export type PayStructure = "1-Pay" | "Limited-Pay" | "Regular-Pay";
+export type PaymentFrequency = "Monthly" | "Quarterly" | "Half-Yearly" | "Annual" | "One-Time";
+
+export const PAY_STRUCTURES: PayStructure[] = ["1-Pay", "Limited-Pay", "Regular-Pay"];
+export const PAYMENT_FREQUENCIES: PaymentFrequency[] = ["Monthly", "Quarterly", "Half-Yearly", "Annual", "One-Time"];
+
+export const FREQUENCY_MULTIPLIER: Record<PaymentFrequency, number> = {
+  Monthly: 12,
+  Quarterly: 4,
+  "Half-Yearly": 2,
+  Annual: 1,
+  "One-Time": 0,
+};
+
 export interface InsurancePolicy {
   id: string;
   category: InsuranceCategory;
+  policyName: string;
   provider: string;
   policyNumber: string;
   sumInsured: number;
   premium: number;
+  payStructure: PayStructure;
+  paymentFrequency: PaymentFrequency;
   /** ISO YYYY-MM-DD */
   dueDate: string;
   documentName?: string;
@@ -32,10 +49,13 @@ function seed(): InsurancePolicy[] {
     {
       id: crypto.randomUUID(),
       category: "health",
+      policyName: "Star Health Family Floater",
       provider: "Star Health",
       policyNumber: "SH-2024-88421",
       sumInsured: 1000000,
       premium: 18450,
+      payStructure: "Regular-Pay",
+      paymentFrequency: "Annual",
       dueDate: offset(9),
       documentName: "star-health-2024.pdf",
       createdAt: now,
@@ -43,20 +63,26 @@ function seed(): InsurancePolicy[] {
     {
       id: crypto.randomUUID(),
       category: "life",
+      policyName: "HDFC Life Click2Protect Term",
       provider: "HDFC Life Click2Protect",
       policyNumber: "HDFC-LF-77321",
       sumInsured: 10000000,
       premium: 21200,
+      payStructure: "Regular-Pay",
+      paymentFrequency: "Annual",
       dueDate: offset(42),
       createdAt: now,
     },
     {
       id: crypto.randomUUID(),
       category: "vehicle",
+      policyName: "ACKO Comprehensive Auto",
       provider: "ACKO Auto",
       policyNumber: "ACKO-MH12-9821",
       sumInsured: 650000,
       premium: 7480,
+      payStructure: "1-Pay",
+      paymentFrequency: "Annual",
       dueDate: offset(-3),
       createdAt: now,
     },
@@ -71,7 +97,14 @@ function load(): InsurancePolicy[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
       return s;
     }
-    return JSON.parse(raw);
+    const parsed: InsurancePolicy[] = JSON.parse(raw);
+    // Back-fill any missing new fields for older saved data
+    return parsed.map((p) => ({
+      policyName: p.policyName || p.provider,
+      payStructure: p.payStructure || "Regular-Pay",
+      paymentFrequency: p.paymentFrequency || "Annual",
+      ...p,
+    }));
   } catch {
     return seed();
   }
