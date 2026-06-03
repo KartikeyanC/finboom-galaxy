@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Plus, TrendingUp, TrendingDown, Trash2, ChevronDown } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Area, ComposedChart } from "recharts";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -78,45 +79,63 @@ function AddEntryDialog({ onAdd, defaultKind }: { onAdd: (e: Omit<NetWorthEntry,
   );
 }
 
-function TrendChart({ data }: { data: { month: string; value: number }[] }) {
-  const [hover, setHover] = useState<number | null>(null);
-  const w = 100, h = 36;
-  const vals = data.map((d) => d.value);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const range = max - min || 1;
-  const points = data.map((d, i) => ({
-    x: (i / (data.length - 1)) * w,
-    y: h - ((d.value - min) / range) * (h - 4) - 2,
-    ...d,
-  }));
-  const path = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const area = `${path} L ${w} ${h} L 0 ${h} Z`;
+function NetWorthTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { month: string; value: number; assets: number; liabilities: number } }> }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
   return (
-    <div className="relative w-full">
-      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-24">
-        <defs>
-          <linearGradient id="nw-grad" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#nw-grad)" />
-        <path d={path} fill="none" stroke="hsl(var(--primary))" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={hover === i ? 1.4 : 0.9} fill="hsl(var(--primary))"
-            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className="cursor-pointer" />
-        ))}
-      </svg>
-      <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-        {points.map((p, i) => (<span key={i}>{p.month}</span>))}
-      </div>
-      {hover !== null && (
-        <div className="absolute -top-8 px-2 py-1 rounded-md bg-popover border border-border text-xs font-semibold shadow-md"
-          style={{ left: `${points[hover].x}%`, transform: "translateX(-50%)" }}>
-          {formatCompact(points[hover].value)}
+    <div className="rounded-lg border border-border bg-popover/95 backdrop-blur px-3 py-2.5 shadow-xl min-w-[180px]">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">{d.month}</div>
+      <div className="space-y-1 text-xs">
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Assets</span>
+          <span className="tabular-nums font-medium text-emerald-500">{formatMoney(d.assets)}</span>
         </div>
-      )}
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-destructive" />Liabilities</span>
+          <span className="tabular-nums font-medium text-destructive">{formatMoney(d.liabilities)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4 pt-1.5 mt-1.5 border-t border-border/60">
+          <span className="text-muted-foreground">Net Worth</span>
+          <span className="tabular-nums font-bold text-foreground">{formatMoney(d.value)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrendChart({ data, currentAssets, currentLiabilities, currentNet }: { data: { month: string; value: number }[]; currentAssets: number; currentLiabilities: number; currentNet: number }) {
+  const enriched = useMemo(() => {
+    const safeNet = currentNet || 1;
+    return data.map((d, i) => {
+      const isLast = i === data.length - 1;
+      const ratio = d.value / safeNet;
+      return {
+        month: d.month,
+        value: d.value,
+        assets: Math.round(isLast ? currentAssets : currentAssets * ratio),
+        liabilities: Math.round(isLast ? currentLiabilities : currentLiabilities * (0.92 + 0.08 * ratio)),
+      };
+    });
+  }, [data, currentAssets, currentLiabilities, currentNet]);
+
+  return (
+    <div className="w-full h-44">
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={enriched} margin={{ top: 12, right: 8, left: 8, bottom: 0 }}>
+          <defs>
+            <linearGradient id="nw-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+          <YAxis hide domain={["dataMin - 1000", "dataMax + 1000"]} />
+          <Tooltip content={<NetWorthTooltip />} cursor={{ stroke: "hsl(var(--primary))", strokeWidth: 1, strokeDasharray: "3 3" }} />
+          <Area type="monotone" dataKey="value" stroke="none" fill="url(#nw-area)" />
+          <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(var(--primary))", strokeWidth: 0 }} activeDot={{ r: 5, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 2 }} />
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -189,8 +208,8 @@ const NetWorth = () => {
           </span>
           <span className="text-muted-foreground">vs Jan</span>
         </div>
-        <div className="max-w-2xl mx-auto pt-2">
-          <TrendChart data={history} />
+        <div className="max-w-3xl mx-auto pt-2">
+          <TrendChart data={history} currentAssets={totals.assets} currentLiabilities={totals.liabilities} currentNet={netWorth} />
         </div>
       </div>
 
