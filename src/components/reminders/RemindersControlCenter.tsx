@@ -34,7 +34,7 @@ function formatAmount(amount?: number, currency?: string) {
       maximumFractionDigits: 0,
     }).format(amount);
   } catch {
-    return amount.toLocaleString();
+    return amount.toLocaleString("en-IN");
   }
 }
 

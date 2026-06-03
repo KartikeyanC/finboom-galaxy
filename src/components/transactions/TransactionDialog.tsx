@@ -508,7 +508,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
                           {(() => {
                             const dur = debtDuration > 0 ? debtDuration : Number(debtCustomDuration);
                             const m = computeMonthly(Number(debtTotal), dur);
-                            return `${currency} ${m.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+                            return `${currency} ${m.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
                           })()}
                         </span>
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -594,7 +594,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
                         <CalendarDays className="w-3.5 h-3.5 text-muted-foreground mt-0.5" />
                         <div className="text-[11px] text-muted-foreground leading-relaxed">
                           <span className="text-foreground font-medium">
-                            {currency} {monthly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            {currency} {monthly.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                           </span>{" "}
                           × {dur} months · first payment{" "}
                           <span className="text-foreground">{fmt(start)}</span>, last payment{" "}
