@@ -352,6 +352,10 @@ const Insurance = () => {
 
   const overdueCount = items.filter((p) => daysUntil(p.dueDate) < 0).length;
   const urgentCount = items.filter((p) => { const d = daysUntil(p.dueDate); return d >= 0 && d < 15; }).length;
+  const annualPremiumTotal = items.reduce(
+    (sum, p) => sum + (p.premium || 0) * (FREQUENCY_MULTIPLIER[p.paymentFrequency] ?? 1),
+    0,
+  );
 
   return (
     <div className="px-6 sm:px-10 py-10 space-y-12 max-w-[1400px] mx-auto">
@@ -368,10 +372,16 @@ const Insurance = () => {
         </Button>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
         <KpiCard
           label="Active Policies"
           value={pad2(items.length)}
+          icon={<ShieldCheck className="w-6 h-6" />}
+          tone="emerald"
+        />
+        <KpiCard
+          label="Annual Premium"
+          value={formatMoney(annualPremiumTotal)}
           icon={<ShieldCheck className="w-6 h-6" />}
           tone="emerald"
         />
@@ -429,8 +439,18 @@ const Insurance = () => {
                       >
                         <div className="flex items-start justify-between gap-3 mb-6">
                           <div className="min-w-0">
-                            <h3 className="text-lg font-bold text-foreground leading-tight truncate">{p.provider}</h3>
-                            <p className="text-[11px] text-muted-foreground font-mono tracking-tight mt-1 truncate">{p.policyNumber}</p>
+                            <h3 className="text-lg font-bold text-foreground leading-tight truncate">{p.policyName || p.provider}</h3>
+                            <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                              {p.provider} · <span className="font-mono">{p.policyNumber}</span>
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-muted text-muted-foreground">
+                                {p.payStructure}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
+                                {p.paymentFrequency}
+                              </span>
+                            </div>
                           </div>
                           {overdue ? (
                             <div className="w-12 h-12 rounded-full border-2 border-destructive flex items-center justify-center shrink-0">
