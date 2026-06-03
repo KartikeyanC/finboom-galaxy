@@ -185,6 +185,14 @@ function PolicyDialog({
           <DialogTitle>{mode === "create" ? "Add Insurance Policy" : "Edit Insurance Policy"}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 py-2">
+          <div className="space-y-1.5">
+            <Label>Policy Name</Label>
+            <Input
+              value={form.policyName}
+              placeholder="e.g. HDFC Life Term Plan"
+              onChange={(e) => setForm({ ...form, policyName: e.target.value })}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Category</Label>
@@ -198,7 +206,64 @@ function PolicyDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Renewal Due Date</Label>
+              <Label>Pay Structure</Label>
+              <Select
+                value={form.payStructure}
+                onValueChange={(v) => setForm({ ...form, payStructure: v as PayStructure })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAY_STRUCTURES.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Insurance Provider</Label>
+            <Input
+              value={form.provider}
+              placeholder="e.g. Star Health"
+              onChange={(e) => setForm({ ...form, provider: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Policy Number</Label>
+            <Input value={form.policyNumber} onChange={(e) => setForm({ ...form, policyNumber: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Sum Insured (₹)</Label>
+              <Input type="number" value={form.sumInsured || ""} onChange={(e) => setForm({ ...form, sumInsured: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Premium Amount (₹)</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={form.premium || ""}
+                onChange={(e) => setForm({ ...form, premium: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Payment Frequency</Label>
+              <Select
+                value={form.paymentFrequency}
+                onValueChange={(v) => setForm({ ...form, paymentFrequency: v as PaymentFrequency })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_FREQUENCIES.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Next Due Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -221,29 +286,11 @@ function PolicyDialog({
               </Popover>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Insurance Provider</Label>
-            <Input value={form.provider} placeholder="e.g. Star Health" onChange={(e) => setForm({ ...form, provider: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Policy Number</Label>
-            <Input value={form.policyNumber} onChange={(e) => setForm({ ...form, policyNumber: e.target.value })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Sum Insured (₹)</Label>
-              <Input type="number" value={form.sumInsured || ""} onChange={(e) => setForm({ ...form, sumInsured: Number(e.target.value) })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Premium Cost (₹)</Label>
-              <Input type="number" value={form.premium || ""} onChange={(e) => setForm({ ...form, premium: Number(e.target.value) })} />
-            </div>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            disabled={!form.provider || !form.policyNumber}
+            disabled={!form.policyName || !form.provider || !form.policyNumber}
             onClick={() => { onSubmit(form); onOpenChange(false); }}
           >
             {mode === "create" ? "Save Policy" : "Update Policy"}
