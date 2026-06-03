@@ -37,8 +37,13 @@ import {
   CATEGORY_META,
   daysUntil,
   useInsurance,
+  PAY_STRUCTURES,
+  PAYMENT_FREQUENCIES,
+  FREQUENCY_MULTIPLIER,
   type InsuranceCategory,
   type InsurancePolicy,
+  type PayStructure,
+  type PaymentFrequency,
 } from "@/lib/insuranceStore";
 import { formatMoney } from "@/lib/finance";
 
@@ -139,10 +144,13 @@ type PolicyFormData = Omit<InsurancePolicy, "id" | "createdAt">;
 
 const EMPTY_FORM: PolicyFormData = {
     category: "health",
+    policyName: "",
     provider: "",
     policyNumber: "",
     sumInsured: 0,
     premium: 0,
+    payStructure: "Regular-Pay",
+    paymentFrequency: "Annual",
     dueDate: new Date().toISOString().slice(0, 10),
     documentName: "",
   documentDataUrl: "",
@@ -177,6 +185,14 @@ function PolicyDialog({
           <DialogTitle>{mode === "create" ? "Add Insurance Policy" : "Edit Insurance Policy"}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 py-2">
+          <div className="space-y-1.5">
+            <Label>Policy Name</Label>
+            <Input
+              value={form.policyName}
+              placeholder="e.g. HDFC Life Term Plan"
+              onChange={(e) => setForm({ ...form, policyName: e.target.value })}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Category</Label>
@@ -190,7 +206,64 @@ function PolicyDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Renewal Due Date</Label>
+              <Label>Pay Structure</Label>
+              <Select
+                value={form.payStructure}
+                onValueChange={(v) => setForm({ ...form, payStructure: v as PayStructure })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAY_STRUCTURES.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Insurance Provider</Label>
+            <Input
+              value={form.provider}
+              placeholder="e.g. Star Health"
+              onChange={(e) => setForm({ ...form, provider: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Policy Number</Label>
+            <Input value={form.policyNumber} onChange={(e) => setForm({ ...form, policyNumber: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Sum Insured (₹)</Label>
+              <Input type="number" value={form.sumInsured || ""} onChange={(e) => setForm({ ...form, sumInsured: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Premium Amount (₹)</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={form.premium || ""}
+                onChange={(e) => setForm({ ...form, premium: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Payment Frequency</Label>
+              <Select
+                value={form.paymentFrequency}
+                onValueChange={(v) => setForm({ ...form, paymentFrequency: v as PaymentFrequency })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_FREQUENCIES.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Next Due Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -213,29 +286,11 @@ function PolicyDialog({
               </Popover>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Insurance Provider</Label>
-            <Input value={form.provider} placeholder="e.g. Star Health" onChange={(e) => setForm({ ...form, provider: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Policy Number</Label>
-            <Input value={form.policyNumber} onChange={(e) => setForm({ ...form, policyNumber: e.target.value })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Sum Insured (₹)</Label>
-              <Input type="number" value={form.sumInsured || ""} onChange={(e) => setForm({ ...form, sumInsured: Number(e.target.value) })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Premium Cost (₹)</Label>
-              <Input type="number" value={form.premium || ""} onChange={(e) => setForm({ ...form, premium: Number(e.target.value) })} />
-            </div>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            disabled={!form.provider || !form.policyNumber}
+            disabled={!form.policyName || !form.provider || !form.policyNumber}
             onClick={() => { onSubmit(form); onOpenChange(false); }}
           >
             {mode === "create" ? "Save Policy" : "Update Policy"}
@@ -297,6 +352,10 @@ const Insurance = () => {
 
   const overdueCount = items.filter((p) => daysUntil(p.dueDate) < 0).length;
   const urgentCount = items.filter((p) => { const d = daysUntil(p.dueDate); return d >= 0 && d < 15; }).length;
+  const annualPremiumTotal = items.reduce(
+    (sum, p) => sum + (p.premium || 0) * (FREQUENCY_MULTIPLIER[p.paymentFrequency] ?? 1),
+    0,
+  );
 
   return (
     <div className="px-6 sm:px-10 py-10 space-y-12 max-w-[1400px] mx-auto">
@@ -313,10 +372,16 @@ const Insurance = () => {
         </Button>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
         <KpiCard
           label="Active Policies"
           value={pad2(items.length)}
+          icon={<ShieldCheck className="w-6 h-6" />}
+          tone="emerald"
+        />
+        <KpiCard
+          label="Annual Premium"
+          value={formatMoney(annualPremiumTotal)}
           icon={<ShieldCheck className="w-6 h-6" />}
           tone="emerald"
         />
@@ -374,8 +439,18 @@ const Insurance = () => {
                       >
                         <div className="flex items-start justify-between gap-3 mb-6">
                           <div className="min-w-0">
-                            <h3 className="text-lg font-bold text-foreground leading-tight truncate">{p.provider}</h3>
-                            <p className="text-[11px] text-muted-foreground font-mono tracking-tight mt-1 truncate">{p.policyNumber}</p>
+                            <h3 className="text-lg font-bold text-foreground leading-tight truncate">{p.policyName || p.provider}</h3>
+                            <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                              {p.provider} · <span className="font-mono">{p.policyNumber}</span>
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-muted text-muted-foreground">
+                                {p.payStructure}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
+                                {p.paymentFrequency}
+                              </span>
+                            </div>
                           </div>
                           {overdue ? (
                             <div className="w-12 h-12 rounded-full border-2 border-destructive flex items-center justify-center shrink-0">
