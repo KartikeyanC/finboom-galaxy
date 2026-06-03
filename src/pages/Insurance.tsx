@@ -37,8 +37,13 @@ import {
   CATEGORY_META,
   daysUntil,
   useInsurance,
+  PAY_STRUCTURES,
+  PAYMENT_FREQUENCIES,
+  FREQUENCY_MULTIPLIER,
   type InsuranceCategory,
   type InsurancePolicy,
+  type PayStructure,
+  type PaymentFrequency,
 } from "@/lib/insuranceStore";
 import { formatMoney } from "@/lib/finance";
 
@@ -139,10 +144,13 @@ type PolicyFormData = Omit<InsurancePolicy, "id" | "createdAt">;
 
 const EMPTY_FORM: PolicyFormData = {
     category: "health",
+    policyName: "",
     provider: "",
     policyNumber: "",
     sumInsured: 0,
     premium: 0,
+    payStructure: "Regular-Pay",
+    paymentFrequency: "Annual",
     dueDate: new Date().toISOString().slice(0, 10),
     documentName: "",
   documentDataUrl: "",
