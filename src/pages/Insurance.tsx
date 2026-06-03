@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Paperclip, ShieldCheck, AlertTriangle, Trash2, Pencil, FileText, X, CalendarIcon } from "lucide-react";
+import { Plus, Paperclip, ShieldCheck, AlertTriangle, Trash2, Pencil, FileText, X, CalendarIcon, Clock, Heart, HeartPulse, Car, Smartphone, Package } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +43,14 @@ import {
 import { formatMoney } from "@/lib/finance";
 
 const CATEGORY_ORDER: InsuranceCategory[] = ["health", "life", "vehicle", "gadget", "other"];
+
+const CATEGORY_ICON: Record<InsuranceCategory, { Icon: typeof HeartPulse; wrap: string }> = {
+  health: { Icon: HeartPulse, wrap: "bg-teal-500/15 text-teal-500 dark:text-teal-400" },
+  life: { Icon: Heart, wrap: "bg-sky-500/15 text-sky-500 dark:text-sky-400" },
+  vehicle: { Icon: Car, wrap: "bg-amber-500/15 text-amber-500 dark:text-amber-400" },
+  gadget: { Icon: Smartphone, wrap: "bg-violet-500/15 text-violet-500 dark:text-violet-400" },
+  other: { Icon: Package, wrap: "bg-muted text-muted-foreground" },
+};
 
 function CountdownRing({ days }: { days: number }) {
   const overdue = days < 0;
