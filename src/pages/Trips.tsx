@@ -3,6 +3,7 @@ import {
   Plane,
   Plus,
   Wallet,
+  Banknote,
   CreditCard,
   Smartphone,
   Users,
@@ -55,11 +56,37 @@ const KIND_META: Record<TripKind, { label: string; icon: typeof User; tint: stri
 
 const SOURCE_META: Record<
   PaymentSource,
-  { label: string; icon: typeof Wallet; emoji: string }
+  {
+    label: string;
+    icon: typeof Wallet;
+    emoji: string;
+    /** Gradient end-stops used for the premium allocation card */
+    gradient: { from: string; to: string };
+    /** Tailwind text-* utility for the iconography accent */
+    accent: string;
+  }
 > = {
-  cash: { label: "Cash", icon: Wallet, emoji: "💵" },
-  card: { label: "Card", icon: CreditCard, emoji: "💳" },
-  wallet: { label: "Mobile Wallet", icon: Smartphone, emoji: "📱" },
+  cash: {
+    label: "Cash",
+    icon: Banknote,
+    emoji: "💵",
+    gradient: { from: "#0f3a2d", to: "#1f8a5f" },
+    accent: "text-emerald-300",
+  },
+  card: {
+    label: "Card",
+    icon: CreditCard,
+    emoji: "💳",
+    gradient: { from: "#0b1530", to: "#1e3a8a" },
+    accent: "text-sky-300",
+  },
+  wallet: {
+    label: "Mobile Wallet",
+    icon: Smartphone,
+    emoji: "📱",
+    gradient: { from: "#2a1648", to: "#7c3aed" },
+    accent: "text-violet-300",
+  },
 };
 
 const CATEGORIES = ["Food", "Stay", "Travel", "Activity", "Shopping", "Other"];
@@ -415,9 +442,14 @@ function NewTripDialog({
             </div>
           )}
 
-          <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Starting Allocations
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Starting Allocations
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                Fund your trip from up to 3 sources
+              </span>
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
               <SourceInput
@@ -473,20 +505,56 @@ function SourceInput({
 }) {
   const M = SOURCE_META[source];
   const Icon = M.icon;
+  const filled = value > 0;
   return (
-    <div className="rounded-lg border border-border/50 bg-card/40 p-3 space-y-2">
-      <div className="flex items-center gap-2 text-xs font-semibold">
-        <Icon className="w-3.5 h-3.5 text-primary" />
-        {M.emoji} {M.label}
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-xl p-4 text-white shadow-lg ring-1 transition-all",
+        filled ? "ring-white/20" : "ring-white/10 opacity-90 hover:opacity-100",
+      )}
+      style={{
+        background: `linear-gradient(135deg, ${M.gradient.from}, ${M.gradient.to})`,
+      }}
+    >
+      {/* Glow sheen */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_60%)]" />
+      {/* Brand stripe */}
+      <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/10 blur-2xl" />
+
+      <div className="relative flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-lg bg-white/15 backdrop-blur flex items-center justify-center ring-1 ring-white/20">
+            <Icon className={cn("h-4.5 w-4.5 text-white")} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest opacity-70">Source</div>
+            <div className="text-sm font-semibold leading-tight">{M.label}</div>
+          </div>
+        </div>
+        <span className="text-lg leading-none opacity-90">{M.emoji}</span>
       </div>
-      <Input
-        type="number"
-        min={0}
-        value={value || ""}
-        onChange={(e) => onChange(Number(e.target.value))}
-        placeholder="0"
-      />
-      <div className="text-[10px] text-muted-foreground">{hint}</div>
+
+      <div className="relative mt-4">
+        <div className="flex items-baseline gap-1">
+          <span className="text-lg font-semibold opacity-80">₹</span>
+          <Input
+            type="number"
+            min={0}
+            value={value || ""}
+            onChange={(e) => onChange(Number(e.target.value))}
+            placeholder="0"
+            className={cn(
+              "h-9 border-0 bg-transparent px-0 text-2xl font-bold tracking-tight text-white",
+              "placeholder:text-white/40 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none",
+            )}
+          />
+        </div>
+        <div className="mt-1 h-px w-full bg-white/15" />
+      </div>
+
+      <div className="relative mt-2 text-[10px] uppercase tracking-wider opacity-70">
+        {hint}
+      </div>
     </div>
   );
 }
