@@ -55,11 +55,37 @@ const KIND_META: Record<TripKind, { label: string; icon: typeof User; tint: stri
 
 const SOURCE_META: Record<
   PaymentSource,
-  { label: string; icon: typeof Wallet; emoji: string }
+  {
+    label: string;
+    icon: typeof Wallet;
+    emoji: string;
+    /** Gradient end-stops used for the premium allocation card */
+    gradient: { from: string; to: string };
+    /** Tailwind text-* utility for the iconography accent */
+    accent: string;
+  }
 > = {
-  cash: { label: "Cash", icon: Wallet, emoji: "💵" },
-  card: { label: "Card", icon: CreditCard, emoji: "💳" },
-  wallet: { label: "Mobile Wallet", icon: Smartphone, emoji: "📱" },
+  cash: {
+    label: "Cash",
+    icon: Banknote,
+    emoji: "💵",
+    gradient: { from: "#0f3a2d", to: "#1f8a5f" },
+    accent: "text-emerald-300",
+  },
+  card: {
+    label: "Card",
+    icon: CreditCard,
+    emoji: "💳",
+    gradient: { from: "#0b1530", to: "#1e3a8a" },
+    accent: "text-sky-300",
+  },
+  wallet: {
+    label: "Mobile Wallet",
+    icon: Smartphone,
+    emoji: "📱",
+    gradient: { from: "#2a1648", to: "#7c3aed" },
+    accent: "text-violet-300",
+  },
 };
 
 const CATEGORIES = ["Food", "Stay", "Travel", "Activity", "Shopping", "Other"];
