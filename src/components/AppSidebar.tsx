@@ -17,6 +17,7 @@ import {
   Scale,
   Repeat,
   Sliders,
+  Plane,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -52,6 +53,7 @@ const wealthItems = [
   { title: "Insurance", url: "/app/insurance", icon: ShieldCheck, menuId: "insurance" },
   { title: "Allocator", url: "/app/budget-allocator", icon: Sliders, menuId: "budget-allocator" },
   { title: "Subscriptions", url: "/app/subscriptions", icon: Repeat, menuId: "subscriptions" },
+  { title: "Trips", url: "/app/trips", icon: Plane, menuId: "trips" },
 ];
 
 const toolItems = [

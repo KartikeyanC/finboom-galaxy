@@ -13,6 +13,7 @@ export const ACCESS_MENUS: { id: string; label: string }[] = [
   { id: "budget-allocator", label: "Budget Allocator" },
   { id: "net-worth", label: "Net Worth" },
   { id: "subscriptions", label: "Subscriptions" },
+  { id: "trips", label: "Trips" },
 ];
 
 export const ALL_MENU_IDS = ACCESS_MENUS.map((m) => m.id);
