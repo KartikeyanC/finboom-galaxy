@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
 import {
+  useAccounts,
+  type StoredAccount,
+  type AccountType as StoreAccountType,
+} from "@/lib/accountsStore";
+import {
   Wallet,
   Landmark,
   CreditCard,
@@ -195,9 +200,58 @@ function AccountPreviewCard({ form }: { form: FormState }) {
   );
 }
 
+function fromStored(s: StoredAccount): SavedAccount {
+  return {
+    id: s.id,
+    type: s.type as AccountType,
+    name: s.name ?? "",
+    holder: s.holder ?? "",
+    bank: s.bank ?? "",
+    bankCustom: s.bankCustom ?? "",
+    last4: s.last4 ?? "",
+    expMonth: s.expMonth ?? "",
+    expYear: s.expYear ?? "",
+    branch: s.branch ?? "",
+    openingBalance: s.openingBalance ?? "",
+    openingDate: s.openingDateISO ? new Date(s.openingDateISO) : undefined,
+    color: (s.color as ColorId) ?? "emerald",
+    icon: s.icon ?? "wallet",
+    purposes: s.purposes ?? [],
+  };
+}
+function toStored(a: SavedAccount): StoredAccount {
+  return {
+    id: a.id,
+    type: a.type as StoreAccountType,
+    name: a.name,
+    holder: a.holder,
+    bank: a.bank,
+    bankCustom: a.bankCustom,
+    last4: a.last4,
+    expMonth: a.expMonth,
+    expYear: a.expYear,
+    branch: a.branch,
+    openingBalance: a.openingBalance,
+    openingDateISO: a.openingDate ? a.openingDate.toISOString() : undefined,
+    color: a.color,
+    icon: a.icon,
+    purposes: a.purposes,
+  };
+}
+
 export default function AccountsManager() {
   const [form, setForm] = useState<FormState>(emptyForm());
-  const [accounts, setAccounts] = useState<SavedAccount[]>([]);
+  const { accounts: storedAccounts, setAll: setAllStored } = useAccounts();
+  const accounts: SavedAccount[] = useMemo(
+    () => storedAccounts.map(fromStored),
+    [storedAccounts],
+  );
+  const setAccounts = (
+    updater: SavedAccount[] | ((prev: SavedAccount[]) => SavedAccount[]),
+  ) => {
+    const next = typeof updater === "function" ? (updater as any)(accounts) : updater;
+    setAllStored(next.map(toStored));
+  };
   const [purposeOptions, setPurposeOptions] = useState<string[]>(DEFAULT_PURPOSES);
   const [adding, setAdding] = useState(false);
   const [newPurpose, setNewPurpose] = useState("");
