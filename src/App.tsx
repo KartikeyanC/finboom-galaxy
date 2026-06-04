@@ -30,6 +30,7 @@ import InsurancePage from "./pages/Insurance.tsx";
 import BudgetAllocatorPage from "./pages/BudgetAllocator.tsx";
 import NetWorthPage from "./pages/NetWorth.tsx";
 import SubscriptionsPage from "./pages/Subscriptions.tsx";
+import TripsPage from "./pages/Trips.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
@@ -75,6 +76,7 @@ const App = () => (
                       <Route path="/budget-allocator" element={<MenuGuard menuId="budget-allocator"><BudgetAllocatorPage /></MenuGuard>} />
                       <Route path="/net-worth" element={<MenuGuard menuId="net-worth"><NetWorthPage /></MenuGuard>} />
                       <Route path="/subscriptions" element={<MenuGuard menuId="subscriptions"><SubscriptionsPage /></MenuGuard>} />
+                      <Route path="/trips" element={<MenuGuard menuId="trips"><TripsPage /></MenuGuard>} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<Navigate to="/app" replace />} />
                     </Routes>
