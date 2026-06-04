@@ -6,6 +6,7 @@ import {
   Banknote,
   CreditCard,
   Smartphone,
+  Landmark,
   Users,
   User,
   Home,
@@ -14,6 +15,9 @@ import {
   Gauge,
   Archive,
   ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  PieChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,8 +49,16 @@ import {
   formatINR,
   type Trip,
   type TripKind,
-  type PaymentSource,
+  type TripExpense,
 } from "@/lib/tripsStore";
+import {
+  useAccounts,
+  bucketOf,
+  BUCKET_META,
+  CASH_ACCOUNT_ID,
+  type StoredAccount,
+  type TripBucket,
+} from "@/lib/accountsStore";
 
 const KIND_META: Record<TripKind, { label: string; icon: typeof User; tint: string }> = {
   solo: { label: "Solo Trip", icon: User, tint: "text-chart-2" },
@@ -54,43 +66,49 @@ const KIND_META: Record<TripKind, { label: string; icon: typeof User; tint: stri
   family: { label: "Family Trip", icon: Home, tint: "text-chart-3" },
 };
 
-const SOURCE_META: Record<
-  PaymentSource,
-  {
-    label: string;
-    icon: typeof Wallet;
-    emoji: string;
-    /** Gradient end-stops used for the premium allocation card */
-    gradient: { from: string; to: string };
-    /** Tailwind text-* utility for the iconography accent */
-    accent: string;
-  }
-> = {
-  cash: {
-    label: "Cash",
-    icon: Banknote,
-    emoji: "💵",
-    gradient: { from: "#0f3a2d", to: "#1f8a5f" },
-    accent: "text-emerald-300",
-  },
-  card: {
-    label: "Card",
-    icon: CreditCard,
-    emoji: "💳",
-    gradient: { from: "#0b1530", to: "#1e3a8a" },
-    accent: "text-sky-300",
-  },
-  wallet: {
-    label: "Mobile Wallet",
-    icon: Smartphone,
-    emoji: "📱",
-    gradient: { from: "#2a1648", to: "#7c3aed" },
-    accent: "text-violet-300",
-  },
-};
-
 const CATEGORIES = ["Food", "Stay", "Travel", "Activity", "Shopping", "Other"];
 
+const BUCKET_ORDER: TripBucket[] = ["bank", "credit", "wallet", "cash"];
+const BUCKET_ICON: Record<TripBucket, typeof Wallet> = {
+  bank: Landmark,
+  credit: CreditCard,
+  wallet: Smartphone,
+  cash: Banknote,
+};
+const BUCKET_ROW_TITLE: Record<TripBucket, string> = {
+  bank: "🏦 Bank Accounts / Debit Cards",
+  credit: "💳 Credit Cards",
+  wallet: "📱 Digital Wallets & UPI Channels",
+  cash: "💵 Physical Cash on Hand",
+};
+
+/** Build the virtual cash account (the only one in the cash bucket). */
+const CASH_ACCOUNT: StoredAccount = {
+  id: CASH_ACCOUNT_ID,
+  type: "cash",
+  name: "Physical Cash",
+  color: "copper",
+  icon: "coins",
+};
+
+function bucketGradient(b: TripBucket): React.CSSProperties {
+  const g = BUCKET_META[b].gradient;
+  return { background: `linear-gradient(135deg, ${g.from}, ${g.to})` };
+}
+
+/** Used when displaying expenses from legacy trips whose accountId no longer exists. */
+function fallbackAccount(id: string): StoredAccount {
+  if (id === "_legacy_card")
+    return { id, type: "credit", name: "Card (legacy)" };
+  if (id === "_legacy_wallet")
+    return { id, type: "wallet", name: "Wallet (legacy)" };
+  if (id === CASH_ACCOUNT_ID) return CASH_ACCOUNT;
+  return { id, type: "other", name: "Removed account" };
+}
+
+/* ============================================================
+   Page root
+   ============================================================ */
 export default function TripsPage() {
   const { trips, upsert, remove, addExpense, removeExpense, archive } = useTrips();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -129,8 +147,8 @@ export default function TripsPage() {
             <Plane className="w-7 h-7 text-primary" /> Trip Tracker Hub
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Create isolated trip profiles, fund them from cash, card and wallet pools, then log
-            spends on the go. Trip data stays out of home-screen analytics.
+            Fund trips from your real accounts, credit lines and wallets. Spending stays out
+            of home-screen analytics — every paise tracked against the exact account it left.
           </p>
         </div>
         <Button onClick={() => setSetupOpen(true)} className="gap-2">
@@ -225,8 +243,8 @@ export default function TripsPage() {
               <Flag className="w-5 h-5 text-primary" /> Conclude Trip & Merge Archive?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The trip will be closed and moved to the archive with all stats preserved. It will
-              remain isolated from your home-screen daily expense graphs.
+              The trip will be closed and moved to the archive with all stats preserved. It
+              will remain isolated from your home-screen daily expense graphs.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -251,7 +269,7 @@ export default function TripsPage() {
 }
 
 /* ============================================================
-   Trip Card on the hub
+   Trip card (hub)
    ============================================================ */
 function TripCard({
   trip,
@@ -310,7 +328,7 @@ function TripCard({
 }
 
 /* ============================================================
-   New Trip dialog — Pre-Trip Liquidity Funding Board
+   New Trip dialog — Multi-account Liquidity Funding Board
    ============================================================ */
 function NewTripDialog({
   open,
@@ -321,25 +339,54 @@ function NewTripDialog({
   onOpenChange: (o: boolean) => void;
   onCreate: (t: Trip) => void;
 }) {
+  const { accounts: realAccounts } = useAccounts();
+
   const [name, setName] = useState("");
   const [kind, setKind] = useState<TripKind>("solo");
   const [days, setDays] = useState(5);
-  const [cash, setCash] = useState(0);
-  const [card, setCard] = useState(0);
-  const [wallet, setWallet] = useState(0);
   const [companions, setCompanions] = useState("");
+  /** accountId → amount */
+  const [alloc, setAlloc] = useState<Record<string, number>>({});
+  const [openRows, setOpenRows] = useState<Record<TripBucket, boolean>>({
+    bank: true,
+    credit: false,
+    wallet: false,
+    cash: true,
+  });
 
-  const total = (cash || 0) + (card || 0) + (wallet || 0);
+  // Group real accounts by bucket; cash bucket is always just the virtual cash account.
+  const byBucket: Record<TripBucket, StoredAccount[]> = useMemo(() => {
+    const map: Record<TripBucket, StoredAccount[]> = {
+      bank: [],
+      credit: [],
+      wallet: [],
+      cash: [CASH_ACCOUNT],
+    };
+    for (const a of realAccounts) {
+      const b = bucketOf(a.type);
+      if (b === "cash") continue; // virtual cash always represents cash bucket
+      map[b].push(a);
+    }
+    return map;
+  }, [realAccounts]);
+
+  const total = Object.values(alloc).reduce((s, n) => s + (n || 0), 0);
 
   const reset = () => {
     setName("");
     setKind("solo");
     setDays(5);
-    setCash(0);
-    setCard(0);
-    setWallet(0);
     setCompanions("");
+    setAlloc({});
   };
+
+  const setAccountAmount = (id: string, v: number) =>
+    setAlloc((prev) => {
+      const next = { ...prev };
+      if (!v || v <= 0) delete next[id];
+      else next[id] = v;
+      return next;
+    });
 
   const submit = () => {
     if (!name.trim()) {
@@ -364,7 +411,7 @@ function NewTripDialog({
               .map((s) => s.trim())
               .filter(Boolean)
               .slice(0, 6),
-      allocation: { cash: cash || 0, card: card || 0, wallet: wallet || 0 },
+      allocation: alloc,
       expenses: [],
       status: "active",
       createdAt: new Date().toISOString(),
@@ -375,8 +422,14 @@ function NewTripDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
-      <DialogContent className="max-w-xl">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (!o) reset();
+      }}
+    >
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plane className="w-5 h-5 text-primary" /> Pre-Trip Liquidity Funding Board
@@ -388,7 +441,7 @@ function NewTripDialog({
             <div className="space-y-1.5">
               <Label>Trip name</Label>
               <Input
-                placeholder="e.g. High-Spend Solo Trip to Himachal"
+                placeholder="e.g. Himachal Solo Run"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -445,36 +498,34 @@ function NewTripDialog({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Starting Allocations
+                Account Allocation Matrix
               </div>
               <span className="text-[10px] text-muted-foreground">
-                Fund your trip from up to 3 sources
+                Tap a row · enter amount per account
               </span>
             </div>
-            <div className="grid sm:grid-cols-3 gap-3">
-              <SourceInput
-                source="cash"
-                value={cash}
-                onChange={setCash}
-                hint="Physical currency"
-              />
-              <SourceInput
-                source="card"
-                value={card}
-                onChange={setCard}
-                hint="Card limit / balance"
-              />
-              <SourceInput
-                source="wallet"
-                value={wallet}
-                onChange={setWallet}
-                hint="UPI / Wallet"
-              />
+
+            <div className="space-y-2">
+              {BUCKET_ORDER.map((b) => (
+                <BucketRow
+                  key={b}
+                  bucket={b}
+                  open={openRows[b]}
+                  onToggle={() =>
+                    setOpenRows((prev) => ({ ...prev, [b]: !prev[b] }))
+                  }
+                  accounts={byBucket[b]}
+                  alloc={alloc}
+                  onChange={setAccountAmount}
+                />
+              ))}
             </div>
           </div>
 
           <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Total Trip Allocation Capital</span>
+            <span className="text-sm text-muted-foreground">
+              Total Allocated Trip Capital Pool
+            </span>
             <span className="font-display text-xl font-bold text-primary">
               ₹{formatINR(total)}
             </span>
@@ -492,75 +543,138 @@ function NewTripDialog({
   );
 }
 
-function SourceInput({
-  source,
+/* ============================================================
+   Bucket row with expandable per-account inputs
+   ============================================================ */
+function BucketRow({
+  bucket,
+  open,
+  onToggle,
+  accounts,
+  alloc,
+  onChange,
+}: {
+  bucket: TripBucket;
+  open: boolean;
+  onToggle: () => void;
+  accounts: StoredAccount[];
+  alloc: Record<string, number>;
+  onChange: (id: string, v: number) => void;
+}) {
+  const Icon = BUCKET_ICON[bucket];
+  const rowTotal = accounts.reduce((s, a) => s + (alloc[a.id] || 0), 0);
+  const active = rowTotal > 0;
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border overflow-hidden transition-colors",
+        active ? "border-primary/40 bg-primary/5" : "border-border/50 bg-card/30",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="h-9 w-9 rounded-lg flex items-center justify-center text-white shrink-0"
+            style={bucketGradient(bucket)}
+          >
+            <Icon className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">{BUCKET_ROW_TITLE[bucket]}</div>
+            <div className="text-[11px] text-muted-foreground">
+              {accounts.length} {accounts.length === 1 ? "account" : "accounts"} ·{" "}
+              {rowTotal > 0 ? `₹${formatINR(rowTotal)} allocated` : "tap to fund"}
+            </div>
+          </div>
+        </div>
+        {open ? (
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        )}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 pt-1 space-y-2">
+          {accounts.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
+              No {BUCKET_META[bucket].label.toLowerCase()} accounts yet. Add one from{" "}
+              <span className="text-primary font-medium">Accounts & Wallets</span> to fund
+              trips from this source.
+            </div>
+          ) : (
+            accounts.map((a) => (
+              <AccountAllocationInput
+                key={a.id}
+                account={a}
+                bucket={bucket}
+                value={alloc[a.id] || 0}
+                onChange={(v) => onChange(a.id, v)}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccountAllocationInput({
+  account,
+  bucket,
   value,
   onChange,
-  hint,
 }: {
-  source: PaymentSource;
+  account: StoredAccount;
+  bucket: TripBucket;
   value: number;
   onChange: (v: number) => void;
-  hint: string;
 }) {
-  const M = SOURCE_META[source];
-  const Icon = M.icon;
   const filled = value > 0;
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl p-4 text-white shadow-lg ring-1 transition-all",
-        filled ? "ring-white/20" : "ring-white/10 opacity-90 hover:opacity-100",
+        "flex items-center gap-3 rounded-lg border bg-card/60 p-2 pl-3 transition-all",
+        filled ? "border-primary/40 ring-1 ring-primary/30" : "border-border/40",
       )}
-      style={{
-        background: `linear-gradient(135deg, ${M.gradient.from}, ${M.gradient.to})`,
-      }}
     >
-      {/* Glow sheen */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_60%)]" />
-      {/* Brand stripe */}
-      <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/10 blur-2xl" />
-
-      <div className="relative flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg bg-white/15 backdrop-blur flex items-center justify-center ring-1 ring-white/20">
-            <Icon className={cn("h-4.5 w-4.5 text-white")} />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest opacity-70">Source</div>
-            <div className="text-sm font-semibold leading-tight">{M.label}</div>
-          </div>
-        </div>
-        <span className="text-lg leading-none opacity-90">{M.emoji}</span>
+      <div
+        className="h-8 w-8 rounded-md flex items-center justify-center text-white shrink-0"
+        style={bucketGradient(bucket)}
+      >
+        <span className="text-[11px] font-semibold">
+          {(account.name || "?").charAt(0).toUpperCase()}
+        </span>
       </div>
-
-      <div className="relative mt-4">
-        <div className="flex items-baseline gap-1">
-          <span className="text-lg font-semibold opacity-80">₹</span>
-          <Input
-            type="number"
-            min={0}
-            value={value || ""}
-            onChange={(e) => onChange(Number(e.target.value))}
-            placeholder="0"
-            className={cn(
-              "h-9 border-0 bg-transparent px-0 text-2xl font-bold tracking-tight text-white",
-              "placeholder:text-white/40 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none",
-            )}
-          />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium truncate">{account.name || "Account"}</div>
+        <div className="text-[10px] text-muted-foreground truncate">
+          {account.bank || BUCKET_META[bucket].label}
+          {account.last4 ? ` · •••• ${account.last4}` : ""}
         </div>
-        <div className="mt-1 h-px w-full bg-white/15" />
       </div>
-
-      <div className="relative mt-2 text-[10px] uppercase tracking-wider opacity-70">
-        {hint}
+      <div className="flex items-center gap-1 shrink-0">
+        <span className="text-xs text-muted-foreground">₹</span>
+        <Input
+          type="number"
+          min={0}
+          value={value || ""}
+          onChange={(e) => onChange(Number(e.target.value))}
+          placeholder="0"
+          className="h-9 w-28 text-right font-display"
+        />
       </div>
     </div>
   );
 }
 
 /* ============================================================
-   Workspace inside an active trip
+   Trip workspace
    ============================================================ */
 function TripWorkspace({
   trip,
@@ -568,25 +682,37 @@ function TripWorkspace({
   onAddExpense,
   onRemoveExpense,
   onConclude,
-  onUpdateTrip,
 }: {
   trip: Trip;
   onBack: () => void;
-  onAddExpense: (e: import("@/lib/tripsStore").TripExpense) => void;
+  onAddExpense: (e: TripExpense) => void;
   onRemoveExpense: (id: string) => void;
   onConclude: () => void;
   onUpdateTrip: (t: Trip) => void;
 }) {
   const tot = tripTotals(trip);
   const Kind = KIND_META[trip.kind].icon;
+  const { accounts: realAccounts } = useAccounts();
+
+  // Resolve every accountId in trip.allocation to a StoredAccount (real or fallback).
+  const fundedAccounts: StoredAccount[] = useMemo(() => {
+    const ids = Object.keys(trip.allocation);
+    return ids.map((id) => {
+      if (id === CASH_ACCOUNT_ID) return CASH_ACCOUNT;
+      const real = realAccounts.find((a) => a.id === id);
+      return real || fallbackAccount(id);
+    });
+  }, [trip.allocation, realAccounts]);
 
   // Logging form state
-  const [source, setSource] = useState<PaymentSource>("cash");
+  const firstId = fundedAccounts[0]?.id ?? CASH_ACCOUNT_ID;
+  const [accountId, setAccountId] = useState<string>(firstId);
   const [amount, setAmount] = useState<number | "">("");
   const [category, setCategory] = useState("Food");
   const [note, setNote] = useState("");
   const [splitWith, setSplitWith] = useState<string[]>([]);
 
+  // Solo burn-rate
   const dayUsed = Math.max(
     1,
     Math.ceil(
@@ -600,21 +726,39 @@ function TripWorkspace({
     .reduce((s, e) => s + e.amount, 0);
   const burnPct = burnAllowed > 0 ? Math.min(150, (todaySpent / burnAllowed) * 100) : 0;
 
+  // Bucket-level spend breakdown
+  const bucketSpend = useMemo(() => {
+    const map: Record<TripBucket, number> = { bank: 0, credit: 0, wallet: 0, cash: 0 };
+    for (const e of trip.expenses) {
+      const acc =
+        e.accountId === CASH_ACCOUNT_ID
+          ? CASH_ACCOUNT
+          : realAccounts.find((a) => a.id === e.accountId) || fallbackAccount(e.accountId);
+      map[bucketOf(acc.type)] += e.amount;
+    }
+    return map;
+  }, [trip.expenses, realAccounts]);
+
   const submit = () => {
     const amt = Number(amount);
     if (!amt || amt <= 0) {
       toast.error("Enter an amount");
       return;
     }
-    if (tot.remainingBySource[source] - amt < 0) {
-      toast.warning(
-        `Heads up — ${SOURCE_META[source].label} pool will go negative after this entry.`,
-      );
+    if (!accountId) {
+      toast.error("Choose a payment account");
+      return;
+    }
+    const rem = tot.remainingByAccount[accountId] ?? 0;
+    if (rem - amt < 0) {
+      const accName =
+        fundedAccounts.find((a) => a.id === accountId)?.name || "this account";
+      toast.warning(`Heads up — ${accName} pool will go negative after this entry.`);
     }
     onAddExpense({
       id: `exp_${Date.now()}`,
       amount: amt,
-      source,
+      accountId,
       category,
       note: note.trim() || undefined,
       at: new Date().toISOString(),
@@ -623,7 +767,9 @@ function TripWorkspace({
     setAmount("");
     setNote("");
     setSplitWith([]);
-    toast.success(`₹${formatINR(amt)} logged from ${SOURCE_META[source].label}`);
+    const accName =
+      fundedAccounts.find((a) => a.id === accountId)?.name || "account";
+    toast.success(`₹${formatINR(amt)} logged from ${accName}`);
   };
 
   const toggleSplit = (name: string) => {
@@ -675,32 +821,115 @@ function TripWorkspace({
           value={tot.allocated > 0 ? (tot.spent / tot.allocated) * 100 : 0}
           className="h-2.5"
         />
-        <div className="grid sm:grid-cols-3 gap-2 pt-1">
-          {(Object.keys(SOURCE_META) as PaymentSource[]).map((s) => {
-            const M = SOURCE_META[s];
-            const Icon = M.icon;
-            const remain = tot.remainingBySource[s];
-            const low = remain < trip.allocation[s] * 0.2;
+      </div>
+
+      {/* Per-account balance grid */}
+      <div className="glass-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold">Real-Time Account Balance Tracker</div>
+          <Badge variant="secondary" className="text-[10px]">
+            {fundedAccounts.length} funded
+          </Badge>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {fundedAccounts.map((acc) => {
+            const b = bucketOf(acc.type);
+            const Icon = BUCKET_ICON[b];
+            const allocated = trip.allocation[acc.id] || 0;
+            const spent = tot.spentByAccount[acc.id] || 0;
+            const remaining = allocated - spent;
+            const pct = allocated > 0 ? Math.min(100, (spent / allocated) * 100) : 0;
+            const low = remaining < allocated * 0.2;
             return (
               <div
-                key={s}
-                className={cn(
-                  "rounded-lg border p-3 flex items-center justify-between",
-                  low ? "border-warning/40 bg-warning/5" : "border-border/40 bg-card/40",
-                )}
+                key={acc.id}
+                className="relative overflow-hidden rounded-xl p-4 text-white shadow-md ring-1 ring-white/10"
+                style={bucketGradient(b)}
               >
-                <div className="flex items-center gap-2 text-xs">
-                  <Icon className="w-3.5 h-3.5 text-primary" />
-                  <span className="font-medium">{M.label}</span>
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_60%)]" />
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-md bg-white/15 backdrop-blur flex items-center justify-center ring-1 ring-white/20">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-widest opacity-80">
+                        {BUCKET_META[b].label}
+                      </div>
+                      <div className="text-sm font-semibold truncate max-w-[140px]">
+                        {acc.name}
+                      </div>
+                    </div>
+                  </div>
+                  {low && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/15 ring-1 ring-white/25">
+                      Low
+                    </span>
+                  )}
                 </div>
-                <div className="text-sm font-display font-semibold">
-                  ₹{formatINR(remain)}
+                <div className="relative mt-4 flex items-end justify-between">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest opacity-70">
+                      Remaining
+                    </div>
+                    <div className="font-display text-xl font-bold">
+                      ₹{formatINR(remaining)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase tracking-widest opacity-70">
+                      Spent
+                    </div>
+                    <div className="text-sm font-semibold opacity-90">
+                      ₹{formatINR(spent)}
+                    </div>
+                  </div>
+                </div>
+                <div className="relative mt-3 h-1.5 rounded-full bg-white/15 overflow-hidden">
+                  <div className="h-full bg-white/80" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Bucket breakdown bar chart */}
+      {tot.spent > 0 && (
+        <div className="glass-card p-5 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <PieChart className="w-4 h-4 text-primary" /> Spend Breakdown by Payment Type
+          </div>
+          <div className="space-y-2">
+            {BUCKET_ORDER.map((b) => {
+              const amt = bucketSpend[b];
+              if (!amt) return null;
+              const pct = (amt / tot.spent) * 100;
+              return (
+                <div key={b} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">
+                      {BUCKET_META[b].emoji} {BUCKET_META[b].label}
+                    </span>
+                    <span className="text-muted-foreground">
+                      ₹{formatINR(amt)} · {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${pct}%`,
+                        background: `linear-gradient(90deg, ${BUCKET_META[b].gradient.from}, ${BUCKET_META[b].gradient.to})`,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Solo burn-rate */}
       {trip.kind === "solo" && (
@@ -728,74 +957,99 @@ function TripWorkspace({
         </div>
       )}
 
-      {/* High-density logging workspace */}
+      {/* Logging workspace */}
       <div className="glass-card p-5 space-y-4">
         <div className="text-sm font-semibold">Log a Trip Expense</div>
 
-        {/* Payment source selector */}
-        <div className="grid grid-cols-3 gap-2">
-          {(Object.keys(SOURCE_META) as PaymentSource[]).map((s) => {
-            const M = SOURCE_META[s];
-            const Icon = M.icon;
-            const active = source === s;
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSource(s)}
-                className={cn(
-                  "h-14 rounded-xl border-2 flex items-center justify-center gap-2 font-semibold text-sm transition-all",
-                  active
-                    ? "border-primary bg-primary/15 text-primary shadow-sm"
-                    : "border-border/50 hover:bg-accent/40",
-                )}
-              >
-                <span>{M.emoji}</span>
-                <Icon className="w-4 h-4" />
-                {M.label}
-              </button>
-            );
-          })}
+        <div className="space-y-1.5">
+          <Label>Amount (₹)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={amount}
+            onChange={(e) =>
+              setAmount(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            placeholder="0"
+            className="h-14 text-2xl font-display"
+          />
         </div>
 
-        <div className="grid sm:grid-cols-[1fr_180px] gap-3">
-          <div className="space-y-1.5">
-            <Label>Amount (₹)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))}
-              placeholder="0"
-              className="h-12 text-lg font-display"
-            />
-          </div>
+        {/* Account selector — only funded sources */}
+        <div className="space-y-1.5">
+          <Label>Pay from</Label>
+          {fundedAccounts.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
+              No funded accounts on this trip.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {fundedAccounts.map((acc) => {
+                const b = bucketOf(acc.type);
+                const Icon = BUCKET_ICON[b];
+                const active = accountId === acc.id;
+                const remain = tot.remainingByAccount[acc.id] ?? 0;
+                return (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => setAccountId(acc.id)}
+                    className={cn(
+                      "relative overflow-hidden rounded-xl p-3 text-left ring-1 transition-all min-h-[72px]",
+                      active
+                        ? "ring-2 ring-primary scale-[1.02] shadow-md"
+                        : "ring-white/10 opacity-80 hover:opacity-100",
+                    )}
+                    style={bucketGradient(b)}
+                  >
+                    <div className="text-white">
+                      <div className="flex items-center gap-1.5">
+                        <Icon className="w-3.5 h-3.5" />
+                        <span className="text-[10px] uppercase tracking-widest opacity-80">
+                          {BUCKET_META[b].label}
+                        </span>
+                      </div>
+                      <div className="text-sm font-semibold truncate mt-0.5">
+                        {acc.name}
+                      </div>
+                      <div className="text-[10px] opacity-80 mt-0.5">
+                        Left ₹{formatINR(remain)}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Category</Label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-12 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
               {CATEGORIES.map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>
           </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Note (optional)</Label>
-          <Input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Dinner at the cliff cafe"
-          />
+          <div className="space-y-1.5">
+            <Label>Note (optional)</Label>
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Dinner at the cliff cafe"
+              className="h-11"
+            />
+          </div>
         </div>
 
         {/* Friends/Family split */}
         {trip.kind !== "solo" && trip.companions.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 rounded-lg border border-border/40 bg-card/40 p-3">
             <Label className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" /> Share with
             </Label>
@@ -822,8 +1076,7 @@ function TripWorkspace({
             </div>
             {splitWith.length > 0 && Number(amount) > 0 && (
               <div className="text-[11px] text-muted-foreground">
-                Your share ≈ ₹
-                {formatINR(Number(amount) / (splitWith.length + 1))} ·{" "}
+                Your share ≈ ₹{formatINR(Number(amount) / (splitWith.length + 1))} ·{" "}
                 {splitWith.join(", ")} owe you ₹
                 {formatINR(
                   (Number(amount) / (splitWith.length + 1)) * splitWith.length,
@@ -853,24 +1106,34 @@ function TripWorkspace({
         ) : (
           <div className="divide-y divide-border/30">
             {trip.expenses.map((e) => {
-              const M = SOURCE_META[e.source];
-              const Icon = M.icon;
+              const acc =
+                e.accountId === CASH_ACCOUNT_ID
+                  ? CASH_ACCOUNT
+                  : realAccounts.find((a) => a.id === e.accountId) ||
+                    fallbackAccount(e.accountId);
+              const b = bucketOf(acc.type);
+              const Icon = BUCKET_ICON[b];
               return (
                 <div
                   key={e.id}
                   className="py-3 flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-4 h-4 text-primary" />
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center text-white flex-shrink-0"
+                      style={bucketGradient(b)}
+                    >
+                      <Icon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">
                         {e.category}
                         {e.note ? ` · ${e.note}` : ""}
                       </div>
-                      <div className="text-[11px] text-muted-foreground flex items-center gap-2">
-                        <span>{M.emoji} {M.label}</span>
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
+                        <span>
+                          {BUCKET_META[b].emoji} {acc.name}
+                        </span>
                         <span>·</span>
                         <span>{new Date(e.at).toLocaleString("en-IN")}</span>
                         {e.splitWith && e.splitWith.length > 0 && (

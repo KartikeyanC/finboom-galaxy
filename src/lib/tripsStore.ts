@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type TripKind = "solo" | "friends" | "family";
+/** Legacy. Kept for backwards-compat only. */
 export type PaymentSource = "cash" | "card" | "wallet";
 
 export type TripExpense = {
   id: string;
   amount: number;
-  source: PaymentSource;
+  /** Account id this expense was paid from (real account id or `_cash`). */
+  accountId: string;
   category: string;
   note?: string;
   /** ISO datetime */
@@ -24,11 +26,8 @@ export type Trip = {
   /** Total planned trip days for burn-rate gauge */
   days: number;
   companions: string[];
-  allocation: {
-    cash: number;
-    card: number;
-    wallet: number;
-  };
+  /** accountId → allocated amount (₹) */
+  allocation: Record<string, number>;
   expenses: TripExpense[];
   status: "active" | "archived";
   createdAt: string;
@@ -37,11 +36,43 @@ export type Trip = {
 
 const KEY = "finroots.trips.v1";
 
+/** Normalize older trip records (allocation was {cash, card, wallet}). */
+function normalize(raw: any): Trip {
+  const t = { ...raw } as any;
+  if (
+    t.allocation &&
+    !Array.isArray(t.allocation) &&
+    ("cash" in t.allocation || "card" in t.allocation || "wallet" in t.allocation) &&
+    typeof t.allocation.cash !== "undefined"
+  ) {
+    const old = t.allocation as { cash?: number; card?: number; wallet?: number };
+    const next: Record<string, number> = {};
+    if (old.cash) next["_cash"] = old.cash;
+    if (old.card) next["_legacy_card"] = old.card;
+    if (old.wallet) next["_legacy_wallet"] = old.wallet;
+    t.allocation = next;
+    t.expenses = (t.expenses || []).map((e: any) => ({
+      ...e,
+      accountId:
+        e.accountId ??
+        (e.source === "cash"
+          ? "_cash"
+          : e.source === "card"
+            ? "_legacy_card"
+            : "_legacy_wallet"),
+    }));
+  }
+  if (!t.allocation || typeof t.allocation !== "object") t.allocation = {};
+  return t as Trip;
+}
+
 function read(): Trip[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as Trip[];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.map(normalize);
   } catch {
     return [];
   }
@@ -106,25 +137,23 @@ export function useTrips() {
 }
 
 export function tripTotals(trip: Trip) {
-  const allocated = trip.allocation.cash + trip.allocation.card + trip.allocation.wallet;
-  const spentBySource = trip.expenses.reduce(
-    (acc, e) => {
-      acc[e.source] += e.amount;
-      acc.total += e.amount;
-      return acc;
-    },
-    { cash: 0, card: 0, wallet: 0, total: 0 },
-  );
+  const allocated = Object.values(trip.allocation).reduce((s, n) => s + (n || 0), 0);
+  const spentByAccount: Record<string, number> = {};
+  let spent = 0;
+  for (const e of trip.expenses) {
+    spentByAccount[e.accountId] = (spentByAccount[e.accountId] || 0) + e.amount;
+    spent += e.amount;
+  }
+  const remainingByAccount: Record<string, number> = {};
+  for (const [id, alloc] of Object.entries(trip.allocation)) {
+    remainingByAccount[id] = (alloc || 0) - (spentByAccount[id] || 0);
+  }
   return {
     allocated,
-    spent: spentBySource.total,
-    remaining: Math.max(0, allocated - spentBySource.total),
-    remainingBySource: {
-      cash: trip.allocation.cash - spentBySource.cash,
-      card: trip.allocation.card - spentBySource.card,
-      wallet: trip.allocation.wallet - spentBySource.wallet,
-    },
-    spentBySource,
+    spent,
+    remaining: Math.max(0, allocated - spent),
+    spentByAccount,
+    remainingByAccount,
   };
 }
 
