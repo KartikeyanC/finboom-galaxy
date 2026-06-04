@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
-export type ThemeId = "obsidian" | "light" | "emerald" | "midnight" | "amethyst";
+export type ThemeId = "obsidian" | "light" | "cyber" | "mint" | "copper";
 
 export type ThemePreset = {
   id: ThemeId;
@@ -24,22 +24,22 @@ export const THEME_PRESETS: ThemePreset[] = [
     swatch: ["#0F172A", "#1A2233", "#22C5A0", "#F8FAFC"],
   },
   {
-    id: "emerald",
-    label: "Emerald Growth",
-    description: "Forest-green & teal fintech highlights.",
-    swatch: ["#0B1F19", "#11332A", "#1FB677", "#1AC4C4"],
+    id: "cyber",
+    label: "Electric Cyber Blue",
+    description: "Deep tech dark with neon blue accents.",
+    swatch: ["#06121F", "#0C1E2E", "#0A9BDF", "#7FD8FF"],
   },
   {
-    id: "midnight",
-    label: "Classic Midnight Blue",
-    description: "Deep navy with ice-blue borders.",
-    swatch: ["#0B132B", "#152044", "#6FA9F2", "#A7C7FF"],
+    id: "mint",
+    label: "Mint Wealth",
+    description: "Rich emerald highlights on deep dark.",
+    swatch: ["#0A1410", "#10221B", "#10B981", "#6EE7B7"],
   },
   {
-    id: "amethyst",
-    label: "Royal Amethyst",
-    description: "Dark canvas with rich purple highlights.",
-    swatch: ["#15101F", "#221830", "#A663F2", "#D6A8FF"],
+    id: "copper",
+    label: "Sunset Copper",
+    description: "Warm amber/orange on modern dark.",
+    swatch: ["#150E08", "#241710", "#F97316", "#FDBA74"],
   },
 ];
 
