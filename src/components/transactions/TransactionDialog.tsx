@@ -47,6 +47,7 @@ import CategoryPickerDrawer from "@/components/transactions/CategoryPickerDrawer
 import { findGroupForSub } from "@/lib/expenseSubcategories";
 import { useNetWorth } from "@/lib/netWorthStore";
 import { encodeSplit, type SplitMode } from "@/lib/splitMeta";
+import { parseSplit } from "@/lib/splitMeta";
 import { motion, AnimatePresence } from "framer-motion";
 
 const schema = z.object({
@@ -109,7 +110,8 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       setCurrency(initial.currency);
       setCategory(initial.category);
       // Try to recover a subcategory previously stored as a "Sub · note" prefix.
-      const desc = initial.description ?? "";
+      const { clean: descClean } = parseSplit(initial.description);
+      const desc = descClean;
       const sepIdx = desc.indexOf(" · ");
       const candidate = sepIdx > -1 ? desc.slice(0, sepIdx) : desc;
       if (candidate && findGroupForSub(candidate)) {
@@ -347,7 +349,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 grid gap-4">
-          {activeType === "expense" && !isEdit && (
+          {activeType === "expense" && !isEdit && !splitOn && (
             <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border/40">
               <button
                 type="button"
@@ -805,7 +807,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
             Cancel
           </Button>
           <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : isEdit ? "Save changes" : debtMode ? "Save plan" : "Add expense"}
+            {busy ? "Saving…" : isEdit ? "Save changes" : debtMode ? "Save plan" : splitOn ? "Save split" : "Add expense"}
           </Button>
         </DialogFooter>
       </DialogContent>
