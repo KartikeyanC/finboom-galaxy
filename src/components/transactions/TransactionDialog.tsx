@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Wallet, Receipt, CalendarDays } from "lucide-react";
+import { Plus, Trash2, Wallet, Receipt, CalendarDays, User, Users, HandCoins, Smartphone, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   CURRENCIES,
@@ -45,6 +45,10 @@ import { useReminders, type ReminderRecord } from "@/lib/remindersStore";
 import DateTimeField from "@/components/transactions/DateTimeField";
 import CategoryPickerDrawer from "@/components/transactions/CategoryPickerDrawer";
 import { findGroupForSub } from "@/lib/expenseSubcategories";
+import { useNetWorth } from "@/lib/netWorthStore";
+import { encodeSplit, type SplitMode } from "@/lib/splitMeta";
+import { parseSplit } from "@/lib/splitMeta";
+import { motion, AnimatePresence } from "framer-motion";
 
 const schema = z.object({
   amount: z.number().positive("Amount must be positive").max(1e12),
@@ -68,6 +72,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const custom = useCustomCategories();
   const debts = useDebts();
   const reminders = useReminders();
+  const networth = useNetWorth();
 
   const [activeType, setActiveType] = useState<TxnType>(type);
   const defaultCategory =
@@ -91,6 +96,12 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const [debtFirstDue, setDebtFirstDue] = useState(() => new Date().toISOString().slice(0, 10));
   const [debtLender, setDebtLender] = useState("");
 
+  // Split state
+  const [splitOn, setSplitOn] = useState(false);
+  const [splitMode, setSplitMode] = useState<SplitMode>("paid_full");
+  const [splitTotal, setSplitTotal] = useState("");
+  const [splitFriend, setSplitFriend] = useState("");
+
   useEffect(() => {
     if (!open) return;
     if (initial) {
@@ -99,7 +110,8 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       setCurrency(initial.currency);
       setCategory(initial.category);
       // Try to recover a subcategory previously stored as a "Sub · note" prefix.
-      const desc = initial.description ?? "";
+      const { clean: descClean } = parseSplit(initial.description);
+      const desc = descClean;
       const sepIdx = desc.indexOf(" · ");
       const candidate = sepIdx > -1 ? desc.slice(0, sepIdx) : desc;
       if (candidate && findGroupForSub(candidate)) {
@@ -125,6 +137,10 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
     setDebtCustomDuration("6");
     setDebtFirstDue(new Date().toISOString().slice(0, 10));
     setDebtLender("");
+    setSplitOn(false);
+    setSplitMode("paid_full");
+    setSplitTotal("");
+    setSplitFriend("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial, type]);
 
@@ -137,6 +153,9 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const submit = async () => {
     if (debtMode && activeType === "expense") {
       return submitDebt();
+    }
+    if (splitOn && activeType === "expense" && !isEdit) {
+      return submitSplit();
     }
     // Guardrail: if date is blank/corrupt, fall back to live system time.
     let occurredSafe = occurredAt;
@@ -178,6 +197,60 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       onOpenChange(false);
     } catch {
       /* toast handled in hook */
+    }
+  };
+
+  const submitSplit = async () => {
+    const share = Number(amount);
+    const friend = splitFriend.trim();
+    if (!Number.isFinite(share) || share <= 0) {
+      toast.error("Enter your share amount");
+      return;
+    }
+    if (!friend) {
+      toast.error("Add the friend / group name");
+      return;
+    }
+    let cat = category;
+    let sub: string | null = subcategory;
+    if (splitMode === "settled") {
+      cat = "Social & Celebrations";
+      sub = "Friend Meetups";
+    }
+    const descCore = sub ? (description ? `${sub} · ${description}` : sub) : (description || "");
+    const finalDesc = encodeSplit({ mode: splitMode, friend }, descCore) || null;
+    const occurredSafe = occurredAt || new Date().toISOString();
+    try {
+      await create.mutateAsync({
+        type: "expense",
+        amount: share,
+        currency,
+        category: cat,
+        description: finalDesc,
+        occurred_at: new Date(occurredSafe).toISOString(),
+      });
+      if (splitMode === "paid_full") {
+        const total = Number(splitTotal);
+        const owed = Math.max(0, total - share);
+        if (owed > 0) {
+          networth.add({
+            kind: "asset",
+            group: "other_asset",
+            name: `Owed by ${friend}`,
+            amount: owed,
+          });
+        }
+      } else if (splitMode === "owe") {
+        networth.add({
+          kind: "liability",
+          group: "personal_loan",
+          name: `Owed to ${friend}`,
+          amount: share,
+        });
+      }
+      onOpenChange(false);
+    } catch {
+      /* toast in hook */
     }
   };
 
@@ -276,7 +349,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 grid gap-4">
-          {activeType === "expense" && !isEdit && (
+          {activeType === "expense" && !isEdit && !splitOn && (
             <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border/40">
               <button
                 type="button"
@@ -479,6 +552,127 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
             />
           </div>
 
+          {activeType === "expense" && !isEdit && !debtMode && (
+            <div className="space-y-3">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Transaction Type</Label>
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border/40">
+                <button
+                  type="button"
+                  onClick={() => setSplitOn(false)}
+                  className={cn(
+                    "flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors",
+                    !splitOn
+                      ? "bg-background text-foreground shadow-sm border border-border/60"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <User className="w-3.5 h-3.5" /> Single Expense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitOn(true)}
+                  className={cn(
+                    "flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors",
+                    splitOn
+                      ? "bg-background text-foreground shadow-sm border border-primary/40"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Users className="w-3.5 h-3.5" /> Shared Group Split
+                </button>
+              </div>
+              <AnimatePresence initial={false}>
+                {splitOn && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="rounded-xl border border-primary/30 bg-primary/[0.04] p-4 space-y-3">
+                      <div className="grid grid-cols-1 gap-2">
+                        {([
+                          { id: "paid_full", icon: HandCoins, title: "I Paid for Everyone", sub: "Friend owes me their share" },
+                          { id: "settled", icon: Smartphone, title: "Friend Paid, I Settled Now via UPI", sub: "Already squared up" },
+                          { id: "owe", icon: AlertTriangle, title: "Friend Paid, I Owe Them", sub: "Unsettled debt to track" },
+                        ] as const).map((opt) => {
+                          const Icon = opt.icon;
+                          const active = splitMode === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setSplitMode(opt.id)}
+                              className={cn(
+                                "flex items-start gap-3 text-left rounded-lg border px-3 py-2.5 transition-colors",
+                                active
+                                  ? "border-primary/60 bg-primary/10"
+                                  : "border-border/50 hover:bg-accent/40",
+                              )}
+                            >
+                              <Icon className={cn("w-4 h-4 mt-0.5", active ? "text-primary" : "text-muted-foreground")} />
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-foreground">{opt.title}</div>
+                                <div className="text-[11px] text-muted-foreground">{opt.sub}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        {splitMode === "paid_full" && (
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Total Bill Amount</Label>
+                            <Input
+                              type="number" inputMode="decimal" placeholder="e.g. 1000"
+                              value={splitTotal}
+                              onChange={(e) => setSplitTotal(e.target.value)}
+                            />
+                          </div>
+                        )}
+                        <div className={cn("space-y-1.5", splitMode !== "paid_full" && "col-span-2")}>
+                          <Label className="text-xs">
+                            {splitMode === "paid_full" ? "My Share Amount" : "Your Share"}
+                          </Label>
+                          <Input
+                            type="number" inputMode="decimal" placeholder="e.g. 200"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Friend / Group Name</Label>
+                        <Input
+                          placeholder="e.g. Rahul, Goa Trip Crew"
+                          value={splitFriend}
+                          onChange={(e) => setSplitFriend(e.target.value)}
+                        />
+                      </div>
+
+                      {splitMode === "paid_full" && Number(splitTotal) > 0 && Number(amount) > 0 && (
+                        <div className="text-[11px] text-muted-foreground rounded-md bg-background/60 border border-border/40 px-3 py-2">
+                          <span className="text-foreground font-medium">
+                            {currency} {Math.max(0, Number(splitTotal) - Number(amount)).toLocaleString("en-IN")}
+                          </span>{" "}
+                          will be tracked as <span className="text-foreground">owed by {splitFriend || "friend"}</span> in your Net Worth assets.
+                        </div>
+                      )}
+                      {splitMode === "owe" && Number(amount) > 0 && (
+                        <div className="text-[11px] text-amber-300/90 rounded-md bg-amber-500/5 border border-amber-500/30 px-3 py-2">
+                          Will be added as a liability under Personal Loans in your Net Worth.
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
           {activeType === "expense" && !isEdit && debtMode && (
             <div className="rounded-xl border border-primary/30 bg-primary/[0.04] p-4 space-y-4">
               <div className="flex items-start gap-2">
@@ -613,7 +807,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
             Cancel
           </Button>
           <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : isEdit ? "Save changes" : debtMode ? "Save plan" : "Add expense"}
+            {busy ? "Saving…" : isEdit ? "Save changes" : debtMode ? "Save plan" : splitOn ? "Save split" : "Add expense"}
           </Button>
         </DialogFooter>
       </DialogContent>

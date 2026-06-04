@@ -15,6 +15,7 @@ import {
   ShoppingBasket,
   Clapperboard,
   Zap,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ import { formatMoney, toINR } from "@/lib/finance";
 import { categoryBadgeClass } from "@/lib/categories";
 import MatrixFilter from "@/components/filters/MatrixFilter";
 import { EXPENSE_CATEGORIES } from "@/lib/finance";
+import { parseSplit } from "@/lib/splitMeta";
 
 type ChipDef = {
   id: string;
@@ -358,11 +360,16 @@ function Row({
   const slot = slotFor(d);
   const slotMeta = SLOT_META[slot];
   const SlotIcon = slotMeta.icon;
-  const title = t.description?.trim() || t.category;
-  const hasDescription = !!t.description?.trim();
+  const { meta: split, clean: cleanDesc } = parseSplit(t.description);
+  const title = cleanDesc.trim() || t.category;
+  const hasDescription = !!cleanDesc.trim();
+  const isOwe = split?.mode === "owe";
   return (
     <div
-      className="group/row flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2 hover:bg-muted/20 transition-colors"
+      className={cn(
+        "group/row flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2 hover:bg-muted/20 transition-colors",
+        isOwe && "border-l-2 border-amber-500/70 bg-amber-500/[0.04]",
+      )}
     >
       {/* Left cluster: time + category + description, tightly grouped */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -383,6 +390,14 @@ function Row({
         >
           {t.category}
         </span>
+        {split && (
+          <span
+            className="inline-flex items-center text-indigo-300/90 shrink-0"
+            title={`Split with ${split.friend}`}
+          >
+            <Users className="w-3.5 h-3.5" />
+          </span>
+        )}
         <span className="text-sm text-foreground font-medium truncate min-w-0">
           {title}
           {!hasDescription && (
@@ -391,6 +406,21 @@ function Row({
             </span>
           )}
         </span>
+        {split?.mode === "settled" && (
+          <span className="hidden sm:inline-flex items-center rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 px-1.5 py-0.5 text-[10px] font-medium shrink-0">
+            💳 Paid via UPI
+          </span>
+        )}
+        {split?.mode === "owe" && (
+          <span className="hidden sm:inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-300 px-1.5 py-0.5 text-[10px] font-medium shrink-0">
+            ⚠️ Unsettled · {split.friend}
+          </span>
+        )}
+        {split?.mode === "paid_full" && (
+          <span className="hidden sm:inline-flex items-center rounded-md border border-teal-500/40 bg-teal-500/10 text-teal-300 px-1.5 py-0.5 text-[10px] font-medium shrink-0">
+            🫱 Owed by {split.friend}
+          </span>
+        )}
       </div>
       <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0">
         <span className="font-display text-sm font-semibold tabular-nums text-coral/90">
