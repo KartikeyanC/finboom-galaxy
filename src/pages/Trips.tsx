@@ -3,6 +3,7 @@ import {
   Plane,
   Plus,
   Wallet,
+  Banknote,
   CreditCard,
   Smartphone,
   Users,
