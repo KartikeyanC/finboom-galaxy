@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Wallet, Receipt, CalendarDays, User, Users, HandCoins, Smartphone, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Wallet, Receipt, CalendarDays, User, Users, HandCoins, Smartphone, AlertTriangle, Bell } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   CURRENCIES,
@@ -102,6 +103,13 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const [splitTotal, setSplitTotal] = useState("");
   const [splitFriend, setSplitFriend] = useState("");
 
+  // Optional reminder
+  const [reminderOn, setReminderOn] = useState(false);
+  const [reminderDate, setReminderDate] = useState(() =>
+    new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+  );
+  const [reminderTitle, setReminderTitle] = useState("");
+
   useEffect(() => {
     if (!open) return;
     if (initial) {
@@ -141,6 +149,9 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
     setSplitMode("paid_full");
     setSplitTotal("");
     setSplitFriend("");
+    setReminderOn(false);
+    setReminderDate(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+    setReminderTitle("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial, type]);
 
