@@ -20,9 +20,10 @@ import {
   Plane,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAccess } from "@/contexts/AccessContext";
 import { cn } from "@/lib/utils";
+import { useProfile } from "@/lib/profileStore";
 
 import {
   Sidebar,
