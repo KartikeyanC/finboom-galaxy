@@ -7,7 +7,6 @@ import {
   FileText,
   FileType2,
   CheckCircle2,
-  AlertTriangle,
   Plus,
   RotateCcw,
   Search,
