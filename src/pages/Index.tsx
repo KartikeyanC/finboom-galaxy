@@ -7,6 +7,9 @@ import {
   ArrowUpRight,
   Sparkles,
 } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import TransactionDialog from "@/components/transactions/TransactionDialog";
 import MetricCard from "@/components/dashboard/MetricCard";
 import NetWorthTrend from "@/components/dashboard/NetWorthTrend";
 import BudgetAllocation from "@/components/dashboard/BudgetAllocation";
@@ -17,6 +20,8 @@ import SpendingCategories from "@/components/dashboard/SpendingCategories";
 import ActionableReminders from "@/components/dashboard/ActionableReminders";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const [addOpen, setAddOpen] = useState(false);
   return (
     <div className="px-6 sm:px-8 py-8 space-y-8 max-w-[1400px] mx-auto">
       {/* Hero Welcome Section */}
@@ -41,15 +46,23 @@ const Index = () => {
             You're on track for your emergency fund goal.
           </p>
           <div className="flex items-center gap-4 mt-6">
-            <button className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:opacity-90 transition-opacity flex items-center gap-2 font-display">
+            <button
+              onClick={() => navigate("/app/net-worth")}
+              className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:opacity-90 transition-opacity flex items-center gap-2 font-display"
+            >
               View Full Report <ArrowUpRight className="w-4 h-4" />
             </button>
-            <button className="px-5 py-2.5 bg-secondary text-foreground rounded-lg font-medium text-sm hover:bg-accent transition-colors font-display">
+            <button
+              onClick={() => setAddOpen(true)}
+              className="px-5 py-2.5 bg-secondary text-foreground rounded-lg font-medium text-sm hover:bg-accent transition-colors font-display"
+            >
               Add Transaction
             </button>
           </div>
         </div>
       </motion.div>
+
+      <TransactionDialog open={addOpen} onOpenChange={setAddOpen} type="expense" />
 
       {/* Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
