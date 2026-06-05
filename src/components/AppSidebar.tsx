@@ -20,9 +20,10 @@ import {
   Plane,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAccess } from "@/contexts/AccessContext";
 import { cn } from "@/lib/utils";
+import { useProfile } from "@/lib/profileStore";
 
 import {
   Sidebar,
@@ -69,8 +70,10 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
   const { canAccess } = useAccess();
+  const profile = useProfile();
   const visibleMain = mainItems.filter((i) => canAccess(i.menuId));
   const visibleTools = toolItems.filter((i) => canAccess(i.menuId));
   const visibleWealth = wealthItems.filter((i) => canAccess(i.menuId));
@@ -187,17 +190,25 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className={cn(collapsed ? "p-2" : "p-4")}> 
-        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}> 
+        <button
+          type="button"
+          onClick={() => navigate("/app/profile")}
+          className={cn(
+            "flex items-center gap-3 w-full rounded-lg p-1.5 hover:bg-accent/40 transition-colors text-left",
+            collapsed && "justify-center",
+          )}
+          aria-label="Open profile"
+        >
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/60 to-chart-2/60 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold text-foreground">AK</span>
+            <span className="text-xs font-bold text-foreground">{profile.initials}</span>
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-foreground truncate">Arun K</span>
-              <span className="text-[11px] text-muted-foreground truncate">Premium Plan</span>
+              <span className="text-sm font-medium text-foreground truncate">{profile.name}</span>
+              <span className="text-[11px] text-muted-foreground truncate">{profile.email || "Premium Plan"}</span>
             </div>
           )}
-        </div>
+        </button>
       </SidebarFooter>
     </Sidebar>
   );
