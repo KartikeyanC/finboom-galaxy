@@ -224,7 +224,6 @@ const CUSTOM_BROKER: Broker = {
 
 type Section = "assets" | "income";
 type Source = "broker" | "standard";
-type Mode = "append" | "update";
 
 const stageLabel = (ext: string) => {
   if (ext === "pdf") return "Extracting Text from PDF Layers...";
@@ -242,7 +241,6 @@ const extIcon = (name: string) => {
 export function TransactionImporter() {
   const [section, setSection] = useState<Section>("assets");
   const [source, setSource] = useState<Source>("broker");
-  const [mode, setMode] = useState<Mode>("append");
   const [profile, setProfile] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -374,32 +372,8 @@ export function TransactionImporter() {
               </Tabs>
             </div>
           )}
-          <div className="flex flex-col gap-1 md:ml-auto">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Write mode
-            </span>
-            <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
-              <TabsList>
-                <TabsTrigger value="append">Append</TabsTrigger>
-                <TabsTrigger value="update">Update by Name</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
         </div>
       </Card>
-
-      {/* Mode banner — slides down on Update by Name */}
-      {mode === "update" && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex gap-3 animate-in slide-in-from-top-2 fade-in">
-          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-200">
-            <span className="font-semibold text-amber-400">Update by Name mode:</span>{" "}
-            entries whose names match existing ones will have their value, quantity and
-            price overwritten. Names not in this file stay untouched; new names are
-            added as fresh rows.
-          </p>
-        </div>
-      )}
 
       {/* Progressive platform selector (Assets + Broker only) */}
       {section === "assets" && source === "broker" && (
