@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Wallet, Receipt, CalendarDays, User, Users, HandCoins, Smartphone, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Wallet, Receipt, CalendarDays, User, Users, HandCoins, Smartphone, AlertTriangle, Bell } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   CURRENCIES,
@@ -102,6 +103,13 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   const [splitTotal, setSplitTotal] = useState("");
   const [splitFriend, setSplitFriend] = useState("");
 
+  // Optional reminder
+  const [reminderOn, setReminderOn] = useState(false);
+  const [reminderDate, setReminderDate] = useState(() =>
+    new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+  );
+  const [reminderTitle, setReminderTitle] = useState("");
+
   useEffect(() => {
     if (!open) return;
     if (initial) {
@@ -141,6 +149,9 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
     setSplitMode("paid_full");
     setSplitTotal("");
     setSplitFriend("");
+    setReminderOn(false);
+    setReminderDate(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+    setReminderTitle("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial, type]);
 
@@ -193,6 +204,25 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
         await update.mutateAsync({ id: initial.id, ...payload });
       } else {
         await create.mutateAsync(payload);
+        if (reminderOn && reminderDate) {
+          const title =
+            reminderTitle.trim() ||
+            `${activeType === "income" ? "Income" : "Expense"} · ${category}`;
+          reminders.upsert({
+            id: crypto.randomUUID(),
+            title,
+            context: "fixed_due",
+            date: reminderDate,
+            amount: parsed.data.amount,
+            currency: parsed.data.currency,
+            frequency: "one_time",
+            grace: "exact",
+            source: "manual",
+            status: "scheduled",
+            createdAt: new Date().toISOString(),
+          });
+          toast.success("Reminder scheduled");
+        }
       }
       onOpenChange(false);
     } catch {
@@ -551,6 +581,43 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
+
+          {!isEdit && !debtMode && !splitOn && (
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2 min-w-0">
+                  <Bell className="w-4 h-4 text-muted-foreground mt-0.5" />
+                  <div className="min-w-0">
+                    <Label className="text-sm font-medium">Set a reminder</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Optional — get notified about this {activeType === "income" ? "income" : "expense"} on a future date.
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={reminderOn} onCheckedChange={setReminderOn} />
+              </div>
+              {reminderOn && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Reminder date</Label>
+                    <Input
+                      type="date"
+                      value={reminderDate}
+                      onChange={(e) => setReminderDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Title (optional)</Label>
+                    <Input
+                      placeholder={`${activeType === "income" ? "Income" : "Expense"} · ${category}`}
+                      value={reminderTitle}
+                      onChange={(e) => setReminderTitle(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {activeType === "expense" && !isEdit && !debtMode && (
             <div className="space-y-3">
