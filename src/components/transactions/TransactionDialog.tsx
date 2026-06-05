@@ -582,6 +582,43 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
             />
           </div>
 
+          {!isEdit && !debtMode && !splitOn && (
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2 min-w-0">
+                  <Bell className="w-4 h-4 text-muted-foreground mt-0.5" />
+                  <div className="min-w-0">
+                    <Label className="text-sm font-medium">Set a reminder</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Optional — get notified about this {activeType === "income" ? "income" : "expense"} on a future date.
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={reminderOn} onCheckedChange={setReminderOn} />
+              </div>
+              {reminderOn && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Reminder date</Label>
+                    <Input
+                      type="date"
+                      value={reminderDate}
+                      onChange={(e) => setReminderDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Title (optional)</Label>
+                    <Input
+                      placeholder={`${activeType === "income" ? "Income" : "Expense"} · ${category}`}
+                      value={reminderTitle}
+                      onChange={(e) => setReminderTitle(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeType === "expense" && !isEdit && !debtMode && (
             <div className="space-y-3">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Transaction Type</Label>
