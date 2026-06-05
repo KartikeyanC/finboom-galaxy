@@ -31,7 +31,7 @@ const Index = () => {
         transition={{ duration: 0.5 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-card to-chart-2/5 border border-primary/10 p-8"
       >
-        <div className="absolute top-4 right-4 opacity-10">
+        <div className="pointer-events-none absolute top-4 right-4 opacity-10">
           <Sparkles className="w-32 h-32 text-primary" />
         </div>
         <div className="relative z-10">
@@ -45,16 +45,18 @@ const Index = () => {
             Your wealth grew <span className="text-success font-semibold">+5.8%</span> this month.
             You're on track for your emergency fund goal.
           </p>
-          <div className="flex items-center gap-4 mt-6">
+          <div className="relative z-10 flex flex-wrap items-center gap-4 mt-6">
             <button
+              type="button"
               onClick={() => navigate("/app/net-worth")}
-              className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:opacity-90 transition-opacity flex items-center gap-2 font-display"
+              className="relative z-10 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:opacity-90 transition-opacity flex items-center gap-2 font-display cursor-pointer"
             >
               View Full Report <ArrowUpRight className="w-4 h-4" />
             </button>
             <button
+              type="button"
               onClick={() => setAddOpen(true)}
-              className="px-5 py-2.5 bg-secondary text-foreground rounded-lg font-medium text-sm hover:bg-accent transition-colors font-display"
+              className="relative z-10 px-5 py-2.5 bg-secondary text-foreground rounded-lg font-medium text-sm hover:bg-accent transition-colors font-display cursor-pointer"
             >
               Add Transaction
             </button>
