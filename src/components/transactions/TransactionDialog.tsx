@@ -204,6 +204,25 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
         await update.mutateAsync({ id: initial.id, ...payload });
       } else {
         await create.mutateAsync(payload);
+        if (reminderOn && reminderDate) {
+          const title =
+            reminderTitle.trim() ||
+            `${activeType === "income" ? "Income" : "Expense"} · ${category}`;
+          reminders.upsert({
+            id: crypto.randomUUID(),
+            title,
+            context: "fixed_due",
+            date: reminderDate,
+            amount: parsed.data.amount,
+            currency: parsed.data.currency,
+            frequency: "one_time",
+            grace: "exact",
+            source: "manual",
+            status: "scheduled",
+            createdAt: new Date().toISOString(),
+          });
+          toast.success("Reminder scheduled");
+        }
       }
       onOpenChange(false);
     } catch {
