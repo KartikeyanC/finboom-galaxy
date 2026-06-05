@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TransactionDialog from "@/components/transactions/TransactionDialog";
+import { useProfile } from "@/lib/profileStore";
 import MetricCard from "@/components/dashboard/MetricCard";
 import NetWorthTrend from "@/components/dashboard/NetWorthTrend";
 import BudgetAllocation from "@/components/dashboard/BudgetAllocation";
@@ -22,6 +23,7 @@ import ActionableReminders from "@/components/dashboard/ActionableReminders";
 const Index = () => {
   const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
+  const { name } = useProfile();
   return (
     <div className="px-6 sm:px-8 py-8 space-y-8 max-w-[1400px] mx-auto">
       {/* Hero Welcome Section */}
@@ -39,7 +41,7 @@ const Index = () => {
             <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Welcome back</span>
           </div>
           <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-2">
-            Good morning, Arun 👋
+            Good morning, {name.split(" ")[0]} 👋
           </h1>
           <p className="text-muted-foreground max-w-lg">
             Your wealth grew <span className="text-success font-semibold">+5.8%</span> this month.
