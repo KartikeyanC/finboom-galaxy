@@ -6,10 +6,33 @@ import { useProfile } from "@/lib/profileStore";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+type SavedProfile = { name: string; email: string };
+const PROFILES_KEY = "valar.profiles";
+
+function upsertSavedProfile(p: SavedProfile) {
+  if (!p.email) return;
+  let list: SavedProfile[] = [];
+  try {
+    const raw = localStorage.getItem(PROFILES_KEY);
+    list = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(list)) list = [];
+  } catch {
+    list = [];
+  }
+  list = list.filter((x) => x.email?.toLowerCase() !== p.email.toLowerCase());
+  list.unshift(p);
+  localStorage.setItem(PROFILES_KEY, JSON.stringify(list.slice(0, 8)));
+}
+
 export default function ProfilePage() {
   const profile = useProfile();
   const name = profile.name;
   const initials = profile.initials;
+
+  const handleSave = () => {
+    upsertSavedProfile({ name: profile.name, email: profile.email });
+    toast.success("Profile saved");
+  };
 
   return (
     <div className="px-6 sm:px-8 py-8 space-y-6 max-w-[900px] mx-auto">
@@ -83,7 +106,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={() => toast.success("Profile saved")}>Save changes</Button>
+        <Button onClick={handleSave}>Save changes</Button>
       </div>
     </div>
   );
