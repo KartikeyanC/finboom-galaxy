@@ -1,0 +1,18 @@
+# Default target is the DEV project. The LIVE project (Lovable-managed,
+# ref tsmdnfywxsjsjqjszoek) must NEVER be the implicit default — a bare
+# `supabase db push` / `functions deploy` would then hit production.
+# Always pass --project-ref explicitly for anything non-dev.
+#
+# 2026-08-10: was still `hkfwuxqeexamyphcgkxr`, the Tokyo project that has been
+# PAUSED since the 2026-08-05 rebuild — a bare deploy pointed at a dead host.
+# This must track VITE_SUPABASE_PROJECT_ID in .env.development.
+project_id = "ludbntvhagefadfkhrjj"
+
+[functions.live-price]
+verify_jwt = false
+
+[functions.po-auth]
+verify_jwt = false
+
+[functions.payments-webhook]
+verify_jwt = false

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- PWA / installable web app -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0B231C" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="FinRoot" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- TODO: Set the document title to the name of your application -->
+    <title>FinRoot — Wealth OS for Modern Households</title>
+    <meta name="description" content="FinRoot is the calm, intelligent wealth OS for households serious about income, expenses, investments, budgets and goals — all in one place." />
+    <meta name="author" content="FinRoot" />
+
+    <!-- TODO: Update og:title to match your application name -->
+    <meta property="og:title" content="FinRoot — Wealth OS for Modern Households" />
+    <meta property="og:description" content="The calm, intelligent wealth OS for households serious about income, expenses, investments, budgets and goals." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <!--
+      Fonts are self-hosted (see public/fonts/README.md). One `latin` variable
+      file covers the whole weight range; `latin-ext` is left to unicode-range
+      to fetch on demand (the ₹ sign, U+20B9, lives there).
+
+      Only IBM Plex Sans is preloaded. Space Grotesk deliberately is NOT:
+      it is reachable only through Tailwind's `font-display` class, and a walk
+      of all 1010 rendered elements on the landing page found zero users of it,
+      so preloading it here would put 21 kB of contention on the LCP page to
+      speed up a route the visitor may never open. On /app it starts loading
+      from CSS the moment the first heading renders, which is still far ahead
+      of the cross-origin @import this replaced.
+
+      `crossorigin` is required even though this is same-origin: fonts are
+      always fetched in CORS mode, and a preload whose mode does not match the
+      real request is simply downloaded twice.
+    -->
+    <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Lovable" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

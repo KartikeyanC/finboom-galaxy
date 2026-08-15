@@ -1,0 +1,531 @@
+/* Self-hosted @font-face rules. Must stay first — an @import is only legal
+   before any other rule, and the faces need to be declared before the layers
+   that use them. */
+@import './fonts.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 24% 4%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 210 20% 92%;
+    --card-elevated: 220 16% 13%;
+
+    --popover: 220 18% 10%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 160 76% 41%;
+    --primary-foreground: 220 20% 7%;
+
+    --secondary: 220 14% 16%;
+    --secondary-foreground: 210 15% 70%;
+
+    --muted: 220 14% 14%;
+    /* BUG-094 — was 50%, which gave 4.25:1 on `--card` and 3.81:1 on `--muted`
+       against the 4.5 AA floor. Secondary text is most of the words on a
+       dashboard, so this was the single most widespread contrast failure in
+       the product. 56% is the lowest value that clears 4.5 on the LIGHTEST
+       surface text sits on (`--muted`, 4.71:1); measuring only against
+       `--background` says 4.75 at the old value and hides the problem. The
+       other four themes were already above the floor and are unchanged. */
+    --muted-foreground: 215 12% 56%;
+
+    --accent: 220 14% 18%;
+    --accent-foreground: 210 20% 92%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 160 76% 41%;
+    --success-foreground: 220 20% 7%;
+
+    --warning: 35 90% 55%;
+    --warning-foreground: 220 20% 7%;
+
+    --coral: 12 80% 60%;
+    --coral-foreground: 220 20% 7%;
+
+    --chart-1: 160 76% 41%;
+    --chart-2: 210 70% 55%;
+    --chart-3: 35 90% 55%;
+    --chart-4: 280 60% 55%;
+    --chart-5: 12 80% 60%;
+    --chart-6: 190 70% 50%;
+
+    --border: 220 14% 16%;
+    --input: 220 14% 16%;
+    --ring: 160 76% 41%;
+
+    --radius: 0.75rem;
+
+    /* 'Fira Sans' used to sit between these two, but it only ever acted as a
+       fallback behind IBM Plex Sans — which is now self-hosted and always
+       available — so it was five weights of download that nothing rendered. */
+    --font-display: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+    --sidebar-background: 222 22% 5%;
+    --sidebar-foreground: 210 15% 70%;
+    --sidebar-primary: 160 76% 41%;
+    --sidebar-primary-foreground: 220 20% 7%;
+    --sidebar-accent: 220 14% 14%;
+    --sidebar-accent-foreground: 210 20% 92%;
+    --sidebar-border: 220 14% 14%;
+    --sidebar-ring: 160 76% 41%;
+  }
+
+  /* ============ THEME: Crisp Light ============ */
+  [data-theme="light"] {
+    /* Soft off-white canvas so white cards lift off the page. */
+    --background: 210 40% 97%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --card-elevated: 0 0% 100%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* BUG-094 — was 34%, which is 3.78:1 on white. The brand green has to
+       clear AA in BOTH directions in this theme, because the same token is the
+       colour of link text on white AND the fill behind white button labels —
+       and contrast is symmetric, so one number has to satisfy both. The
+       binding surface is neither: it is `--accent` (#d3e8e5), the active tab
+       tint, where 34% gave 2.96:1. 26% is the lightest value that clears 4.5
+       on all three (white 5.90, page 5.49, tab 4.62).
+
+       This is a visibly darker green in the light theme and that is the cost of
+       the criterion. The dark themes are untouched — their primary sits on
+       near-black and was never the problem. */
+    --primary: 160 72% 26%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 214 32% 93%;
+    --secondary-foreground: 222 47% 18%;
+
+    --muted: 214 32% 93%;
+    --muted-foreground: 215 16% 42%;
+
+    --accent: 160 50% 92%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* BUG-094 — was 36% (3.47:1 on white). `--success` is not decoration here:
+       it is the colour of every positive number on the page, so an unreadable
+       one is a figure the user cannot check. 28% clears 4.5 on both the card
+       and the page surface. Dark themes untouched. */
+    --success: 160 70% 28%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 35 90% 48%;
+    --warning-foreground: 0 0% 100%;
+
+    --coral: 12 80% 55%;
+    --coral-foreground: 0 0% 100%;
+
+    --border: 215 20% 89%;
+    --input: 215 20% 85%;
+    --ring: 160 72% 34%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 30% 25%;
+    --sidebar-primary: 160 70% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 94%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 160 70% 36%;
+  }
+
+  /* ============ THEME: Electric Cyber Blue (#0A9BDF) ============ */
+  [data-theme="cyber"] {
+    --background: 210 60% 7%;
+    --foreground: 200 30% 94%;
+
+    --card: 208 50% 11%;
+    --card-foreground: 200 30% 94%;
+    --card-elevated: 208 45% 14%;
+
+    --popover: 208 50% 11%;
+    --popover-foreground: 200 30% 94%;
+
+    --primary: 199 92% 46%;
+    --primary-foreground: 210 60% 7%;
+
+    --secondary: 208 40% 16%;
+    --secondary-foreground: 200 25% 80%;
+
+    --muted: 208 35% 15%;
+    --muted-foreground: 205 20% 60%;
+
+    --accent: 199 92% 22%;
+    --accent-foreground: 200 30% 95%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 200 30% 95%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 210 60% 7%;
+
+    --warning: 35 90% 55%;
+    --warning-foreground: 210 60% 7%;
+
+    --border: 205 50% 20%;
+    --input: 205 50% 20%;
+    --ring: 199 92% 46%;
+
+    --sidebar-background: 210 60% 6%;
+    --sidebar-foreground: 200 25% 75%;
+    --sidebar-primary: 199 92% 46%;
+    --sidebar-primary-foreground: 210 60% 7%;
+    --sidebar-accent: 208 40% 14%;
+    --sidebar-accent-foreground: 200 30% 94%;
+    --sidebar-border: 205 50% 16%;
+    --sidebar-ring: 199 92% 46%;
+  }
+
+  /* ============ THEME: Mint Wealth (#10B981) ============ */
+  [data-theme="mint"] {
+    --background: 165 40% 6%;
+    --foreground: 160 25% 94%;
+
+    --card: 165 32% 10%;
+    --card-foreground: 160 25% 94%;
+    --card-elevated: 165 28% 13%;
+
+    --popover: 165 32% 10%;
+    --popover-foreground: 160 25% 94%;
+
+    --primary: 160 84% 39%;
+    --primary-foreground: 165 40% 6%;
+
+    --secondary: 165 28% 15%;
+    --secondary-foreground: 160 25% 82%;
+
+    --muted: 165 24% 14%;
+    --muted-foreground: 160 15% 58%;
+
+    --accent: 160 70% 22%;
+    --accent-foreground: 160 30% 95%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 160 25% 95%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 165 40% 6%;
+
+    --warning: 35 90% 55%;
+    --warning-foreground: 165 40% 6%;
+
+    --border: 165 28% 18%;
+    --input: 165 28% 18%;
+    --ring: 160 84% 39%;
+
+    --sidebar-background: 165 38% 7%;
+    --sidebar-foreground: 160 20% 76%;
+    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary-foreground: 165 40% 6%;
+    --sidebar-accent: 165 28% 14%;
+    --sidebar-accent-foreground: 160 25% 94%;
+    --sidebar-border: 165 28% 14%;
+    --sidebar-ring: 160 84% 39%;
+  }
+
+  /* ============ THEME: Sunset Copper (#F97316) ============ */
+  [data-theme="copper"] {
+    --background: 24 35% 6%;
+    --foreground: 30 25% 94%;
+
+    --card: 22 28% 10%;
+    --card-foreground: 30 25% 94%;
+    --card-elevated: 22 26% 13%;
+
+    --popover: 22 28% 10%;
+    --popover-foreground: 30 25% 94%;
+
+    --primary: 25 95% 53%;
+    --primary-foreground: 24 35% 6%;
+
+    --secondary: 22 22% 16%;
+    --secondary-foreground: 30 25% 82%;
+
+    --muted: 22 20% 14%;
+    --muted-foreground: 28 15% 60%;
+
+    --accent: 25 80% 26%;
+    --accent-foreground: 30 30% 95%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 30 25% 95%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 24 35% 6%;
+
+    --warning: 35 90% 55%;
+    --warning-foreground: 24 35% 6%;
+
+    --border: 24 28% 20%;
+    --input: 24 28% 20%;
+    --ring: 25 95% 53%;
+
+    --sidebar-background: 24 34% 7%;
+    --sidebar-foreground: 30 20% 76%;
+    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary-foreground: 24 35% 6%;
+    --sidebar-accent: 22 22% 14%;
+    --sidebar-accent-foreground: 30 25% 94%;
+    --sidebar-border: 24 28% 16%;
+    --sidebar-ring: 25 95% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.15), 0 0 60px hsl(var(--primary) / 0.05);
+  }
+
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--chart-6))];
+  }
+
+  .metric-value {
+    font-family: var(--font-display);
+    @apply text-3xl font-bold tracking-tight;
+  }
+
+  .metric-label {
+    @apply text-sm font-medium text-muted-foreground uppercase tracking-wider;
+  }
+}
+
+/* =======================================================================
+   LIGHT THEME — global color remapping
+   Dark theme uses *-200/*-300/*-400 text shades (light, for dark surfaces).
+   These overrides flip every such class to its dark equivalent (*-600/*-700/*-800)
+   so all components — ResultCards, income badges, chart labels, etc. —
+   are fully readable on white without touching each component individually.
+   ======================================================================= */
+[data-theme="light"] .text-emerald-400, [data-theme="light"] .text-emerald-300 { color: #047857 !important; } /* emerald-700 */
+[data-theme="light"] .text-emerald-200 { color: #065f46 !important; }                                         /* emerald-800 */
+[data-theme="light"] .text-teal-300,    [data-theme="light"] .text-teal-400    { color: #0f766e !important; } /* teal-700    */
+[data-theme="light"] .text-teal-200    { color: #115e59 !important; }                                         /* teal-800    */
+[data-theme="light"] .text-green-300,   [data-theme="light"] .text-green-400   { color: #15803d !important; } /* green-700   */
+[data-theme="light"] .text-lime-300,    [data-theme="light"] .text-lime-400    { color: #4d7c0f !important; } /* lime-700    */
+[data-theme="light"] .text-yellow-300,  [data-theme="light"] .text-yellow-400  { color: #a16207 !important; } /* yellow-700  */
+[data-theme="light"] .text-amber-300,   [data-theme="light"] .text-amber-400   { color: #92400e !important; } /* amber-800   */
+[data-theme="light"] .text-orange-300,  [data-theme="light"] .text-orange-400  { color: #c2410c !important; } /* orange-700  */
+[data-theme="light"] .text-rose-300,    [data-theme="light"] .text-rose-400    { color: #be123c !important; } /* rose-700    */
+[data-theme="light"] .text-red-300,     [data-theme="light"] .text-red-400     { color: #b91c1c !important; } /* red-700     */
+[data-theme="light"] .text-pink-300,    [data-theme="light"] .text-pink-400    { color: #be185d !important; } /* pink-700    */
+[data-theme="light"] .text-fuchsia-300, [data-theme="light"] .text-fuchsia-400 { color: #a21caf !important; } /* fuchsia-700 */
+[data-theme="light"] .text-violet-300,  [data-theme="light"] .text-violet-400  { color: #6d28d9 !important; } /* violet-700  */
+[data-theme="light"] .text-indigo-300,  [data-theme="light"] .text-indigo-400  { color: #4338ca !important; } /* indigo-700  */
+[data-theme="light"] .text-blue-300,    [data-theme="light"] .text-blue-400    { color: #1d4ed8 !important; } /* blue-700    */
+[data-theme="light"] .text-cyan-300,    [data-theme="light"] .text-cyan-400    { color: #0e7490 !important; } /* cyan-700    */
+[data-theme="light"] .text-sky-300,     [data-theme="light"] .text-sky-400     { color: #0369a1 !important; } /* sky-700     */
+
+/* ===== Light theme polish: lift white cards off the soft canvas ===== */
+[data-theme="light"] .glass-card {
+  background-color: hsl(var(--card));
+  border-color: hsl(215 24% 90%);
+  box-shadow:
+    0 1px 2px hsl(222 47% 11% / 0.04),
+    0 8px 24px hsl(222 47% 11% / 0.06);
+}
+[data-theme="light"] .glass-card:hover {
+  box-shadow:
+    0 1px 2px hsl(222 47% 11% / 0.05),
+    0 12px 30px hsl(222 47% 11% / 0.09);
+}
+[data-theme="light"] .glow-primary {
+  box-shadow: 0 6px 16px hsl(var(--primary) / 0.28);
+}
+/* Soft, readable elevation for the raw bordered cards used across pages. */
+[data-theme="light"] .rounded-2xl.border,
+[data-theme="light"] .rounded-xl.border {
+  box-shadow: 0 1px 2px hsl(222 47% 11% / 0.03), 0 6px 18px hsl(222 47% 11% / 0.05);
+}
+
+/* ===== Dark Obsidian: green active sidebar button ===== */
+:root:not([data-theme]) [data-sidebar="menu-button"][data-active="true"] {
+  background-color: hsl(160 76% 41% / 0.15) !important;
+  color: hsl(160 70% 62%) !important;
+  border-left: 3px solid hsl(160 76% 41%);
+  font-weight: 600;
+}
+:root:not([data-theme]) [data-sidebar="menu-button"][data-active="true"] svg {
+  color: hsl(160 70% 62%) !important;
+}
+:root:not([data-theme]) [data-sidebar="menu-button"]:not([data-active="true"]):hover {
+  background-color: hsl(160 76% 41% / 0.08) !important;
+  color: hsl(160 60% 72%) !important;
+}
+
+/* ===== Light theme: green active sidebar button ===== */
+[data-theme="light"] [data-sidebar="menu-button"][data-active="true"] {
+  background-color: hsl(160 60% 34% / 0.12) !important;
+  color: hsl(160 72% 26%) !important;
+  border-left: 3px solid hsl(160 72% 34%);
+  font-weight: 600;
+}
+[data-theme="light"] [data-sidebar="menu-button"][data-active="true"] svg {
+  color: hsl(160 72% 28%) !important;
+}
+[data-theme="light"] [data-sidebar="menu-button"]:not([data-active="true"]):hover {
+  background-color: hsl(160 60% 34% / 0.07) !important;
+  color: hsl(160 72% 26%) !important;
+}
+
+/* Themed thin scrollbars that blend with app surfaces (global) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Number input spinner — match dark theme instead of browser white */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Hide scrollbars on horizontal chip rails */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ===== Smart Split — futuristic flow primitives ===== */
+/* Energy flowing along the connector paths (data moving from bill → buckets) */
+@keyframes fr-flow {
+  to { stroke-dashoffset: -1000; }
+}
+.fr-flow {
+  stroke-dasharray: 3 12;
+  animation: fr-flow 14s linear infinite;
+}
+/* Slow drifting holo-grid backdrop inside the panel */
+@keyframes fr-grid-pan {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 40px 40px, 40px 40px; }
+}
+.fr-grid {
+  background-image:
+    linear-gradient(to right, hsl(var(--primary) / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--primary) / 0.06) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px;
+  animation: fr-grid-pan 6s linear infinite;
+}
+/* Breathing glow ring for the splitter hub */
+@keyframes fr-breathe {
+  0%, 100% { transform: scale(1);   opacity: 0.55; }
+  50%      { transform: scale(1.08); opacity: 0.9; }
+}
+.fr-breathe { animation: fr-breathe 3.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .fr-flow, .fr-grid, .fr-breathe { animation: none; }
+}
+
+/* Smooth chart slice dim / highlight + line transitions */
+.recharts-sector,
+.recharts-pie-sector path {
+  transition: opacity 0.28s ease, fill-opacity 0.28s ease, fill 0.28s ease;
+}
+.recharts-curve,
+.recharts-area-area,
+.recharts-area-curve { transition: opacity 0.28s ease; }
+
+/* App-wide smooth interactive transitions (buttons, links, toggles, accordions) */
+button, a, summary, [role="button"], [role="tab"], label {
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.18s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recharts-sector, .recharts-pie-sector path, .recharts-curve,
+  .recharts-area-area, .recharts-area-curve,
+  button, a, summary, [role="button"], [role="tab"], label {
+    transition: none;
+  }
+}
+
+/* =======================================================================
+   OBSIDIAN (default dark) — landing "cosmic glass" pattern for the dashboard.
+   Activated by the .fr-cosmic class on the dashboard shell, which is only
+   applied when the obsidian theme is active. Other themes / pages: untouched.
+   Pairs with <CosmicBackground/>.
+   ======================================================================= */
+@keyframes fr-blobA { 0%,100%{ transform: translate3d(0,0,0) scale(1);} 50%{ transform: translate3d(6%,-8%,0) scale(1.18);} }
+@keyframes fr-blobB { 0%,100%{ transform: translate3d(0,0,0) scale(1);} 50%{ transform: translate3d(-9%,7%,0) scale(1.22);} }
+@keyframes fr-blobC { 0%,100%{ transform: translate3d(0,0,0) scale(1);} 50%{ transform: translate3d(8%,9%,0) scale(0.9);} }
+@media (prefers-reduced-motion: reduce) {
+  [style*="fr-blob"] { animation: none !important; }
+}
+
+/* Card-like surfaces become frosted glass floating over the aurora. */
+.fr-cosmic :is(.bg-card, .bg-card-elevated, .glass-card) {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* The sidebar reads as a translucent glass rail. */
+.fr-cosmic [data-sidebar="sidebar"] {
+  background-color: rgba(8, 10, 14, 0.5) !important;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
