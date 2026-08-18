@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
 
   try {
     if (type?.startsWith("subscription.")) {
-      const userId = data?.custom_data?.user_id ?? null;
+      let userId = data?.custom_data?.user_id ?? null;
       let tenantId = data?.custom_data?.tenant_id ?? null;
 
       // Resolve the tenant from custom_data, else from the user's owner membership.
@@ -181,6 +181,29 @@ Deno.serve(async (req) => {
       if (!tenantId) {
         console.warn("subscription event without resolvable tenant", { type, id: data?.id });
         return new Response("ok", { headers: corsHeaders });
+      }
+
+      // BUG-116 — the mirror image of the lookup above. Not every Paddle event
+      // on a subscription is guaranteed to repeat the original checkout's
+      // `custom_data` (Paddle's webhook contract does not promise it for
+      // renewal/update events), and `subscriptions.user_id` is NOT NULL, so a
+      // `user_id`-less event used to fail the upsert silently while still
+      // answering Paddle 200 — a dropped upgrade that nothing ever retried.
+      if (!userId) {
+        const { data: m } = await supabase
+          .from("tenant_members")
+          .select("user_id")
+          .eq("tenant_id", tenantId)
+          .eq("role", "owner")
+          .eq("status", "active")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        userId = m?.user_id ?? null;
+      }
+      if (!userId) {
+        console.error("subscription event without resolvable user_id", { type, tenantId, id: data?.id });
+        return new Response("error", { status: 500, headers: corsHeaders });
       }
 
       const item = data?.items?.[0];

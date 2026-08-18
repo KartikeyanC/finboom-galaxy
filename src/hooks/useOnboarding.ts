@@ -37,24 +37,32 @@ import {
 type Counts = Partial<Record<OnboardingStepId, number | null>>;
 
 /**
- * Rows in one table that the sample loader did NOT create.
+ * Whether at least one real (non-sample) row exists in a table — the
+ * checklist only ever asks `> 0` (see `deriveSteps`), never the actual
+ * figure, so this checks existence instead of counting.
  *
- * `head: true` so nothing but the count crosses the wire — this runs on the
- * dashboard, and the whole point of the count is to avoid pulling the ledger.
+ * BUG-114 — `count: "exact"` here used to force Postgres to evaluate the
+ * per-row RLS check (`is_tenant_member()`) across every matching row before
+ * it could report a number, which on a workspace with tens of thousands of
+ * transactions measured over a second on its own, for a query that only
+ * ever needed to know "does row #1 exist" — `.limit(1)` finds that via a
+ * single index lookup regardless of table size.
  */
 async function countReal(
   table: "transactions" | "budgets" | "goals",
   tenantId: string,
   excludeIds: string[],
 ): Promise<number> {
-  let q = supabase
-    .from(table)
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId);
+  // Not `head: true` on purpose — a head response has no body, so it cannot
+  // answer "does a row exist" on its own without also asking for a count
+  // (the expensive part). Selecting just `id`, capped at 1 row, is the
+  // cheap way to get a real answer: LIMIT 1 lets the planner stop at the
+  // first index match instead of visiting every row.
+  let q = supabase.from(table).select("id").eq("tenant_id", tenantId).limit(1);
   if (excludeIds.length) q = q.not("id", "in", `(${excludeIds.join(",")})`);
-  const { count, error } = await q;
+  const { data, error } = await q;
   if (error) throw error;
-  return count ?? 0;
+  return (data?.length ?? 0) > 0 ? 1 : 0;
 }
 
 export type OnboardingApi = {

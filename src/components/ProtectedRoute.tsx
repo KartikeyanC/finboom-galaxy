@@ -13,11 +13,14 @@ import {
 import { useLockSettings } from "@/hooks/useLockSettings";
 import { LockScreen } from "@/components/LockScreen";
 import { PinSetup } from "@/components/PinSetup";
+import { OnboardingWizard } from "@/components/onboarding-wizard/OnboardingWizard";
+import { useOnboardingWizard } from "@/hooks/useOnboardingWizard";
 
 export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
   const [unlocked, setUnlocked] = useState(false);
+  const onboarding = useOnboardingWizard();
 
   // Read synchronously (see useLockSettings) so neither the "create PIN"
   // screen nor the dashboard flashes for a paint before an effect has run.
@@ -82,6 +85,24 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // Stage 6.1 — a brand-new user answers a short selection-only profile
+  // wizard before anything else. Checked (and its own loading state gated)
+  // BEFORE the PinSetup/LockScreen gates below, so it never flashes the
+  // dashboard for a beat while "has this account finished onboarding" is
+  // still in flight — the same class of bug as BUG-090's sign-in flash.
+  // `onboarding.completed` fails OPEN (defaults true) once loaded for real,
+  // so a network hiccup after this can never trap an existing user here.
+  if (onboarding.loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="text-foreground font-medium">Loading…</div>
+      </div>
+    );
+  }
+  if (!onboarding.completed) {
+    return <OnboardingWizard />;
   }
 
   // Never asked, or asked for the lock without a PIN behind it yet (a new

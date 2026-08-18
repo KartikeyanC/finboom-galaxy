@@ -96,9 +96,15 @@ Deno.serve(async (req) => {
       const { data, error } = await admin.rpc("po_resolve_identifier", { p_identifier: identifier });
       if (error) return json({ error: error.message }, 500);
       const row = Array.isArray(data) ? data[0] : data;
+      // BUG-007 — a PO identifier used to get 200 + email, anything else a
+      // 404 with a distinct body: a free, scriptable oracle for "is this
+      // identifier a Product Owner" with no secret required at all. Both
+      // branches now return the same status and the same shape; the caller
+      // (PoLogin.tsx) already treats a falsy `email` as failure uniformly,
+      // so nothing downstream needed to change to make this safe.
       if (!row?.email) {
         await logAttempt(admin, "resolve", identifier, "failure");
-        return json({ error: "No Product Owner account matches that identifier" }, 404);
+        return json({ email: null });
       }
       await logAttempt(admin, "resolve", identifier, "success", row.user_id);
       return json({ email: row.email });

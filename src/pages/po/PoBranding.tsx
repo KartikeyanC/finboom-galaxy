@@ -185,9 +185,9 @@ export default function PoBranding() {
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Preview</div>
         <div className="flex items-center gap-3">
           {content.logoUrl ? (
-            <img src={content.logoUrl} alt={content.appName} className="h-10 w-10 rounded-lg object-contain" />
+            <img src={content.logoUrl} alt={content.appName} className="h-10 w-10 rounded-[2px] object-contain" />
           ) : (
-            <FinrootLogo className="h-10 w-10 rounded-lg" />
+            <FinrootLogo className="h-10 w-10 rounded-[2px]" />
           )}
           <div>
             <div className="font-display text-lg font-bold text-gradient-primary">{content.appName || "—"}</div>
@@ -213,11 +213,11 @@ export default function PoBranding() {
           <Label>Logo</Label>
           <input ref={fileRef} type="file" accept={ACCEPT} className="hidden" onChange={onPickFile} />
           <div className="flex items-center gap-4 rounded-xl border border-dashed border-border/60 p-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-muted/40 shrink-0">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[2px] bg-muted/40 shrink-0">
               {content.logoUrl ? (
-                <img src={content.logoUrl} alt="Logo preview" className="h-12 w-12 rounded-md object-contain" />
+                <img src={content.logoUrl} alt="Logo preview" className="h-12 w-12 rounded-[2px] object-contain" />
               ) : (
-                <FinrootLogo className="h-12 w-12 rounded-md" />
+                <FinrootLogo className="h-12 w-12 rounded-[2px]" />
               )}
             </div>
             <div className="flex-1 min-w-0">

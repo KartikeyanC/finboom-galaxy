@@ -47,7 +47,7 @@ export default function PwaInstallPrompt() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-[100] flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pointer-events-none">
       <div className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-2xl backdrop-blur-xl">
-        <BrandLogo className="h-10 w-10 shrink-0 rounded-xl" />
+        <BrandLogo className="h-10 w-10 shrink-0 rounded-[2px]" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">Install {appName}</p>
           {iosHint ? (

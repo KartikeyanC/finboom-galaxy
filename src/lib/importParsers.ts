@@ -225,9 +225,15 @@ const str = (v: unknown) => String(v ?? "").trim();
 const num = (v: unknown) => Number(String(v ?? "0").replace(/[^\d.-]/g, "")) || 0;
 
 // ── Expense parser ────────────────────────────────────────────────────────
-export async function parseExpenses(file: File): Promise<ExpenseRow[]> {
-  const rows = await parseToObjects(file);
-  return rows
+/**
+ * BUG-108 — a row with neither a date nor an amount used to be dropped with
+ * no trace: the valid rows still imported fine, but nothing told the user a
+ * row went missing, or that it was source data rather than never existing.
+ * `skipped` lets the caller say so.
+ */
+export async function parseExpenses(file: File): Promise<{ rows: ExpenseRow[]; skipped: number }> {
+  const raw = await parseToObjects(file);
+  const rows = raw
     .map((r): ExpenseRow | null => {
       const date = str(r["date"] ?? r["Date"] ?? r["DATE"] ?? "");
       const amount = num(r["amount"] ?? r["Amount"] ?? r["AMOUNT"] ?? 0);
@@ -242,6 +248,7 @@ export async function parseExpenses(file: File): Promise<ExpenseRow[]> {
       };
     })
     .filter((r): r is ExpenseRow => !!r);
+  return { rows, skipped: raw.length - rows.length };
 }
 
 // ── Income parser ─────────────────────────────────────────────────────────

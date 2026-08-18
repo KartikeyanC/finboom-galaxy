@@ -198,7 +198,10 @@ export function TransactionImporter() {
   const isTopPick = (v: string) => topBrokers.some((b) => b.value === v);
 
   const runParse = useCallback(
-    async (files: FileList | File[], parser: (f: File) => Promise<unknown[]>) => {
+    async (
+      files: FileList | File[],
+      parser: (f: File) => Promise<unknown[] | { rows: unknown[]; skipped: number }>,
+    ) => {
       const list = Array.from(files);
       const allRows: unknown[] = [];
       for (const file of list) {
@@ -214,10 +217,18 @@ export function TransactionImporter() {
           setProgress((p) => (p < 90 ? p + Math.max(1, (92 - p) / 8) : p));
         }, 120);
         try {
-          const parsed = await parser(file);
+          const result = await parser(file);
+          const parsed = Array.isArray(result) ? result : result.rows;
+          const skipped = Array.isArray(result) ? 0 : result.skipped;
           setProgress(100);
           if (!parsed.length) toast.warning(`No rows detected in ${file.name}`);
           else toast.success(`Parsed ${parsed.length} rows from ${file.name}`);
+          // BUG-108 — a dropped row used to leave no trace anywhere.
+          if (skipped > 0) {
+            toast.warning(
+              `${skipped} row${skipped === 1 ? "" : "s"} skipped in ${file.name} — missing a date or amount`,
+            );
+          }
           allRows.push(...parsed);
         } catch (err) {
           console.error(err);

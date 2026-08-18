@@ -119,7 +119,7 @@ const AuthPage = () => {
     // BUG-090: claim the unlock before the call, not after the event — see
     // `markSignInIntent`. Sign-up with confirmation off signs you straight in.
     markSignInIntent();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
@@ -131,6 +131,18 @@ const AuthPage = () => {
     if (error) {
       clearSignInIntent();
       notifyError(error);
+      return;
+    }
+    // BUG-098 — GoTrue's own anti-enumeration design returns `error: null`
+    // for an already-registered, already-confirmed email too (a fabricated
+    // user object with no identities, no new row, no email actually sent),
+    // so this used to claim "Account created" for a signup that did nothing.
+    // A neutral message that's true either way, without itself disclosing
+    // which case happened, is the fix — not an error toast naming the email
+    // as taken, which would just be a different enumeration leak.
+    if (data.user && data.user.identities?.length === 0) {
+      clearSignInIntent();
+      toast.success("If that's a new email, check your inbox to confirm it. Already have an account? Sign in instead.");
       return;
     }
     if (signupRemember) {
@@ -166,8 +178,6 @@ const AuthPage = () => {
       name: activeProfile?.name || parsed.data.email.split("@")[0],
       email: parsed.data.email,
     });
-    // Saved profiles stay persistent; clear any legacy session-only flag.
-    localStorage.removeItem("finroot.session_only");
     navigate(redirectTo, { replace: true });
   };
 
@@ -220,7 +230,7 @@ const AuthPage = () => {
           aria-label={`Back to ${appName} home`}
           className="mb-2 flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
         >
-          <BrandLogo className="h-10 w-10 rounded-lg" />
+          <BrandLogo className="h-10 w-10 rounded-[2px]" />
           {/* BUG-097 — this was an <h1> nested in a link, so the page's only
               level-1 heading was "FinRoot" and the real heading below it
               (<h3> "Welcome") jumped two levels. The brand is a link home, not

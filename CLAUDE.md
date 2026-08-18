@@ -202,7 +202,26 @@ keeping: the checklist counts real rows rather than storing "the user did X", an
 excluded from those counts by recorded id. If you add to the sample workspace, keep it anchored to
 the calendar month (`src/lib/onboarding.ts`) — "days ago" put the salary in the wrong month.
 
-### Pending migrations — none, as of 2026-08-15
+### Pending migrations — none, as of 2026-08-17
+
+`supabase/migrations/20260815100000_stage6_onboarding_wizard.sql` — adds `profiles.onboarding_completed`
+/ `onboarding_step` / `onboarding_selections` for the Stage 6.1 selection-only onboarding wizard
+(gated in `ProtectedRoute.tsx`, ahead of the PinSetup gate). **Applied to the cloud project on
+2026-08-17**, via the SQL Editor (the Management API's `database/query` write path is blocked for
+this session — read-only queries through it still work fine for verification). Confirmed live: all
+13 existing accounts backfilled to `onboarding_completed = true`; the column default going forward
+is `false`. `types.ts` was regenerated from `ludbntvhagefadfkhrjj` afterward and the temporary casts
+in `useOnboardingWizard.ts` were deleted — it now reads/writes the three columns with no cast at
+all except a narrow, permanent one on `onboarding_selections` (our precise TS type → the DB's
+generic `Json` column), the same boundary idiom `useIncomeStreams.ts` already uses at its insert
+sites. Already verified end-to-end against the local self-hosted stack before this (existing
+accounts skip it, a fresh signup walks all 5 steps and resumes correctly on reload); cloud
+verification so far is schema-level (the SQL above) plus a real sign-in showing the PIN gate
+unaffected — a real cloud sign-up hasn't been exercised yet because Supabase's free-tier auth
+mailer rate limit was exhausted during testing and needs time to reset.
+
+The five migrations below were applied as of 2026-08-15 (the first four) and 2026-08-17 (the
+onboarding wizard, above):
 
 All four were applied in one `supabase db push` on 2026-08-15, once a `SUPABASE_ACCESS_TOKEN` was
 available for the first time. Types were regenerated the same session (`supabase gen types` via
@@ -229,6 +248,7 @@ cast that existed only because a function wasn't in the generated types yet
   day to unblock PO-018 (coupons). `/po/plans` now has a "Paddle price id" field per plan; setting
   one on a paid plan (`price_cents > 0`) is what `usePaymentsGateway()`/`upgradeable_plans()` needs
   to consider that plan purchasable. Leave Roots's blank.
+- `20260815100000_stage6_onboarding_wizard.sql` — see above.
 
 > Regenerating `types.ts` on Windows: PowerShell's `Out-File -Encoding utf8` writes a BOM and CRLFs.
 > Redirect with Bash (`> src/integrations/supabase/types.ts`) instead, or strip both afterward.

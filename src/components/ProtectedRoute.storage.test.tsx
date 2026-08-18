@@ -21,6 +21,21 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: USER, loading: false, signOut: vi.fn() }),
 }));
 
+// Stage 6.1's onboarding gate sits ahead of the lock gate this file tests —
+// mocked "already completed" so LOCK-012 keeps testing the lock and not a
+// live Supabase fetch through an unmounted QueryClientProvider.
+vi.mock("@/hooks/useOnboardingWizard", () => ({
+  useOnboardingWizard: () => ({
+    completed: true,
+    step: 1,
+    selections: {},
+    loading: false,
+    saving: false,
+    saveStep: vi.fn(),
+    complete: vi.fn(),
+  }),
+}));
+
 /** Make every Storage method throw, the way a hard-blocked browser does. */
 function blockStorage(which: "localStorage" | "sessionStorage") {
   const boom = () => {

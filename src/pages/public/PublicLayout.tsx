@@ -37,7 +37,7 @@ export default function PublicLayout({
       <header className="border-b border-white/10">
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2.5">
-            <BrandLogo className="w-8 h-8 rounded-lg" />
+            <BrandLogo className="w-8 h-8 rounded-[2px]" />
             <span className="text-base font-semibold tracking-tight text-white">{appName}</span>
           </Link>
           <Link

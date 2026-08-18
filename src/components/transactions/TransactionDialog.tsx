@@ -534,7 +534,17 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
             Cancel
           </Button>
           <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : isEdit ? "Save changes" : debtMode ? "Save plan" : splitOn ? "Save split" : "Add expense"}
+            {busy
+              ? "Saving…"
+              : isEdit
+                ? "Save changes"
+                : debtMode
+                  ? "Save plan"
+                  : splitOn
+                    ? "Save split"
+                    : activeType === "income"
+                      ? "Add income"
+                      : "Add expense"}
           </Button>
         </DialogFooter>
       </DialogContent>

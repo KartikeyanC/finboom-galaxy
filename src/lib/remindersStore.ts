@@ -74,12 +74,25 @@ function rollForward(rec: ReminderRecord): ReminderRecord {
   return { ...rec, status: "completed" };
 }
 
+/** BUG-105 — "is due tomorrow" was hardcoded regardless of the actual date. */
+function dueDatePhrase(iso: string): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(iso);
+  due.setHours(0, 0, 0, 0);
+  const days = Math.round((due.getTime() - today.getTime()) / 86400000);
+  if (days < 0) return `was due ${-days === 1 ? "yesterday" : `${-days} days ago`}`;
+  if (days === 0) return "is due today";
+  if (days === 1) return "is due tomorrow";
+  return `is due in ${days} days`;
+}
+
 export function defaultMessage(rec: ReminderRecord): string {
   if (rec.notes && rec.notes.trim().length > 0) return rec.notes.trim();
   const name = rec.title || "scheduled item";
   switch (rec.context) {
     case "fixed_due":
-      return `Reminder: Your ${name} payment is due tomorrow.`;
+      return `Reminder: Your ${name} payment ${dueDatePhrase(rec.date)}.`;
     case "balance_buffer":
       return `Heads up: ${name} will debit shortly — verify your funding account balance.`;
     case "maturity":

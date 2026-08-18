@@ -67,7 +67,7 @@ const toolItems = [
   { title: "Workspace", url: "/app/workspace", icon: Users, menuId: "settings" },
   { title: "Calculator", url: "/app/calculator", icon: Calculator, menuId: "calculator" },
   { title: "Import", url: "/app/import", icon: Upload, menuId: "import" },
-  { title: "Export", url: "/app/export", icon: Download, menuId: "import" },
+  { title: "Export", url: "/app/export", icon: Download, menuId: "export" },
   { title: "Bill Scan", url: "/app/bill-scan", icon: ScanLine, menuId: "bill-scan" },
   { title: "Reminders", url: "/app/reminders", icon: Bell, menuId: "reminders" },
   { title: "Billing", url: "/app/billing", icon: CreditCard, menuId: "billing" },
@@ -205,7 +205,7 @@ export function AppSidebar() {
       <SidebarHeader className={cn(collapsed ? "p-2" : "p-4")}> 
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}> 
           <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-            <BrandLogo className="w-8 h-8 rounded-xl shadow-sm" />
+            <BrandLogo className="w-8 h-8 rounded-[2px] shadow-sm" />
           </div>
           {!collapsed && (
             <span className="font-display text-lg font-bold text-gradient-primary">

@@ -85,7 +85,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-center gap-3"
           >
-            <BrandLogo className="w-12 h-12 rounded-xl" />
+            <BrandLogo className="w-12 h-12 rounded-[2px]" />
             <span className="text-2xl font-semibold tracking-tight text-white">{appName}</span>
           </motion.div>
           <div className="mt-8 w-56 h-px bg-white/10 overflow-hidden rounded-full">

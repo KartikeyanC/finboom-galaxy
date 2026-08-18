@@ -1,6 +1,7 @@
 import DashboardClassic from "@/components/dashboard/DashboardClassic";
 import DashboardWealth from "@/components/dashboard/DashboardWealth";
 import OnboardingChecklist from "@/components/onboarding/OnboardingChecklist";
+import { PersonalizedWelcome } from "@/components/onboarding-wizard/PersonalizedWelcome";
 import { useDashboardLayout } from "@/lib/dashboardLayout";
 
 /**
@@ -10,12 +11,15 @@ import { useDashboardLayout } from "@/lib/dashboardLayout";
  *
  * The Stage 5.3 checklist sits here rather than inside either layout: it is a
  * property of the workspace, not of the layout, and putting it in one dashboard
- * would leave users of the other without any onboarding at all.
+ * would leave users of the other without any onboarding at all. Same reasoning
+ * for `PersonalizedWelcome` (Stage 6.1) — a property of the ACCOUNT, not the
+ * layout.
  */
 const Index = () => {
   const layout = useDashboardLayout();
   return (
     <div className="space-y-6">
+      <PersonalizedWelcome />
       <OnboardingChecklist />
       {layout === "classic" ? <DashboardClassic /> : <DashboardWealth />}
     </div>

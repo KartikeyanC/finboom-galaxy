@@ -78,6 +78,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   price_cache: "Market prices keyed by security symbol. Shared, and contains nobody's identity.",
   platform_admins: "Which staff accounts are platform administrators.",
   storage_purge_queue: "Operational queue for deleting files after a workspace is purged.",
+  processed_webhooks: "Paddle webhook event ids, kept only to reject a replayed delivery. Carries no user or tenant identity.",
 };
 
 export type BundleManifest = {

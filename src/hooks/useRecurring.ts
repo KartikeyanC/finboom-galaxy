@@ -138,7 +138,14 @@ export function bumpDate(iso: string, freq: RecurringFrequency): string {
   return `${targetY}-${String(targetM).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-/** Generate a transaction from a recurring item and advance next_due_date. */
+/**
+ * Generate a transaction from a recurring item and advance next_due_date.
+ *
+ * Goes through `mark_recurring_generated` rather than two separate client
+ * writes (BUG-104): the RPC row-locks the item and a UNIQUE constraint backs
+ * it up, so a double click or a network retry can no longer post the same
+ * due date's transaction twice.
+ */
 export function useMarkRecurring() {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
@@ -147,37 +154,8 @@ export function useMarkRecurring() {
     mutationFn: async (item: RecurringItem) => {
       if (!user) throw new Error("Not signed in");
       if (!currentTenantId) throw new Error("No workspace selected");
-      // The generated transaction belongs to the same workspace as its source
-      // item, not to whichever workspace the column default would pick.
-      const { error: txErr } = await supabase.from("transactions").insert({
-        user_id: user.id,
-        tenant_id: item.tenant_id ?? currentTenantId,
-        type: item.type,
-        amount: item.amount,
-        currency: item.currency,
-        category: item.category,
-        description: item.name + (item.notes ? ` — ${item.notes}` : ""),
-        occurred_at: new Date(item.next_due_date).toISOString(),
-        source_recurring_id: item.id,
-      } as never);
-      if (txErr) throw txErr;
-
-      if (item.frequency === "one-time") {
-        const { error } = await supabase
-          .from("recurring_items")
-          .update({ is_active: false, last_generated_at: new Date().toISOString() })
-          .eq("id", item.id)
-          .eq("tenant_id", currentTenantId);
-        if (error) throw error;
-      } else {
-        const next = bumpDate(item.next_due_date, item.frequency);
-        const { error } = await supabase
-          .from("recurring_items")
-          .update({ next_due_date: next, last_generated_at: new Date().toISOString() })
-          .eq("id", item.id)
-          .eq("tenant_id", currentTenantId);
-        if (error) throw error;
-      }
+      const { error } = await supabase.rpc("mark_recurring_generated", { p_item_id: item.id });
+      if (error) throw error;
     },
     onSuccess: (_d, item) => {
       qc.invalidateQueries({ queryKey: ["recurring"] });

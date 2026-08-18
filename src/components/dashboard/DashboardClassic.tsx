@@ -25,6 +25,7 @@ import ActionableReminders from "@/components/dashboard/ActionableReminders";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/contexts/AccessContext";
 import { useBranding } from "@/hooks/useBranding";
+import { DEFAULT_ERROR } from "@/lib/errorMessages";
 
 /**
  * Classic FinRoot dashboard — the original layout. Preserved as a selectable
@@ -51,7 +52,7 @@ const DashboardClassic = () => {
 
   // Stage 4.2: month income/expense come pre-aggregated from the server rather
   // than from every transaction row the workspace has ever held.
-  const { summary } = useDashboardSummary();
+  const { summary, isError: summaryError } = useDashboardSummary();
   const { accounts } = useAccounts();
   const { records: investments } = useInvestments();
   const debts = useDebts();
@@ -87,7 +88,12 @@ const DashboardClassic = () => {
             {greeting}, {firstName}
           </h1>
           <p className="text-muted-foreground max-w-lg">
-            {fin.income > 0 ? (
+            {summaryError ? (
+              // BUG-115 — a failed fetch used to render identically to a
+              // brand-new, genuinely empty account (both left fin.income at
+              // 0), so a real outage was indistinguishable from data loss.
+              <span className="text-destructive">{DEFAULT_ERROR}</span>
+            ) : fin.income > 0 ? (
               <>
                 You've saved <span className="text-success font-semibold">{formatCompact(fin.savings)}</span> this month
                 {" "}— a {fin.savingsRate}% savings rate.

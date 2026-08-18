@@ -38,21 +38,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      // "Remember me" enforcement: if the user opted out, sign them out
-      // when the browser session ends (sessionStorage cleared on close).
-      const sessionOnly = localStorage.getItem("finroot.session_only") === "1";
-      const stillActive = sessionStorage.getItem("finroot.session_active") === "1";
-      if (s && sessionOnly && !stillActive) {
-        await supabase.auth.signOut();
-        localStorage.removeItem("finroot.session_only");
-        setSession(null);
-        setUser(null);
-      } else {
-        if (s && sessionOnly) sessionStorage.setItem("finroot.session_active", "1");
-        setSession(s);
-        setUser(s?.user ?? null);
-      }
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setUser(s?.user ?? null);
       setLoading(false);
     });
 

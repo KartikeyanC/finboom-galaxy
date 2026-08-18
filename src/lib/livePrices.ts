@@ -80,8 +80,12 @@ const YAHOO_SUFFIX: Record<string, string> = {
 
 function pickTicker(r: InvestmentRecord): string {
   const f = r.fields ?? {};
+  // BUG-106 — `f.name` used to be in this chain, so a record with no ticker
+  // at all silently tried to resolve its free-text display name as a market
+  // symbol instead of reporting "no ticker" (almost every stock has *a*
+  // name, so this made the unresolved-ticker path nearly unreachable).
   return String(
-    f.ticker || f.symbol || f.coin || f.scheme || f.name || "",
+    f.ticker || f.symbol || f.coin || f.scheme || "",
   ).trim();
 }
 

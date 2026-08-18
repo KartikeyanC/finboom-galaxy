@@ -23,6 +23,10 @@ dist-ssr
 /playwright-report
 /test-results
 
+# Supabase CLI local-only state (which branch/project is linked locally)
+supabase/.branches
+supabase/.temp
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

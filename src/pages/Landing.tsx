@@ -365,7 +365,7 @@ const Landing = () => {
         <div className="max-w-6xl mx-auto px-6 py-14 grid md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <BrandLogo className="w-7 h-7 rounded-lg" />
+              <BrandLogo className="w-7 h-7 rounded-[2px]" />
               <span className="text-lg font-semibold text-white">{brand.appName}</span>
             </div>
             <p className="text-xs text-[#8b9a94] leading-relaxed">{brand.tagline}</p>

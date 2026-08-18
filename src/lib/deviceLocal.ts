@@ -67,18 +67,6 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
       "Which workspace this browser is currently looking at. Membership is server-side; this is only the last selection.",
   },
   {
-    key: "finroot.session_active",
-    store: "local",
-    label: "Session bookkeeping",
-    reason: "Sign-in mechanics for this browser. Meaningless anywhere else.",
-  },
-  {
-    key: "finroot.session_only",
-    store: "local",
-    label: "Session bookkeeping",
-    reason: "Sign-in mechanics for this browser. Meaningless anywhere else.",
-  },
-  {
     key: "finroot.access.viewAs",
     store: "local",
     label: "Preview as collaborator",

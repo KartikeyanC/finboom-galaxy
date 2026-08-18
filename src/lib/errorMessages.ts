@@ -37,6 +37,7 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   transactions_transfer_dest_check:
     "A transfer needs a destination account, and only a transfer can have one.",
   transactions_import_hash_key: "Those rows have already been imported.",
+  transactions_recurring_period_unique: "This item has already been marked for that due date.",
   // everything else with a fixed set of values
   accounts_type_check: "That is not an account type we support.",
   trips_kind_check: "That is not a trip type we support.",
@@ -178,6 +179,20 @@ export function toUserMessage(error: unknown, fallback: string = DEFAULT_ERROR):
   // Nothing recognised: show the message only if it reads like product copy.
   if (!raw || LEAKY.test(raw) || raw.length > 160) return fallback;
   return raw;
+}
+
+/**
+ * BUG-100 — a revoked/expired session's queries used to fail into whatever
+ * empty state the page shows a genuinely-new account, with no toast and no
+ * redirect: `PGRST301`/401 is a real, distinct signal that the credential
+ * itself is gone, not "there is nothing here yet". Callers that need to act
+ * on it (redirect to `/auth`) check this instead of re-deriving it from text.
+ */
+export function isSessionExpiredError(error: unknown): boolean {
+  const e = asErrorish(error);
+  if (String(e.code ?? "") === "PGRST301") return true;
+  if (e.status === 401) return true;
+  return /session.*(missing|expired)|jwt.*expired/i.test(e.message ?? "");
 }
 
 /** Log the real error where developers can find it, whatever we tell the user. */

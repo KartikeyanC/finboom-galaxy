@@ -954,6 +954,21 @@ export type Database = {
         }
         Relationships: []
       }
+      processed_webhooks: {
+        Row: {
+          event_id: string
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -962,6 +977,9 @@ export type Database = {
           legal_accepted_at: string | null
           legal_version: string | null
           mobile: string | null
+          onboarding_completed: boolean
+          onboarding_selections: Json
+          onboarding_step: number
           updated_at: string
           username: string | null
         }
@@ -972,6 +990,9 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           mobile?: string | null
+          onboarding_completed?: boolean
+          onboarding_selections?: Json
+          onboarding_step?: number
           updated_at?: string
           username?: string | null
         }
@@ -982,6 +1003,9 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           mobile?: string | null
+          onboarding_completed?: boolean
+          onboarding_selections?: Json
+          onboarding_step?: number
           updated_at?: string
           username?: string | null
         }
@@ -1803,6 +1827,7 @@ export type Database = {
         Returns: undefined
       }
       mark_all_notifications_read: { Args: never; Returns: undefined }
+      mark_recurring_generated: { Args: { p_item_id: string }; Returns: Json }
       notify_expiring_subscriptions: {
         Args: { p_days?: number }
         Returns: undefined

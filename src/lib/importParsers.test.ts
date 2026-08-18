@@ -16,8 +16,9 @@ describe("parseExpenses", () => {
     const file = csvFile(
       "Date,Category,Description,Amount,Currency\n2024-01-15,Food,Lunch,250,INR\n",
     );
-    const rows = await parseExpenses(file);
+    const { rows, skipped } = await parseExpenses(file);
     expect(rows).toHaveLength(1);
+    expect(skipped).toBe(0);
     expect(rows[0]).toMatchObject({
       date: "2024-01-15",
       category: "Food",
@@ -30,21 +31,22 @@ describe("parseExpenses", () => {
 
   it("strips currency symbols and thousands separators from amount", async () => {
     const file = csvFile("date,category,amount\n2024-01-01,Rent,\"₹12,500\"\n");
-    const rows = await parseExpenses(file);
+    const { rows } = await parseExpenses(file);
     expect(rows[0].amount).toBe(12500);
   });
 
   it("defaults category and currency when missing", async () => {
     const file = csvFile("date,amount\n2024-01-01,100\n");
-    const rows = await parseExpenses(file);
+    const { rows } = await parseExpenses(file);
     expect(rows[0].category).toBe("Uncategorized");
     expect(rows[0].currency).toBe("INR");
   });
 
-  it("skips fully empty rows", async () => {
+  it("skips fully empty rows and reports how many", async () => {
     const file = csvFile("date,amount\n,\n2024-01-01,100\n");
-    const rows = await parseExpenses(file);
+    const { rows, skipped } = await parseExpenses(file);
     expect(rows).toHaveLength(1);
+    expect(skipped).toBe(1);
   });
 });
 

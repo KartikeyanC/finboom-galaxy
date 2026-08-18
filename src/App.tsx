@@ -2,7 +2,7 @@ import { migrateStorageKeys } from "@/lib/appLock";
 migrateStorageKeys(); // rename finroots.* → finroot.* once, before anything renders
 
 import { Suspense, lazy } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -17,6 +17,8 @@ import { MenuGuard } from "@/components/MenuGuard";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { supabase } from "@/integrations/supabase/client";
+import { isSessionExpiredError, notifyError } from "@/lib/errorMessages";
 
 /**
  * Stage 4.1 / BUG-046 — every route is code-split.
@@ -89,7 +91,27 @@ const RouteFallback = () => (
   </div>
 );
 
+// BUG-100 — a revoked/expired session used to fail every query into
+// whichever empty state the page shows a genuinely-new account, with no
+// toast and no redirect. This is the one place that can see it regardless
+// of which hook made the call, since it sits above all of them.
+let handlingExpiredSession = false;
+function handleExpiredSession(error: unknown) {
+  if (!isSessionExpiredError(error) || handlingExpiredSession) return;
+  if (window.location.pathname.startsWith("/auth")) return;
+  handlingExpiredSession = true;
+  notifyError(error, { fallback: "Your session has expired. Please sign in again." });
+  // A full reload, not a soft navigate: this runs outside the Router, and a
+  // dead session should clear every in-memory context (auth, tenant, query
+  // cache), not just change the URL over top of stale state.
+  supabase.auth.signOut().finally(() => {
+    window.location.href = "/auth";
+  });
+}
+
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: handleExpiredSession }),
+  mutationCache: new MutationCache({ onError: handleExpiredSession }),
   defaultOptions: {
     queries: {
       staleTime: 60_000, // 1 min — avoid refetching on every navigation
@@ -176,9 +198,11 @@ const App = () => (
                             <Route path="/profile" element={<ProfilePage />} />
                             <Route path="/notifications" element={<NotificationsPage />} />
                             <Route path="/import" element={<MenuGuard menuId="import"><ImportPage /></MenuGuard>} />
-                            {/* Gated under "import" to match AppSidebar, which
-                                already lists Export with menuId "import". */}
-                            <Route path="/export" element={<MenuGuard menuId="import"><ExportPage /></MenuGuard>} />
+                            {/* BUG-022 fixed and deployed 2026-08-17 — the "export"
+                                menu id now exists in all_feature_menus(), so this
+                                gates on its own id instead of piggybacking on
+                                "import". AppSidebar's nav entry matches. */}
+                            <Route path="/export" element={<MenuGuard menuId="export"><ExportPage /></MenuGuard>} />
                             <Route path="/workspace" element={<WorkspaceManage />} />
                             <Route path="/accounts" element={<AccountsPage />} />
                             <Route path="/billing" element={<MenuGuard menuId="billing"><BillingPage /></MenuGuard>} />

@@ -78,7 +78,7 @@ export default function FloatingNav() {
     >
       <div className={`mx-auto max-w-5xl flex items-center justify-between gap-4 rounded-2xl border px-4 h-14 transition-colors duration-300 ${scrolled ? "border-white/10 bg-[#06070a]/70 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.4)]" : "border-white/[0.06] bg-white/[0.02] backdrop-blur-md"}`}>
         <Link to="/" data-cursor className="flex items-center gap-2.5 shrink-0">
-          <BrandLogo className="w-8 h-8 rounded-lg" />
+          <BrandLogo className="w-8 h-8 rounded-[2px]" />
           <span className="text-base font-semibold tracking-tight text-white">{appName}</span>
         </Link>
         <nav className="hidden md:flex items-center gap-1 text-[12px] text-[#9aa3a0]">
