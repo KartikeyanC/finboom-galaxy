@@ -42,6 +42,17 @@ type AccessContextValue = {
   allowedMenus: string[] | null;
   /** True until the server has answered (or failed) for the current tenant. */
   accessLoading: boolean;
+  /**
+   * True when permissions could not be *resolved* (a failed RPC, or the
+   * tenant list itself failing to load) — distinct from resolving cleanly to
+   * "no access". `allowedMenus` fails closed to `[]` in both cases, on
+   * purpose (BUG-090's lesson: an unresolved check must never read as full
+   * access), but a redirect-away-and-say-nothing response to this one reads
+   * as data loss to whoever is looking at it (BUG-115). Callers that decide
+   * whether to redirect vs. show a "try again" state should check this
+   * instead of inferring it from an empty `allowedMenus`.
+   */
+  menusErrored: boolean;
   canAccess: (menuId: string | undefined) => boolean;
   canWrite: (menuId: string | undefined) => boolean;
   isReadOnly: boolean;
@@ -69,7 +80,7 @@ function memberToProfile(m: TenantMemberInfo): AccessProfile {
 }
 
 export function AccessProvider({ children }: { children: ReactNode }) {
-  const { currentTenantId, role, loading: tenantLoading } = useTenant();
+  const { currentTenantId, role, loading: tenantLoading, error: tenantError } = useTenant();
   const [members, setMembers] = useState<TenantMemberInfo[]>([]);
   // null = not resolved yet; array = the server's answer, always enforced.
   const [effectiveMenus, setEffectiveMenus] = useState<string[] | null>(null);
@@ -77,6 +88,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   // a menu flash on first paint). "error" must deny — a failing permissions RPC
   // previously left effectiveMenus at null forever, which read as full access.
   const [menusStatus, setMenusStatus] = useState<"loading" | "ready" | "error">("loading");
+  // Separate from menusStatus === "error": that state also covers "no tenant
+  // to check against", a legitimate answer, not a failure. This is true only
+  // when resolution itself couldn't complete — a downed DB, a thrown fetch —
+  // which is the case MenuGuard must show differently (BUG-115, reopened).
+  const [rpcErrored, setRpcErrored] = useState(false);
   const [viewAsId, setViewAsIdState] = useState<string | null>(() => {
     try {
       return localStorage.getItem(STORAGE_VIEW_AS) || null;
@@ -96,11 +112,15 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    // No tenant once tenant resolution has finished means no grants at all.
+    // No tenant once tenant resolution has finished means no grants at all —
+    // unless TenantContext itself failed to resolve the tenant list, in which
+    // case "no tenant" isn't a real answer, it's the same failure surfacing
+    // one layer up (see TenantContext's own `error`).
     if (!currentTenantId) {
       setMembers([]);
       setEffectiveMenus([]);
       setMenusStatus("error");
+      setRpcErrored(tenantError);
       return;
     }
 
@@ -115,22 +135,25 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       console.error("Failed to resolve access menus:", e);
       setEffectiveMenus([]);
       setMenusStatus("error");
+      setRpcErrored(true);
       return;
     }
 
     if (!menusRes.error && Array.isArray(menusRes.data)) {
       setEffectiveMenus(menusRes.data as string[]);
       setMenusStatus("ready");
+      setRpcErrored(false);
     } else {
       console.error("get_effective_menus failed:", menusRes.error);
       setEffectiveMenus([]);
       setMenusStatus("error");
+      setRpcErrored(true);
     }
 
     if (!membersRes.error && Array.isArray(membersRes.data)) {
       setMembers(membersRes.data as TenantMemberInfo[]);
     }
-  }, [currentTenantId]);
+  }, [currentTenantId, tenantError]);
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -206,11 +229,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       activeProfile,
       allowedMenus,
       accessLoading,
+      menusErrored: rpcErrored,
       canAccess,
       canWrite,
       isReadOnly,
     }),
-    [profiles, members, refresh, viewAsId, setViewAsId, activeProfile, allowedMenus, accessLoading, canAccess, canWrite, isReadOnly],
+    [profiles, members, refresh, viewAsId, setViewAsId, activeProfile, allowedMenus, accessLoading, rpcErrored, canAccess, canWrite, isReadOnly],
   );
 
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;

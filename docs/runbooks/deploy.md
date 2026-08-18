@@ -58,6 +58,21 @@ entry point until the old clients are gone.
 `npm run build` produces `dist/`. Hosting configuration is in the repository and is part of the
 deployment, not an afterthought:
 
+🔴 **Verify what actually got embedded — do not trust a clean exit.** Vite's env precedence for
+`npm run build` (mode `production`) is `.env` → `.env.production` → `.env.production.local`.
+`.env.production` in this repo only ever carries `VITE_PAYMENTS_CLIENT_TOKEN`, so
+`VITE_SUPABASE_URL`/`_PUBLISHABLE_KEY`/`_PROJECT_ID` come from the base `.env` — and as of
+2026-08-18 (BUG-117), that file still had the pre-rebuild values for `tsmdnfywxsjsjqjszoek`, the
+abandoned Lovable prototype `.env.development`'s own comment names, not the real live project. The
+build succeeded, `dist/` looked normal, and it would have silently shipped an app pointed at a
+project with no real schema. `.env` is fixed now, but it's gitignored — a fresh clone or new machine
+starts from nothing and needs it set explicitly. After any build meant to actually ship, confirm:
+```bash
+grep -o 'https://[a-z0-9]*\.supabase\.co' dist/assets/*.js | sort -u
+```
+and check the one hostname that comes back is the real project (`ludbntvhagefadfkhrjj`), not a stale
+one — this is worth the ten seconds every single time, not just the first.
+
 - `vercel.json` and `public/_headers` carry the CSP and cache rules. They are kept in step by hand —
   changing one and not the other is a real failure mode.
 - The CSP no longer allows `fonts.googleapis.com` / `fonts.gstatic.com`, so **a font moved back to

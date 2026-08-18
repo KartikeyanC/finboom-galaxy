@@ -27,6 +27,11 @@ type TenantContextValue = {
   current: TenantMembership | null;
   role: TenantRole | null;
   loading: boolean;
+  /** True when the last `tenant_members` fetch itself failed (BUG-115's
+   * reopened half) — distinct from a real account with zero memberships.
+   * Both leave `memberships` empty, but only this one means "we don't know",
+   * not "we checked and there is nothing". */
+  error: boolean;
   refresh: () => Promise<void>;
 };
 
@@ -45,6 +50,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     }
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const setCurrentTenantId = useCallback((id: string) => {
     setCurrentIdState(id);
@@ -58,6 +64,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     if (!user) {
       setMemberships([]);
+      setError(false);
       setLoading(false);
       return;
     }
@@ -65,14 +72,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     // Explicitly scope to this user: the tenant_members RLS policy also allows
     // platform admins to read ALL rows, so we must filter by user_id ourselves
     // (otherwise a Product Owner would see every tenant's memberships).
-    const { data, error } = await supabase
+    const { data, error: fetchError } = await supabase
       .from("tenant_members")
       .select("tenant_id, role, status, tenants(name, status)")
       .eq("user_id", user.id)
       .eq("status", "active");
 
-    if (error) {
+    if (fetchError) {
       setMemberships([]);
+      setError(true);
       setLoading(false);
       return;
     }
@@ -88,6 +96,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       };
     });
     setMemberships(list);
+    setError(false);
     setLoading(false);
   }, [user]);
 
@@ -132,9 +141,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       current,
       role: current?.role ?? null,
       loading,
+      error,
       refresh: load,
     }),
-    [memberships, currentTenantId, setCurrentTenantId, current, loading, load],
+    [memberships, currentTenantId, setCurrentTenantId, current, loading, error, load],
   );
 
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
