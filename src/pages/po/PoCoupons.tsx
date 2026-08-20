@@ -47,9 +47,15 @@ export default function PoCoupons() {
     setBusy(true);
     const { error } = await supabase.rpc("po_create_coupon", {
       p_code: code,
-      p_description: desc || null,
-      p_discount_percent: discount ? Number(discount) : null,
-      p_expires_at: expires ? new Date(expires).toISOString() : null,
+      // po_create_coupon's `p_description`/`p_discount_percent` are genuinely
+      // nullable columns and were made optional in the SQL by migration
+      // 20260820130000 (BUG-055), but this checkout has no
+      // SUPABASE_ACCESS_TOKEN to push it and regenerate types.ts against it,
+      // so the generated Args type here is still the old, stricter shape.
+      // TODO: drop these two casts once types.ts is regenerated post-deploy.
+      p_description: (desc || undefined) as string,
+      p_discount_percent: (discount ? Number(discount) : undefined) as number,
+      p_expires_at: expires ? new Date(expires).toISOString() : undefined,
     });
     setBusy(false);
     if (error) return notifyError(error);

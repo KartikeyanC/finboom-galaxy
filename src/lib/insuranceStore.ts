@@ -48,7 +48,8 @@ export interface InsurancePolicy {
    * to Storage. Never written any more, and NOT fetched by the list query —
    * `loadLegacyDocument()` pulls it on demand for the one row being opened.
    */
-  documentDataUrl?: string;
+  /** `null` clears a legacy inline document (see `policyToRow`); `undefined` leaves it untouched. */
+  documentDataUrl?: string | null;
   documentMime?: string;
   notes?: string;
   createdAt: string;

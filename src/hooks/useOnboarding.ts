@@ -199,7 +199,7 @@ export function useOnboarding(): OnboardingApi {
           p_bucket: b.bucket,
           p_allocated: b.allocated,
           p_period: "monthly",
-          p_period_start: null,
+          p_period_start: undefined,
         });
         if (error) throw error;
         const id = (data as unknown as { id?: string } | null)?.id;

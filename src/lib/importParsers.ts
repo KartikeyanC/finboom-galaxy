@@ -1,5 +1,5 @@
-import * as XLSX from "xlsx";
 import Papa from "papaparse";
+import { parseXlsxSandboxed } from "./xlsxSandbox";
 
 // pdfjs is heavy (~1MB) and only needed for PDF statements, so it is lazily
 // imported inside parsePDF rather than eagerly at module load. This keeps it
@@ -150,9 +150,7 @@ export async function parseCSV(file: File): Promise<ImportedRow[]> {
 
 export async function parseExcel(file: File): Promise<ImportedRow[]> {
   const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array" });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  const json = await parseXlsxSandboxed(buf);
   return json.map((r) => toRow(r)).filter((r): r is ImportedRow => !!r);
 }
 
@@ -216,9 +214,7 @@ async function parseToObjects(file: File): Promise<Record<string, unknown>[]> {
     });
   }
   const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array" });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  return parseXlsxSandboxed(buf);
 }
 
 const str = (v: unknown) => String(v ?? "").trim();

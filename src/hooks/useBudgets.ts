@@ -65,7 +65,7 @@ export function useSetBudgetAllocation() {
         p_bucket: input.bucket,
         p_allocated: input.allocated,
         p_period: input.period ?? "monthly",
-        p_period_start: input.period_start ?? null,
+        p_period_start: input.period_start ?? undefined,
       });
       if (error) throw error;
       return data as unknown as Budget;

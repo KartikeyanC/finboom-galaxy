@@ -12,6 +12,16 @@
 # Fonts are self-hosted as of Stage 4.11, so `fonts.googleapis.com` (style-src)
 # and `fonts.gstatic.com` (font-src) are gone. Do not re-add them — putting a
 # font back on Google Fonts would silently break under this policy.
+#
+# BUG-058, 2026-08-18: `frame-src` was missing `https://*.supabase.co`, which
+# would have silently broken Insurance's PDF document preview (the one <iframe>
+# in the app — it loads a Supabase Storage signed URL) the moment this policy
+# was promoted to enforcing. Found by grepping every external host and iframe
+# the app actually references and checking each against the policy, since
+# this environment has no deployed host to read live Report-Only violations
+# from. Fixed here; not yet promoted to enforcing — that still wants a real
+# deployment's console watched for anything this static pass missed (script
+# eval, a dynamically-built URL, etc.), per this file's own standing advice.
 
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
@@ -21,7 +31,7 @@
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin
   Content-Security-Policy: frame-ancestors 'none'; object-src 'none'; base-uri 'self'
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://sandbox-cdn.paddle.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paddle.com https://sandbox-api.paddle.com; frame-src https://*.paddle.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://sandbox-cdn.paddle.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paddle.com https://sandbox-api.paddle.com; frame-src https://*.paddle.com https://*.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

@@ -11,7 +11,7 @@ A personal finance tracker evolved into a small **multi-tenant SaaS** with a Pro
 
 ## Stack
 
-- **Frontend:** Vite + React 18 + TypeScript + shadcn/ui + Tailwind, React Router, TanStack Query, react-hook-form + zod. **npm** for installs (`package-lock.json`); Node 20 (`.nvmrc`).
+- **Frontend:** Vite + React 18 + TypeScript + shadcn/ui + Tailwind, React Router, TanStack Query, plain controlled-component forms + zod (`react-hook-form`/`@hookform/resolvers` were removed 2026-08-18, BUG-065 — zero real usage anywhere, only a dead shadcn wrapper). **npm** for installs (`package-lock.json`); Node 20 (`.nvmrc`).
 - **Backend:** Supabase (Postgres + Auth + Edge Functions + Storage). RLS-enforced.
 - **Hosting:** Supabase (free→Pro), frontend on Vercel/Netlify (free), email via Resend (free), billing via Paddle.
 

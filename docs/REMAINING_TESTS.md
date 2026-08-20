@@ -404,7 +404,7 @@ were deleted again afterward; nothing was left in the fixture.
 - [x] **IMP-003** · P1 — Malformed row — **FAIL** BUG-108 *(the good half works — a row with neither date nor amount is dropped and the other two import cleanly — but nothing tells the user a row was dropped, or why)*
 - [x] **IMP-004** · P1 — CSV edge cases — **PASS** *(one file, all four edges at once: BOM stripped, CRLF handled, a quoted comma inside a field preserved as one value, an escaped quote un-escaped correctly, and an unexpected extra column ignored without disturbing the rest)*
 - [x] **IMP-005** · P1 — XLSX import — **PASS** *(built a real `.xlsx` with the bundled `xlsx` library itself and parsed it back — correct row, correct amount)*
-- [x] **IMP-006** · P1 — Malicious XLSX — **FAIL, retested 2026-08-18**, references pre-existing BUG-032 *(re-read `src/lib/importParsers.ts` rather than re-running the same live payload — nothing in `parseExcel()` has changed since the last run: still `XLSX.read(buf)` directly on unvalidated upload bytes at `xlsx@0.18.5` [confirmed via `npm ls xlsx`, unchanged], still on the main thread, no `Worker` anywhere in `src/` for the import path, no pre-parse schema check. "Rejected/sandboxed" still does not describe what happens today — unchanged from the last retest)*
+- [x] **IMP-006** · P1 — Malicious XLSX — **PASS, fixed 2026-08-18** *("Rejected/sandboxed" now actually describes what happens: `parseExcel()`/`parseToObjects()` in `importParsers.ts` route through a new `parseXlsxSandboxed()` (`src/lib/xlsxSandbox.ts`) which runs the actual `XLSX.read()`/`sheet_to_json()` inside a Web Worker (`src/lib/xlsxWorker.ts`) — a separate JS realm with no DOM, no `localStorage`, no Supabase session, so a prototype-pollution primitive inside it cannot reach the main thread's `Object.prototype` even in principle, regardless of whether `xlsx@0.18.5`'s own unpatched CVEs are ever triggered. Verified live in a real browser: a real generated .xlsx round-tripped through the worker correctly [~115 ms]; a malformed/garbage buffer resolved instead of hanging the tab; the `__proto__`-header vector this case's last two runs already found closed remains closed. `xlsx@0.18.5` itself is unchanged — still no upstream fix exists, still tracked under BUG-032 — this closes the "sandboxed" half of BUG-032's own prescribed fix, not the CVEs themselves)*
 - [x] **IMP-007** · P2 — Large import — **PASS**, lighter touch *(10,000-row CSV parsed in 604 ms, no hang. The actual bulk-insert-with-progress-UI step for that many rows was not run, given time — this covers parsing only)*
 - [x] **IMP-008** · P2 — PDF statement parse — **PASS**, unblocked *(no bank statement PDF was available, but the parser's regex is fully specified — `DATE SYMBOL BUY/SELL QTY PRICE` — so a minimal valid PDF was hand-built byte-for-byte, three trade lines, and dropped through the real `/app/import` Assets/Investments file input. Extraction ran for real — "Extracting Text from PDF Layers... 100%" — and the Validation Queue showed all three rows with correct date, asset, action, volume and price. Not a substitute for a genuine bank/broker export, but a real PDF, parsed by the real `pdfjs` pipeline, through the real UI)*
 - [x] **IMP-009** · P2 — Corrupt PDF — **PASS** *(a truncated 9-byte "PDF" throws a caught `"Invalid PDF structure."`, surfaced as a clean "Failed to parse corrupt.pdf" toast — no crash, no white screen)*
@@ -603,8 +603,9 @@ same three-line re-invite.
 **18 cases · 16 pass, 1 fail, 1 blocked — fully current as of 2026-08-18.** OPS-012 retested and now
 PASS, closing out the credential gap this suite was blocked on since 2026-08-15 — `types.ts` has
 tracked the live schema since the 2026-08-17 deploy, and today's local-stack diff confirms it again.
-OPS-005 was also retested and is still `FAIL` (BUG-032 — no fix exists for `xlsx`; see its own line
-for the current, narrower shape). **OPS-014 and OPS-017 were retested against the BUG-114/BUG-115
+OPS-005 was retested twice more the same day — narrowed from 2 high + 2 moderate to 1 high + 2
+moderate once `pdfjs-dist` was fixed; still `FAIL` overall since `xlsx` genuinely has no upstream fix
+(see its own line). **OPS-014 and OPS-017 were retested against the BUG-114/BUG-115
 fixes deployed 2026-08-17**: OPS-014 is now `PASS` (~1.1 s, was 8.7–11.0 s). OPS-017 first came back
 `FAIL` for a sharper reason than originally filed — BUG-115's dashboard fix was correct but never
 ran, because `MenuGuard`'s fail-closed redirect moved the user off Dashboard before it mounted — and
@@ -617,7 +618,7 @@ against the same outage scenario. Only OPS-008 (hosted backup access — the use
 - [x] **OPS-002** · P1 🔴 — ESLint is clean — **PASS** *(`npx eslint .`, exit 0 — 0 errors, 27 warnings, matching CLAUDE.md's documented baseline exactly)*
 - [x] **OPS-003** · P0 — Build succeeds — **PASS** *(`vite build`, exit 0, "built in 1m 17s", `dist/` produced)*
 - [x] **OPS-004** · P1 🔴 — Bundle budget — **PASS** *(main entry chunk per `dist/index.html`'s `<script type="module">` is `index-C3g8g_c1.js`, 93.52 kB gzip — well inside the 250 kB budget; largest chunks overall, `pdf-*.js` at 136 kB and `xlsx-*.js` at 143 kB gzip, are separate lazy-loaded chunks, not the entry)*
-- [x] **OPS-005** · P0 🔴 — `npm audit --omit=dev` — **FAIL, retested 2026-08-18** pre-existing BUG-032 *(down to 2 high + 2 moderate, from 11 high + 1 moderate at the last count — the 2026-08-17 `npm audit fix` [no `--force`] is what dropped it, this is just the first `--omit=dev`-scoped retest since. Remaining: `xlsx` [high, still no fix at all], `pdfjs-dist` [high, fix is a breaking bump to 6.2.108], `react-router` [moderate, npm's audit text says a fix is available via plain `npm audit fix` with no `--force` noted, but a dry run confirms that's misleading — installed `6.30.4` is already the newest `6.x` release and `package.json` pins `^6.30.1`; the real fix needs a major-version bump to 7.x. `esbuild`/`vite` no longer appear here because they're devDependencies, correctly excluded by `--omit=dev` — they still show under a full `npm audit` and are BUG-032's problem too, just outside this specific case's scope)*
+- [x] **OPS-005** · P0 🔴 — `npm audit --omit=dev` — **FAIL, retested 2026-08-18, narrowed to one genuinely unfixable package** *(down to 1 high + 2 moderate, from 2 high + 2 moderate at the last count. `pdfjs-dist` bumped to `6.2.108` [the fix release for its RCE-class advisory, GHSA-hq66-cqwq-w95j] and cleared — verified live with a real PDF parse through the app's actual worker-based setup, not just a version-number check. `xlsx` [high] still has no fix at all — mitigated by sandboxing instead, see IMP-006. `react-router` [moderate, 2 advisories] assessed rather than upgraded: neither's actual exploit path reaches this app's code — no SSR/data-router mode is in use at all, and the only non-literal `navigate()` targets are either router-internal `location.state` [not attacker-reachable without XSS already] or a curated menu list, never free-text input. Forcing a v6→v7 migration for a verified-unreachable vulnerability class would trade a real regression risk for no real security gain; documented in BUG_TRACKER.md rather than silently left unaddressed)*
 - [x] **OPS-006** · P0 — Migrations from scratch — **PASS** *(Docker's engine came up on its own between asking and this retry — see the DONE block above. `npx supabase start` against a completely empty local Postgres applied **all 67 migrations** cleanly, zero errors — `grep -i "error|failed|fatal"` on the full log came back empty, and the local REST API served the schema immediately after. Test_Cases.md's "32" migrations is stale; 67 is the real, current count, worth fixing in that file some day)*
 - [x] **OPS-007** · P0 — Migrations against seeded data — **PASS** *(created a real user through the local Auth admin API — the `handle_new_user()` trigger correctly cascaded profile + owner tenant_members, same as production — then inserted a real transaction row as that authenticated user. Wrote one throwaway additive migration [`COMMENT ON TABLE transactions`], applied it via `supabase migration up` against the now-seeded DB, confirmed it applied cleanly, then confirmed the seeded profile AND transaction were both still there byte-for-byte afterward. Deleted the scratch migration file immediately after — never committed, `git status` confirmed clean. **One real, useful, non-product finding along the way**: `service_role`/`authenticated` initially got `permission denied for table transactions` on the bare local stack — not a bug, `20260805120000_stage1b_grant_hardening.sql` explains why: it revokes a surplus down to the intended shape, and the *base* grant it revokes from was never this repo's job to create — Supabase's hosted platform bootstraps `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES TO anon, authenticated, service_role` automatically at project creation, which the CLI's local stack does not replicate. Applied that one bootstrap statement locally (session-only, not a migration, not committed) to unblock testing — this is a **local-CLI/hosted-platform parity gap**, not a live-project risk, worth remembering for the next session that tries this)*
 - [ ] **OPS-008** · P0 🔴 — Backup exists and restores — **BLOCKED**: this one specifically needs the *hosted* Supabase backup/PITR feature (a paid-plan dashboard capability), which a local Docker stack can't stand in for — needs the user's dashboard access. User said they'd check it themselves; nothing new from this session
@@ -670,6 +671,7 @@ One row per session. This is what makes "continue from where we left off" a fact
 | 2026-08-18 | OPS-014/OPS-017 retested against the deployed BUG-114/BUG-115 fixes (user asked directly) | 2 | 1 | 1 | BUG-115 reopened, sharper root cause | Local Docker stack back up (`supabase start` restored the prior session's already-fully-migrated backup), applied the known local-CLI bootstrap-grant workaround, created a fresh user via the admin API and bulk-seeded 50 000 real transactions into its auto-created tenant — never the live project. Pointed `.env.development` at the local stack temporarily (`VITE_SUPABASE_URL=http://127.0.0.1:54321`), ran the real dev server, injected a real session token pair into `localStorage` the same way prior BILL sessions did, flagged onboarding complete and dismissed PIN setup via SQL/UI to reach the dashboard. **OPS-014 PASS** — see its own line, ~1.1 s vs. the pre-fix 8.7–11.0 s, `useOnboarding.ts`'s `.limit(1)` fix confirmed live. **OPS-017 FAIL, same symptom, different and sharper cause** — stopped the Postgres container mid-session against the seeded tenant: `get_effective_menus()` failed alongside every other query, `AccessContext.tsx` correctly failed closed (`effectiveMenus = []`, a deliberate, documented security choice, not a bug), and `MenuGuard.tsx` — unable to tell "the permissions check itself errored" from "this plan doesn't include Dashboard" — redirected `/app` to `/app/accounts` every time, before `DashboardClassic` (BUG-115's actual fix) ever mounted. Accounts then rendered its own genuine "no accounts yet" empty state, reproducing BUG-115's exact original symptom one page over. Confirmed via `read_console_messages` (`get_effective_menus failed`, `503`s) and reading `MenuGuard.tsx`/`AccessContext.tsx` directly rather than guessing from the screen alone. Restarted the container, confirmed full recovery and all 50 000 rows intact within ~1 s (no partial state, no crash — those two hold, same as the original run). Cleaned up fully: `.env.development` restored to the live project and diffed byte-identical against a pre-session backup, dev server and local stack both stopped, `docker ps` confirmed no FinRoot containers left running. Filed as BUG-115 reopened rather than a new bug number, since it's the same acceptance criterion still failing, just a level higher in the stack than the original fix reached |
 | 2026-08-18 | BUG-115 (reopened) fixed at the MenuGuard/AccessContext layer, user asked directly | 0 | 0 | 0 | — | Fixed the exact gap the reopened finding pointed to, not a workaround. `TenantContext.tsx` gained a new `error: boolean` — `true` only when its own `tenant_members` fetch throws or errors, distinct from a real account that legitimately has zero memberships; reset on every successful load. `AccessContext.tsx` gained a matching `menusErrored: boolean` (backed by a new `rpcErrored` state), `true` when `get_effective_menus`/the RPC itself fails, or when there was no tenant to check because `TenantContext`'s own fetch failed — both cases used to collapse into the same `menusStatus === "error"` that also covers "resolved cleanly, this menu just isn't included." `MenuGuard.tsx` now checks `menusErrored \|\| tenant.error` before computing `fallbackPath()`, and renders a new shared `MenuResolutionError` component in place — "Can't reach the server right now" with a "Try again" wired to both contexts' `refresh()` — instead of silently redirecting. `allowedMenus` still fails closed to `[]` on any failure, unchanged (BUG-090's lesson: an unresolved check must never grant access) — this only changes what the UI does with that closed state, not whether access is granted. `tsc` 0, `eslint` 0 errors/27 warnings (unchanged baseline), `vitest` 620/620, all clean after the change. **Verified live, not just by reading the diff**: local stack back up (same seeded 50 000-row tenant, still intact from the prior retest), dev server pointed at it, signed in, `docker stop`'d Postgres mid-session — `/app` now stays on `/app` and shows the new error card instead of bouncing to `/app/accounts`; clicked "Try again" after restarting the container and got a clean recovery to the real dashboard, no stale error left behind. Closes BUG-115 and flips OPS-017 to `PASS`. Cleaned up fully: `.env.development` restored and diffed byte-identical, dev server and local stack both stopped, no FinRoot containers left running. Not deployed — same `SUPABASE_ACCESS_TOKEN` gap as everything else waiting on a push, though this one is frontend-only, no migration needed |
 | 2026-08-18 | Deploy prep for BUG-115's fix — user is self-hosting on their own VPS, asked to deploy | 0 | 0 | 0 | BUG-117 (new, found + fixed) | Asked first, since there was no established deploy path in this checkout: no `.vercel` link, no `git remote`, no Netlify config, no Vercel/Netlify token in the environment. User confirmed self-hosting on their own VPS, already set up, and wants the build ready — they'll ship it themselves. Re-confirmed `tsc`/`eslint`/`vitest` clean (already true from the fix itself), then `npm run build`. **Verified what actually got embedded rather than trusting the clean exit — found BUG-117**: `grep`ing the built JS for the Supabase URL returned `tsmdnfywxsjsjqjszoek`, the abandoned Lovable prototype, not `ludbntvhagefadfkhrjj`, the real live project. `.env.production` only carries `VITE_PAYMENTS_CLIENT_TOKEN`, so Vite's fallback to the base `.env` picked up its stale pre-rebuild values — apparently unnoticed until now because dev work only ever uses `.env.development` (always correct) and no session's history shows a real production build ever being produced before this one. Fixed `.env` to the correct values with an explanatory comment, rebuilt, re-grepped to confirm `ludbntvhagefadfkhrjj.supabase.co` is now what's embedded (all three chunks that reference it), checked the entry chunk against the 250 kB gzip budget (97.80 kB), and served the real `dist/` via `vite preview` to confirm the landing page renders clean — zero `googleapis`/`gstatic` requests, matching the deploy runbook's own post-deploy checklist. Added a 🔴 note with the exact verification grep to `docs/runbooks/deploy.md` so this doesn't silently recur on a fresh clone or new machine, where `.env` (gitignored) starts from nothing. Cleaned up: `vite preview` process killed, port confirmed free, browser tab closed |
+| 2026-08-18 | "Fix all BUGs" — user asked to fix everything still open | 0 | 0 | 0 | BUG-118 (new, found + fixed) | First separated genuinely-open from stale documentation across the whole file plus BUG_TRACKER.md, since a spot-check of a few S3/S4 rows found the entire frozen pre-2026-08-12 table is essentially all fixed-but-never-marked (14 items closed this session on that basis alone — see BUG_TRACKER.md's own new dated section for the list). Of what was genuinely still open and actionable without a credential/access this checkout lacks: fixed BUG-070 (router future-flag warnings), BUG-074 (stale browserslist), BUG-080 (Smart Split percent-mode rounding drift — reproduced with a 200k-trial random scan first, then fixed with the same rounding-remainder principle `evenSplit`/`balanceLast` already used elsewhere in the file, two new regression tests), BUG-065 (18 genuinely-dead shadcn wrapper files + 15 npm packages removed, verified zero importers each before deleting — `react-hook-form` included, despite `CLAUDE.md`'s stack line still naming it), all three halves of BUG-032 (xlsx: Worker-sandboxed per the bug's own prescribed mitigation, verified live with a real .xlsx round-trip and a garbage-buffer error case in a real browser; pdfjs-dist: bumped to 6.2.108 clearing the RCE-class advisory, verified live with a real PDF parse; react-router: assessed and deliberately left un-upgraded — traced every non-literal `navigate()` call site and confirmed neither advisory's exploit path is reachable in this app's actual code, so a large-blast-radius v6→v7 migration wasn't forced for zero real security gain), and BUG-005 (send-email rebuilt from an authenticated open mail relay into a closed template-id API — server-resolved recipient from the `invitations` table, explicit inviter-or-owner authorization check since service-role bypasses RLS, per-caller rate limit via the same audit_log-counting pattern as po-auth's lockout; 12 new tests against a fake Supabase client exercising the real security logic, not a paraphrase of it). **Found BUG-118 while reviewing BUG-058**: promoting the CSP from Report-Only to enforcing would have silently broken Insurance's PDF preview (`frame-src` never included `https://*.supabase.co`, only `img-src`/`connect-src` did) — fixed in both `public/_headers` and `vercel.json`, verified live against a real build with the header applied (zero violations across landing/support/auth), left Report-Only since the highest-risk surface (Paddle checkout) needs a real signed-in session this checkout has no credentials for. `tsc` 0, `eslint` 0 errors/25 warnings (down from 27 — some warnings belonged to files BUG-065 deleted), `vitest` 631/631 (was 620), `vite build` clean, checked after every dependency-touching change, not just once at the end |
 
 ---
 
@@ -692,64 +694,47 @@ at the bottom.
 
 ---
 
-### ✅ DONE · OPS-012/005/014/017 retested, BUG-115 fixed, BUG-117 found+fixed during deploy prep — 2026-08-18
+### ✅ DONE · a full day: OPS retests, BUG-115 fixed, BUG-117 found, then "fix all BUGs" — 2026-08-18
 
-**User asked, across four turns: re-run OPS-012 and BUG-032's remaining dependencies; retest
-OPS-014 and OPS-017 against their deployed fixes; fix the MenuGuard/AccessContext gap the OPS-017
-retest found; then prepare that fix for the user's own VPS deploy.** No new credential at any
-point — Docker's engine was already up from prior sessions throughout. Delete this block when
-you've read it.
+**Five turns across one day: re-run OPS-012 and BUG-032's dependencies → retest OPS-014/017 against
+their deployed fixes → fix the MenuGuard/AccessContext gap OPS-017's retest found → prepare that fix
+for the user's own VPS deploy → fix everything else still open.** No new credential at any point.
+Delete this block when you've read it — full detail on every item is in the session log above and
+BUG_TRACKER.md, both dated.
 
-- **OPS-012 now PASS, closing BUG-015.** `supabase db reset --local` replayed all 69 migration files
-  cleanly from empty (an initial `supabase start` had restored from a stale cached snapshot missing
-  the last two, which briefly looked like drift). `gen types typescript --local` diffed against the
-  checked-in `types.ts` showed zero real drift, only the same cosmetic
-  `__InternalSupabase.PostgrestVersion` CLI-version marker earlier runs also correctly ignored.
-  `types.ts` has tracked the live schema since the 2026-08-17 deploy regenerated it.
-- **BUG-032 unchanged in substance, narrower in count.** OPS-005 (`npm audit --omit=dev`): 2 high +
-  2 moderate, down from 11 high + 1 moderate — entirely because of the 2026-08-17 `npm audit fix`,
-  not new work this session. Still open: `xlsx` (no fix at all), `pdfjs-dist` and `react-router`
-  (both need a breaking major-version bump). IMP-006 (malicious XLSX): `parseExcel()` confirmed
-  byte-for-byte unchanged, still `XLSX.read()` on the main thread with no `Worker` isolation.
-- **OPS-014 now PASS, closing the loop on BUG-114.** Seeded a fresh local-stack tenant with 50 000
-  real transaction rows, measured `/app`'s "TOTAL FOR MONTH" render via an in-page `<iframe>` timing
-  harness: **1322 ms**, then **1075 ms** — both under the 3 s target and ~8–10× faster than the
-  pre-fix 8.7–11.0 s. `useOnboarding.ts`'s `.limit(1)` fix confirmed live.
-- **OPS-017: found a sharper root cause, then fixed it — now PASS.** The first retest found
-  BUG-115's own dashboard fix (`DashboardClassic.tsx` rendering `DEFAULT_ERROR` on `isError`) never
-  runs during a real outage: `get_effective_menus()` fails, `AccessContext` correctly fails closed
-  (`effectiveMenus = []`, a deliberate security choice, not the bug), and `MenuGuard` couldn't tell
-  "the check errored" from "this plan excludes Dashboard," so it silently redirected `/app` to
-  `/app/accounts` before `DashboardClassic` ever mounted — the identical "looks like data loss"
-  symptom, one page over. **Fixed at that layer, same session, once asked**: `TenantContext.tsx` and
-  `AccessContext.tsx` each gained a distinct `error`/`menusErrored` signal for "resolution itself
-  failed," separate from "resolved cleanly to no access." `MenuGuard.tsx` checks that signal before
-  redirecting and now renders a shared `MenuResolutionError` component in place — "Can't reach the
-  server right now" + a working "Try again" — instead of silently navigating away. `allowedMenus`
-  still fails closed to `[]` either way (BUG-090's lesson holds); only what the UI *does* with that
-  closed state changed. Verified live against the exact same outage scenario: `/app` now stays put
-  and shows the error card; "Try again" after restarting the container recovers cleanly. `tsc` 0,
-  `eslint` 0/27 (baseline), `vitest` 620/620, all clean. Not deployed — same `SUPABASE_ACCESS_TOKEN`
-  gap as everything else, though this fix needs no migration, just a frontend deploy.
-- **Deploy prep found and fixed a real S1: BUG-117, every production build was silently targeting a
-  dead project.** User is self-hosting on their own VPS and asked to get the BUG-115 fix's build
-  ready, deploy itself left to them. Rather than trust `npm run build`'s clean exit, grepped the
-  built JS for the embedded Supabase URL and found `tsmdnfywxsjsjqjszoek` — the abandoned Lovable
-  prototype `.env.development`'s own comment already names — not `ludbntvhagefadfkhrjj`, the real
-  live project. Root cause: `.env.production` only ever carried `VITE_PAYMENTS_CLIENT_TOKEN`, so the
-  Supabase vars fell through to the base `.env`, which still had the pre-rebuild values and was
-  never corrected because dev work only ever used `.env.development` (always right) and no session's
-  history shows a real production build ever being produced before now. Fixed `.env` to match, with
-  a comment explaining why; rebuilt; re-verified the correct URL is now embedded in all three chunks
-  that reference it; checked the entry chunk against OPS-004's 250 kB gzip budget (97.80 kB); served
-  the real `dist/` via `vite preview` and confirmed the landing page renders with zero
-  `googleapis`/`gstatic` requests, per the deploy runbook's own checklist. Added a 🔴 note to
-  `docs/runbooks/deploy.md` with the exact grep to run on every future build meant to ship, since
-  `.env` is gitignored and this exact drift can recur on any fresh clone or new machine.
-- **Cleanup, all sessions:** local stack stopped each time (`docker ps` confirmed no FinRoot
-  containers left running), `.env.development` restored and diffed byte-identical against a
-  pre-session backup every time it was pointed at the local stack; the `vite preview` server used to
-  verify the build was stopped afterward too.
+- **OPS-012 PASS** (closes BUG-015) — `types.ts` confirmed tracking the live schema via a local-stack
+  diff, zero real drift.
+- **OPS-014 PASS** (closes the loop on BUG-114) — dashboard render confirmed live at ~1.1 s, was
+  8.7–11.0 s.
+- **OPS-017 PASS** (closes BUG-115, reopened-then-fixed same day) — `MenuGuard`/`AccessContext`/
+  `TenantContext` now distinguish "resolution failed" from "resolved cleanly to no access," so a real
+  outage shows a "can't reach the server, try again" card instead of silently redirecting the user
+  off whatever page they were on. `allowedMenus` still fails closed exactly as before — only what the
+  UI does with that closed state changed. Verified live against the exact outage that found the bug.
+- **BUG-117 (S1, found + fixed during deploy prep)** — every real production build was silently
+  targeting an abandoned, dead Supabase project (`.env.production` never overrode the Supabase vars,
+  so they fell through to the base `.env`'s stale pre-rebuild values). Caught by grepping the built
+  JS for the embedded project URL rather than trusting a clean `npm run build` exit — now a
+  documented step in `docs/runbooks/deploy.md`. `.env` fixed; every build since has embedded the
+  correct project, re-verified each time.
+- **"Fix all BUGs" pass** — first found that most of BUG_TRACKER.md's frozen pre-2026-08-12 table was
+  already fixed without ever being marked so (14 items closed on that basis, listed in BUG_TRACKER.md's
+  own dated section, not repeated here). Of what was genuinely open and actionable: BUG-070 (router
+  future-flag warnings), BUG-074 (stale browserslist), BUG-080 (Smart Split percent-rounding drift,
+  reproduced with a 200k-trial scan first), BUG-065 (18 dead files + 15 npm packages removed, each
+  confirmed zero-importer first), all three halves of BUG-032 (xlsx Worker-sandboxed per its own
+  prescribed fix; pdfjs-dist bumped past its RCE-class advisory; react-router assessed and
+  deliberately left un-upgraded once its exploit paths were confirmed unreachable in this app's actual
+  code), and BUG-005 (send-email rebuilt into a closed template API with a server-resolved recipient,
+  an explicit authorization check, and a per-caller rate limit — 12 new tests exercising the real
+  logic). **Found BUG-118 along the way**: promoting the CSP to enforcing would have broken Insurance's
+  PDF preview (`frame-src` was missing Supabase Storage) — fixed, left Report-Only pending a live
+  check of Paddle checkout this checkout has no credentials to run itself.
+- **Verification, every change:** `tsc` 0, `eslint` 0 errors (25 warnings, down from 27 — some
+  belonged to files BUG-065 deleted), `vitest` 631/631 (was 620), `vite build` clean — run after each
+  change that touched a dependency or bundled file, not just once at the end. Local stack stopped
+  every time it was used (`docker ps` confirmed no FinRoot containers left running); `.env.development`
+  restored and diffed byte-identical each time it was pointed at the local stack.
 
 ---
 

@@ -19,8 +19,12 @@ export type ActiveShapeProps = {
  * outward a few px (no accent ring / glow) so the slice gently enlarges while
  * keeping the flat, refined look.
  */
-export function renderActiveSlice(props: ActiveShapeProps) {
-  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+export function renderActiveSlice(props: unknown) {
+  // Recharts' own `activeShape` prop type is `(props: unknown) => ReactElement`
+  // — looser than what it actually passes at runtime, which matches
+  // `ActiveShapeProps`. Narrowed here, at the one boundary that needs it,
+  // rather than widening the type callers actually work with.
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props as ActiveShapeProps;
   return (
     <Sector
       cx={cx}

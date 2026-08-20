@@ -103,7 +103,9 @@ function PlanCard({ plan, onSaved }: { plan: Plan; onSaved: () => void }) {
     setSavingPaddleId(true);
     const { error } = await supabase.rpc("po_set_plan_paddle_price_id", {
       p_plan_id: plan.id,
-      p_paddle_price_id: paddlePriceId.trim() || null,
+      // The RPC itself treats an empty string as "clear" (NULLIF inside
+      // po_set_plan_paddle_price_id) — it takes a plain text, not null.
+      p_paddle_price_id: paddlePriceId.trim(),
     });
     setSavingPaddleId(false);
     if (error) return notifyError(error);

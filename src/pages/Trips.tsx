@@ -62,8 +62,10 @@ export default function TripsPage() {
   const activeTrips = trips.filter((t) => t.status === "active");
   const archived = trips.filter((t) => t.status === "archived");
 
+  // BUG-068 — was max-w-[1200px], out of step with every other
+  // record-list page's max-w-[1400px].
   return (
-    <div className="px-6 sm:px-8 py-8 space-y-6 max-w-[1200px] mx-auto">
+    <div className="px-6 sm:px-8 py-8 space-y-6 max-w-[1400px] mx-auto">
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">

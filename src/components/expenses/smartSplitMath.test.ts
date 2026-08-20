@@ -160,6 +160,27 @@ describe("convertAllocations", () => {
       expect(summarize(back, "amount", 1000).allocated).toBeCloseTo(1000, 2);
     }
   });
+
+  it("BUG-080 — five uneven buckets of ₹128 survive a trip through percent exactly, not ₹127.99", () => {
+    const rows = [
+      alloc({ id: "1", amount: "44.2" }),
+      alloc({ id: "2", amount: "61.1" }),
+      alloc({ id: "3", amount: "21.14" }),
+      alloc({ id: "4", amount: "0.94" }),
+      alloc({ id: "5", amount: "0.62" }),
+    ];
+    const asPercent = convertAllocations(rows, "amount", "percent", 128);
+    expect(sumOf(asPercent, "pct")).toBeCloseTo(100, 9);
+    const back = convertAllocations(asPercent, "percent", "amount", 128);
+    expect(summarize(back, "amount", 128).allocated).toBeCloseTo(128, 9);
+  });
+
+  it("does not top up an incomplete split to look finished when switching modes", () => {
+    // Only 90% allocated on purpose — converting modes must not silently fill the gap.
+    const rows = [alloc({ id: "1", pct: "60" }), alloc({ id: "2", pct: "30" })];
+    const asAmount = convertAllocations(rows, "percent", "amount", 1000);
+    expect(summarize(asAmount, "amount", 1000).allocated).toBe(900);
+  });
 });
 
 describe("evenSplit", () => {

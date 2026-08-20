@@ -100,7 +100,9 @@ export default function FloatingNav() {
             <Link to="/auth?tab=signup" data-cursor><Button className={`${CTA_PRIMARY} px-5 h-9`}>Start free</Button></Link>
           </Magnetic>
         </div>
-        <button onClick={() => setOpen((o) => !o)} data-cursor aria-label="Menu" className="md:hidden text-white p-2 -mr-2">
+        {/* BUG-053 — p-2 + a w-5 icon was a 36×36 target, under the 44px
+            floor; p-3 brings it to exactly 44×44 without changing the icon. */}
+        <button onClick={() => setOpen((o) => !o)} data-cursor aria-label="Menu" className="md:hidden text-white p-3 -mr-3">
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>

@@ -39,8 +39,8 @@ export default function IdentifiersSection() {
   const saveMut = useMutation({
     mutationFn: async (params: { user_id?: string | null; number_id?: string | null }) => {
       const { error } = await supabase.rpc("po_set_identifiers", {
-        p_user_id:   params.user_id   !== undefined ? params.user_id   : null,
-        p_number_id: params.number_id !== undefined ? params.number_id : null,
+        p_user_id:   params.user_id   ?? undefined,
+        p_number_id: params.number_id ?? undefined,
       });
       if (error) throw error;
     },

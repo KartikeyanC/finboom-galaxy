@@ -162,6 +162,14 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
     reason:
       "Carries an invitation token across the sign-in round trip (Stage 3.8). sessionStorage on purpose: an invitation belongs to this visit, and a join credential should not be left sitting on a shared device.",
   },
+  {
+    key: "finroot.signin.attempts.",
+    prefix: true,
+    store: "local",
+    label: "Sign-in attempt count",
+    reason:
+      "BUG-101's client-side sign-in throttle (see src/lib/signInLockout.ts) — a per-browser deterrent against a scripted password-guessing loop, not a security boundary. localStorage on purpose: sessionStorage would reset the count on every new tab, defeating the one thing this is meant to slow down.",
+  },
 ];
 
 /**

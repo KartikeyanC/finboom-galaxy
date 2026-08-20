@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { notifyError } from "@/lib/errorMessages";
 import { recordLegalAcceptance } from "@/lib/legalAcceptance";
 import { clearSignInIntent, markSignInIntent } from "@/lib/appLock";
+import { signInLockStatus, recordFailedSignIn, clearSignInAttempts, formatRetryAfter } from "@/lib/signInLockout";
 import { UserCircle2, X } from "lucide-react";
 
 const credentialsSchema = z.object({
@@ -161,6 +162,12 @@ const AuthPage = () => {
       toast.error(parsed.error.issues[0].message);
       return;
     }
+    // BUG-101 — client-side deterrent only, see signInLockout.ts.
+    const lock = signInLockStatus(parsed.data.email);
+    if (lock.locked) {
+      toast.error(`Too many failed attempts. Try again in ${formatRetryAfter(lock.retryAfterMs!)}.`);
+      return;
+    }
     setBusy(true);
     markSignInIntent(); // BUG-090 — see `markSignInIntent`
     const { error } = await supabase.auth.signInWithPassword({
@@ -170,9 +177,17 @@ const AuthPage = () => {
     setBusy(false);
     if (error) {
       clearSignInIntent();
+      if (/invalid login|invalid credentials/i.test(error.message)) {
+        const result = recordFailedSignIn(parsed.data.email);
+        if (result.locked) {
+          toast.error(`Too many failed attempts. Try again in ${formatRetryAfter(result.retryAfterMs!)}.`);
+          return;
+        }
+      }
       notifyError(error);
       return;
     }
+    clearSignInAttempts(parsed.data.email);
     // Remember this profile so it shows under "Saved profiles" next time.
     saveProfile({
       name: activeProfile?.name || parsed.data.email.split("@")[0],

@@ -218,6 +218,6 @@ export function normalizePricing(value: unknown): PricingContent {
   return {
     eyebrow: v.eyebrow ?? DEFAULT_PRICING.eyebrow,
     title: v.title ?? DEFAULT_PRICING.title,
-    cards: v.cards.map((c) => ({ features: [], ...c })),
+    cards: v.cards.map((c) => ({ ...c, features: c.features ?? [] })),
   };
 }

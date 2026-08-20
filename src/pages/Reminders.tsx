@@ -7,8 +7,10 @@ export default function RemindersPage() {
   const active = records.filter((r) => r.status !== "completed");
   const dueSoon = active.filter((r) => priorityBucket(r.date).tone !== "safe").length;
 
+  // BUG-068 — was max-w-[1000px], the one outlier against every other
+  // record-list page's max-w-[1400px].
   return (
-    <div className="px-6 sm:px-8 py-8 space-y-6 max-w-[1000px] mx-auto">
+    <div className="px-6 sm:px-8 py-8 space-y-6 max-w-[1400px] mx-auto">
       <header>
         <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">
           Stay on track

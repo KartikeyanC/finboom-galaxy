@@ -141,6 +141,30 @@ export function isOver(
 }
 
 /**
+ * BUG-080 — rounding each bucket's converted value to 2dp independently
+ * loses whatever didn't divide evenly, and nothing put it back: five buckets
+ * of a ₹128 bill, taken through percent and back, could land on ₹127.98.
+ * Each individual conversion was correctly rounded; the *set* of them just
+ * stopped summing to the total, because 2dp rounding isn't linear.
+ *
+ * Same fix `evenSplit`/`balanceLast` already use elsewhere in this file:
+ * the shortfall (or excess) goes to one bucket rather than being silently
+ * dropped. The largest bucket absorbs it, not the first/last — nudging the
+ * biggest number by a cent is imperceptible; nudging a small one can double
+ * it, and a bucket that's already empty ("") should never be the one that
+ * grows a cent out of nowhere.
+ */
+function reconcileRounding(values: number[], target: number): number[] {
+  const out = values.slice();
+  const diff = round2(target - out.reduce((s, v) => s + v, 0));
+  if (diff === 0 || out.length === 0) return out;
+  let biggest = 0;
+  for (let i = 1; i < out.length; i++) if (out[i] > out[biggest]) biggest = i;
+  out[biggest] = round2(out[biggest] + diff);
+  return out;
+}
+
+/**
  * Switch split method, preserving the actual division of the bill: each bucket
  * is resolved to money under the OLD mode and re-expressed in the new one. A
  * bucket worth nothing converts to an empty field rather than "0", so the
@@ -154,13 +178,28 @@ export function convertAllocations(
 ): Allocation[] {
   if (to === from) return allocations;
   const sumShares = sumOf(allocations, "shares");
-  return allocations.map((a) => {
-    const money = moneyOf(a, from, totalNum, sumShares);
-    if (to === "amount") return { ...a, amount: money ? String(round2(money)) : "" };
-    if (to === "percent")
-      return { ...a, pct: totalNum > 0 && money ? String(round2((money / totalNum) * 100)) : "" };
-    return { ...a, shares: money ? String(round2(money)) : "" };
-  });
+  const moneys = allocations.map((a) => moneyOf(a, from, totalNum, sumShares));
+
+  // Reconcile against what the source actually added up to, not the total the
+  // bill needs — an incomplete split (sumPct 90%, say) must stay incomplete
+  // after switching modes, not get silently topped up to look finished.
+  if (to === "amount") {
+    const rounded = reconcileRounding(
+      moneys.map((m) => round2(m)),
+      round2(moneys.reduce((s, m) => s + m, 0)),
+    );
+    return allocations.map((a, i) => ({ ...a, amount: moneys[i] ? String(rounded[i]) : "" }));
+  }
+  if (to === "percent") {
+    if (totalNum <= 0) return allocations.map((a) => ({ ...a, pct: "" }));
+    const pcts = moneys.map((m) => (m / totalNum) * 100);
+    const rounded = reconcileRounding(
+      pcts.map((p) => round2(p)),
+      round2(pcts.reduce((s, p) => s + p, 0)),
+    );
+    return allocations.map((a, i) => ({ ...a, pct: moneys[i] ? String(rounded[i]) : "" }));
+  }
+  return allocations.map((a, i) => ({ ...a, shares: moneys[i] ? String(round2(moneys[i])) : "" }));
 }
 
 /**

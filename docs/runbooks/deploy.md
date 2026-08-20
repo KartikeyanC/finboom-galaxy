@@ -37,13 +37,24 @@ $root = 'F:\Movie\AK\FinRoot\_extracted'
 & $sb functions deploy billing-api      --project-ref <ref> --workdir $root
 & $sb functions deploy live-price       --project-ref <ref> --no-verify-jwt --workdir $root
 & $sb functions deploy payments-webhook --project-ref <ref> --no-verify-jwt --workdir $root
+& $sb functions deploy send-email       --project-ref <ref> --workdir $root
 ```
 
-- **`send-email` must not be deployed.** It is an authenticated open mail relay (BUG-005). It stays
-  in the repository as the thing to fix, not to ship.
+- **`send-email` was rebuilt 2026-08-18 (BUG-005) and is now safe to deploy.** The old version took
+  `to`/`subject`/`html` straight from the request body — any signed-in user could email arbitrary
+  HTML to any address under this app's verified sending domain, which is why it was never shipped.
+  The new version accepts only a closed `template` id (currently one: `workspace-invite`), resolves
+  the recipient itself from the `invitations` table rather than trusting the caller, checks the
+  caller is the original inviter or a current workspace owner before sending, and rate-limits per
+  caller via the same `audit_log`-counting pattern as `po-auth`'s lockout (BUG-006). Needs `APP_URL`
+  set alongside `RESEND_API_KEY`/`EMAIL_FROM` (see §5) — without it the function fails closed rather
+  than emailing a broken link. **Not yet wired to any caller** — `WorkspaceManage.tsx`'s invite flow
+  still only shows a copyable link; calling this function to also email it is a natural follow-up,
+  deliberately left as a separate, later change rather than bundled into the security fix.
 - `--no-verify-jwt` is correct for the two functions that are called by a machine (a payment
-  provider's webhook; the price fetcher) and wrong for everything else. It is mirrored in
-  `supabase/config.toml` so a redeploy cannot quietly flip it.
+  provider's webhook; the price fetcher) and wrong for everything else — including `send-email`,
+  which requires a logged-in caller. It is mirrored in `supabase/config.toml` so a redeploy cannot
+  quietly flip it.
 - Deploying works without Docker — the CLI only warns.
 
 **🔴 Deploy order matters within a function too.** The Stage 4.3 `live-price` rewrite changed the
@@ -91,7 +102,7 @@ to `googleapis`/`gstatic`, and one authenticated route renders real data.
 |---|---|---|
 | `VITE_SUPABASE_URL` / `_PUBLISHABLE_KEY` / `_PROJECT_ID` | `.env*`, host config | public by design |
 | `VITE_PAYMENTS_CLIENT_TOKEN` | host config | absent → the UI says "contact us" ([ADR-0005](../adr/0005-defer-the-payment-gateway.md)) |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Supabase function secrets | `send-email` no-ops without them, and is not deployed anyway |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL` | Supabase function secrets | `send-email` no-ops without `RESEND_API_KEY`; `APP_URL` is required to build a real invite link (fails closed, not a broken one, if unset) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase function env only | never in a `VITE_` variable, never in the browser |
 
 `supabase/config.toml` must name the intended project. It once still named a project that had been
