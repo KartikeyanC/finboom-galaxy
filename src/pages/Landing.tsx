@@ -151,8 +151,8 @@ const Landing = () => {
           </motion.div>
         </div>
 
-        {/* stats strip */}
-        <Reveal className="mt-20 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[11px] uppercase tracking-[0.12em] text-[#8b9a94]">
+        {/* stats strip — BUG-053: text-[11px] was 1px under the 12px floor */}
+        <Reveal className="mt-20 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs uppercase tracking-[0.12em] text-[#8b9a94]">
           {STATS.map((s, i) => (
             <span key={s.v} className="inline-flex items-center gap-8">
               <span><CountUp value={s.k} className="text-[#19B886] tracking-tight text-sm normal-case" /> <span className="ml-1.5">{s.v}</span></span>
@@ -173,8 +173,11 @@ const Landing = () => {
         <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-10 bg-gradient-to-r from-[#06070a] to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-10 bg-gradient-to-l from-[#06070a] to-transparent" />
         <motion.div className="flex w-max" animate={reduce ? undefined : { x: ["0%", "-50%"] }} transition={reduce ? undefined : { duration: 36, ease: "linear", repeat: Infinity }}>
+          {/* BUG-053: text-[11px] was 1px under the 12px floor — only the k===0 copy below is
+              real (readable) content, k===1 is the aria-hidden loop duplicate, but both render
+              from the same className so the fix covers the visible copy either way */}
           {[0, 1].map((k) => (
-            <div key={k} aria-hidden={k === 1} className="flex shrink-0 gap-10 pr-10 whitespace-nowrap text-[11px] uppercase tracking-[0.12em] text-[#8b9a94]">
+            <div key={k} aria-hidden={k === 1} className="flex shrink-0 gap-10 pr-10 whitespace-nowrap text-xs uppercase tracking-[0.12em] text-[#8b9a94]">
               {/* repeat the set so a single group always exceeds the viewport → seamless loop with no gap */}
               {Array.from({ length: 3 }).flatMap((_, r) =>
                 MARQUEE.map((t, ti) => (
@@ -298,7 +301,8 @@ const Landing = () => {
             <Reveal key={`${p.name}-${i}`} i={i}>
               <motion.div whileHover={reduce ? undefined : { y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}
                 className={`relative h-full ${card} p-8 ${p.highlight ? "border-[#19B886]/40 bg-[#19B886]/[0.06] shadow-[0_0_60px_-15px_rgba(25,184,134,0.5)]" : ""}`}>
-                {p.badge && <div className="absolute -top-3 left-8 px-3 py-1 rounded-md bg-[#19B886] text-[#04130d] text-[11px] uppercase tracking-[0.15em] font-semibold">{p.badge}</div>}
+                {/* BUG-053: text-[11px] was 1px under the 12px floor */}
+                {p.badge && <div className="absolute -top-3 left-8 px-3 py-1 rounded-md bg-[#19B886] text-[#04130d] text-xs uppercase tracking-[0.15em] font-semibold">{p.badge}</div>}
                 <div className="text-sm text-[#9aa3a0] mb-2">{p.name}</div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-5xl font-semibold text-white">{p.price}</span>

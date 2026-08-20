@@ -12,5 +12,8 @@
  * GlassDashboard.tsx: nothing outside that mock-up uses it.
  */
 export const card = "rounded-2xl border border-white/10 bg-white/[0.025]";
-export const eyebrow = "text-[11px] uppercase tracking-[0.22em] text-[#19B886] font-medium";
+// BUG-053 — was text-[11px], 1px under the WCAG-conventional 12px floor for
+// real (non-decorative) body text. Every section eyebrow on the page uses
+// this one token, so the fix lands everywhere at once.
+export const eyebrow = "text-xs uppercase tracking-[0.22em] text-[#19B886] font-medium";
 export const CTA_PRIMARY = "bg-[#19B886] hover:bg-[#3ad0a3] text-[#04130d] font-semibold rounded-xl";

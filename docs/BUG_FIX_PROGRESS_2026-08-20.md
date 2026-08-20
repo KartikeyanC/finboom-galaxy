@@ -9,14 +9,19 @@
 > open and fixable from this checkout.
 >
 > **Environment for this pass:** git repository confirmed real (`git log` shows 3 commits), no
-> remote configured, no `SUPABASE_ACCESS_TOKEN` in the shell, Docker engine not running. That means
-> anything requiring `supabase db push`, `supabase functions deploy`, or a hosted CI run was
-> out of reach here — those are marked **BLOCKED (deploy access)** below, matching the same gap
-> already documented for BUG-006/007/008/104/109/113/116 in BUG_TRACKER.md.
+> `SUPABASE_ACCESS_TOKEN` in the shell, Docker engine not running. That means anything requiring
+> `supabase db push` or `supabase functions deploy` was out of reach — those stay marked
+> **BLOCKED (deploy access)** below, matching the same gap already documented for
+> BUG-006/007/008/104/109/113/116 in BUG_TRACKER.md.
+>
+> **Update, later the same day:** at the user's direction the repo was pushed to a real GitHub
+> remote (`KartikeyanC/finboom-galaxy`, branch `master`, commit `53ef96b`). That closed BUG-031 for
+> real — not just "a workflow file exists" but a confirmed, passing CI run (see its row below) — and
+> is the reason this doc's second pass could re-verify things that weren't checkable before.
 >
 > `tsc` 0 (now under **full `strict: true`**, see BUG-055) · `eslint` 0 errors / 25 warnings
-> (unchanged baseline) · `vitest` **640/640** (was 631; +9 from the new `signInLockout.test.ts`) ·
-> `vite build` clean.
+> (unchanged baseline) · `vitest` **640/640** · `vite build` clean. Re-verified after the second
+> pass (BUG-053's text-size sweep): unchanged.
 
 ## Fixed this pass
 
@@ -27,6 +32,8 @@
 | BUG-056 | PO console has no mobile layout | `PoShell.tsx`: below `md` the fixed `w-60` sidebar is now hidden and replaced by a top bar with a hamburger button opening a `Sheet` (the same shadcn primitive already used elsewhere in the app — `QuickAddSheet`, `ManageCategoriesSheet`) containing the identical nav list, extracted into a shared `PoNav` component so the desktop and mobile lists cannot drift apart. | `tsc`/`vitest`/`eslint` clean; live-measured the trigger is a real, tappable button; the desktop `<aside>` path (`hidden md:flex`) is visually unchanged — confirmed by reading the diff, not just trusting the class rename |
 | BUG-068 | Page container widths inconsistent (1000/1200/1400) | `Reminders.tsx` (was `max-w-[1000px]`) and `Trips.tsx` (was `max-w-[1200px]`) now match the `max-w-[1400px]` every other record-list page uses. Left `Calculator.tsx`, `WorkspaceManage.tsx` and `TripWorkspace.tsx` alone — narrower forms/detail views, not what the bug named, and not an oversight worth guessing at | `tsc` clean; a plain class-string change with no other width-dependent logic in either file |
 | BUG-081 | A tenant-level module denial does not bind the workspace owner | `get_effective_menus()` returned the plan's full menu set immediately for `role = 'owner'`, before even reading `tenants.menu_overrides->'deny'` — so a PO restricting a tenant's modules left the owner with full access (and, since Stage 2.15, full RLS-backed data access on the "denied" tables too). New migration `20260820120000_bug081_owner_tenant_deny.sql` moves the tenant-level deny application before the owner short-circuit; member-level `allow` overrides still never apply to the owner (an owner must only be narrowed by the PO's tenant-wide control, never by a collaborator-scoped override). **BLOCKED (deploy access)** — code is correct and self-contained, but cannot be pushed or exercised live from this checkout | Migration reviewed by hand against the original function line-by-line; the only behavioral change is the position of one `IF` block |
+| BUG-031 | No CI actually runs | **RESOLVED, no code change needed.** The repo was pushed to a real GitHub remote (`KartikeyanC/finboom-galaxy`) later the same day, at the user's direction, as `master`. `ci.yml`'s trigger already covered `master` — confirmed live via the Actions tab: **CI #1, branch `master`, commit `53ef96b`, Passed, 1m22s.** Not a hypothetical any more; it actually ran and actually passed | Checked the Actions tab directly (not assumed from the workflow file existing) |
+| BUG-053 | Landing tap targets / text under 44px / 12px | **Second pass, more thorough than the first.** Wrote a DOM scanner (font-size on every visible text node, target size on every non-decorative interactive element) rather than eyeballing it. Found 39 text nodes under 12px — 31 of them turned out to be inside `GlassDashboard`'s `aria-hidden` mock-up (confirmed by walking each node's ancestor chain, not assumed), legitimately exempt. The remaining **8 were real, readable page content 1px under the floor**: the stats strip (`Tracked through FinRoot` / `Households onboard` / `Allocation buckets` / `App Store & Play`), the marquee's real (non-`aria-hidden`) copy (`Encrypted by default` etc.), and the shared `eyebrow` token used by every section label (`The product`, `Two minutes to set up`) plus the "Most chosen" pricing badge. Fixed all 8 by bumping `text-[11px]` → `text-xs` (12px) at each of the 4 sites, plus once at the shared `tokens.ts` source so every current and future eyebrow label inherits it. Introduced and caught one JSX syntax slip of my own along the way (a block comment placed as a sibling instead of inside the map callback — the same class of mistake as the Reminders/Trips fix earlier this session), fixed before it reached typecheck. Left the desktop nav bar and footer links alone (28–36px tall) — WCAG's 44px is the AAA "enhanced" target size, not the AA minimum (24px, which they already clear), and resizing every nav/footer link to 44px would visibly change the header and footer's proportions across the whole site — a design call, not a targeted fix | Live-measured all 8 corrected nodes at exactly `12px`; re-ran the full tap-target scan on both 390px and 1280px viewports post-fix (0 real offenders remain, only the exempt sr-only skip link and the by-design decorative mock-up); `tsc`/`eslint`/`vitest` (640/640) all re-confirmed clean after the fix |
 | — | 4 more strict-mode findings, folded into the BUG-055 row above rather than filed separately since they were only ever visible *because* of enabling strict mode | See the BUG-055 row | — |
 
 ## Investigated, found already fixed (tracker was stale)
@@ -54,15 +61,8 @@ No action was needed; they are listed so nobody re-investigates them from a stal
 | BUG-081 (this pass) | Owner bypasses tenant-level module deny | Same blocker — migration written, cannot be pushed |
 | BUG-115 (frontend half) | Menu-resolution-error UI | Code already landed 2026-08-18 per BUG_TRACKER.md; needs a frontend deploy, not a database one, but still needs *some* hosting target this checkout has none of |
 | BUG-030 | No backups configured | Needs a paid Supabase tier and the account owner's own approval — explicitly called out in CLAUDE.md's "no new paid services without explicit approval" rule. Not something to enable unilaterally |
-| BUG-031 | No CI actually runs | `.github/workflows/ci.yml` exists and the repo is now real git — confirmed via `git log` (3 commits) — but `git remote -v` is empty. GitHub Actions has nothing to run against without a hosted remote, and creating one and pushing this codebase is a "pushes code / creates shared state" action that needs the user's explicit go-ahead, not something to do on a bug-fixing pass |
 | BUG-058 | CSP still Report-Only | Deliberately left alone. The blocking risk is specifically the Paddle checkout flow, which needs a real signed-in session against a live deployment to watch for console violations before flipping an enforcing CSP on a revenue path — not reproducible from an unauthenticated local dev server |
 | BUG-111 | `demo@finroot.app` can't complete its own password reset | External to this codebase — looks like a mail-provider bounce-suppression flag on an address that's received dozens of confirmation emails with no real inbox behind it. Needs Supabase Auth dashboard/log access this session doesn't have |
-
-## Not attempted — narrower than a full sweep
-
-| Bug | Title | Note |
-|---|---|---|
-| BUG-053 | Landing tap targets / text under 44px / 12px | Fixed the one clear, real, non-decorative offender found: the mobile hamburger `Menu` button (36×36 → 44×44, `p-2` → `p-3`). Live-measured the fix. Did **not** touch the `GlassDashboard` mockup's mini nav icons — they are `tabIndex={-1}` by deliberate design (documented in-file as "scenery," matching the same reasoning already applied to the Voices carousel dots in BUG-095) and enlarging them would visibly break the intended miniature-app-preview aesthetic. The original finding's "21/42 landing tap targets" was a 2026-08-04 blind sweep; a full re-audit against the current page is a bigger task than one bug in a mixed pass, and guessing at 20 more small icon/text changes without re-measuring each felt worse than being explicit about the gap |
 
 ## New migrations added this pass (undeployed)
 
