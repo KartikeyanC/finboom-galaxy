@@ -156,6 +156,13 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
       "sessionStorage on purpose, and the reason is the bug it fixes (BUG-090): it records that THIS tab just asked someone for a credential, so `useAuth` can tell a real sign-in from supabase-js restoring a stored session — which it announces with the same event. In localStorage one tab's sign-in would unlock another's.",
   },
   {
+    key: "finroot.signout.intent",
+    store: "session",
+    label: "Signing out",
+    reason:
+      "sessionStorage on purpose, same family as finroot.signin.intent above: it records that THIS tab's own Sign out button is mid-click, so ProtectedRoute can stand down and let that button's own navigate() decide the destination instead of racing it with ProtectedRoute's own redirect-to-/auth. In localStorage one tab's sign-out could suppress another's redirect.",
+  },
+  {
     key: "finroot.pendingInvite",
     store: "session",
     label: "Invitation being accepted",

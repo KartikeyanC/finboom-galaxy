@@ -321,6 +321,43 @@ export function consumeSignInIntent(): boolean {
   }
 }
 
+// A deliberate "Sign out" click still calls `signOut()` before its own
+// `navigate()` (see DashboardLayout/LockScreen's comments — reordering that
+// reopens BUG-102's stale-session-bounce race). But `signOut()` clearing the
+// session makes `user` go null while ProtectedRoute is STILL mounted, and
+// ProtectedRoute reacts to that on its own with `<Navigate to="/auth">` —
+// which can beat the button's own `navigate("/")` to the punch. Found the
+// same way as BUG-090/BUG-102: a Playwright "sign out, sign back in" run
+// landing on `/auth` (the sign-in form) instead of `/` (the marketing page)
+// after every sign-out, 100% reproducible, not a flake.
+//
+// The fix isn't reordering (that just swaps which race bites); it's telling
+// ProtectedRoute to stand down for a sign-out it already knows is coming, so
+// there is only one navigation instead of two competing ones. Same per-tab
+// marker shape as SIGNIN_INTENT_KEY, same reason: a marker in localStorage
+// would let one tab's sign-out affect another's routing decision.
+const SIGNOUT_INTENT_KEY = "finroot.signout.intent";
+
+/** Call immediately before `signOut()`, from a button that navigates itself. */
+export function markSignOutIntent(): void {
+  try {
+    sessionStorage.setItem(SIGNOUT_INTENT_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+/** True once, for the sign-out this tab is actively performing. */
+export function consumeSignOutIntent(): boolean {
+  try {
+    const intended = sessionStorage.getItem(SIGNOUT_INTENT_KEY) === "1";
+    if (intended) sessionStorage.removeItem(SIGNOUT_INTENT_KEY);
+    return intended;
+  } catch {
+    return false;
+  }
+}
+
 /** Ask the ProtectedRoute gate to lock this tab immediately. */
 export function requestLock(): void {
   try {

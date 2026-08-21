@@ -11,6 +11,7 @@ import {
   pinLength,
   verifyPin,
   markUnlocked,
+  markSignOutIntent,
   setPasswordAuthNow,
   clearPin,
   setLockChoice,
@@ -40,7 +41,10 @@ export function LockScreen({ mode, onUnlocked }: { mode: "pin" | "password"; onU
     // Same ordering fix as DashboardLayout's Sign out button, and the same
     // reason: navigating before the session actually clears leaves a window
     // where a fresh load of a public route can still find a valid session
-    // and bounce back in.
+    // and bounce back in. markSignOutIntent() is the same button's other
+    // half of that fix: it tells ProtectedRoute to stand down instead of
+    // racing this navigate() with its own redirect to /auth.
+    markSignOutIntent();
     await signOut();
     navigate("/", { replace: true });
   };

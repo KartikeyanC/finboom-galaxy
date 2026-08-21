@@ -7,6 +7,7 @@ import {
   clearPin,
   clearSignInIntent,
   consumeSignInIntent,
+  consumeSignOutIntent,
   graceLabel,
   graceMinutes,
   hiddenAt,
@@ -15,6 +16,7 @@ import {
   lockNow,
   markHidden,
   markSignInIntent,
+  markSignOutIntent,
   markUnlocked,
   needsPassword,
   pinIsSet,
@@ -327,6 +329,32 @@ describe("the sign-in marker", () => {
     markSignInIntent();
     expect(localStorage.getItem("finroot.signin.intent")).toBeNull();
     expect(sessionStorage.getItem("finroot.signin.intent")).toBe("1");
+  });
+});
+
+/**
+ * Found the same way as BUG-090/BUG-102: a Playwright "sign out, sign back
+ * in" run landing on the sign-in form (/auth) instead of the marketing page
+ * (/) after every sign-out — ProtectedRoute's own reactive redirect racing
+ * the button's explicit navigate("/") and winning. This marker is the fix:
+ * it tells ProtectedRoute the sign-out is deliberate, so it stands down and
+ * leaves the destination entirely to the button's own navigate().
+ */
+describe("the sign-out marker", () => {
+  it("is absent until a sign-out claims it", () => {
+    expect(consumeSignOutIntent()).toBe(false);
+  });
+
+  it("is spent by the first read and not the next one", () => {
+    markSignOutIntent();
+    expect(consumeSignOutIntent()).toBe(true);
+    expect(consumeSignOutIntent()).toBe(false);
+  });
+
+  it("lives in sessionStorage, so one tab's sign-out cannot suppress another's redirect", () => {
+    markSignOutIntent();
+    expect(localStorage.getItem("finroot.signout.intent")).toBeNull();
+    expect(sessionStorage.getItem("finroot.signout.intent")).toBe("1");
   });
 });
 

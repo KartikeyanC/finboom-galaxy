@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { SkipLink } from "@/components/SkipLink";
 import { useOnline } from "@/hooks/useOnline";
-import { recordLogout, requestLock } from "@/lib/appLock";
+import { markSignOutIntent, recordLogout, requestLock } from "@/lib/appLock";
 import { useLockSettings } from "@/hooks/useLockSettings";
 import { useAccess } from "@/contexts/AccessContext";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -238,6 +238,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       // "sign out, sign back in" test landed on `/auth` mid
                       // sign-out and was redirected to `/app` because the
                       // session had not actually cleared yet.
+                      //
+                      // That fix (signOut before navigate) opened a SECOND
+                      // race: ProtectedRoute is still mounted at this point
+                      // and reacts to `signOut()` clearing the session with
+                      // its own `<Navigate to="/auth">`, which can beat this
+                      // navigate("/") to the punch — a later Playwright run
+                      // caught exactly that, landing back on the sign-in form
+                      // instead of the marketing page every time. markSignOutIntent()
+                      // tells ProtectedRoute to stand down for this one, so
+                      // only this navigate() decides the destination.
+                      markSignOutIntent();
                       await signOut();
                       navigate("/", { replace: true });
                     }}

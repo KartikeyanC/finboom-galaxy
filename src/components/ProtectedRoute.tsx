@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   clearHidden,
+  consumeSignOutIntent,
   hiddenAt,
   isUnlocked,
   lockNow,
@@ -75,6 +76,16 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     };
   }, [user, lock.active, lock.grace]);
 
+  // Consumed exactly once, synchronously, at the render where `user`
+  // transitions to null — not on every render while it stays null (`useMemo`
+  // only re-runs when its dependency actually changes, and `null === null`
+  // does not). A deliberate "Sign out" click marks this intent immediately
+  // before calling `signOut()`; when it's set, this component stands down
+  // instead of firing its own `<Navigate to="/auth">`, so the button's own
+  // navigate() is the only thing that decides where sign-out lands. See
+  // appLock.ts's markSignOutIntent for why this exists.
+  const deliberateSignOut = useMemo(() => (user ? false : consumeSignOutIntent()), [user]);
+
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -84,6 +95,7 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   }
 
   if (!user) {
+    if (deliberateSignOut) return null;
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
