@@ -194,7 +194,7 @@ export default function BillScanPage() {
           <Sparkles className="w-3.5 h-3.5" /> AI Bill Scanner
         </span>
         <h1 className="font-display text-3xl font-bold text-foreground mt-1">Scan & Log Receipts</h1>
-        <p className="text-muted-foreground mt-2 max-w-lg">
+        <p className="text-muted-foreground mt-2 max-w-2xl">
           Upload one or more photos of a receipt — a long bill shot in parts works too — and let AI
           extract the merchant, line items and category. Review, then log to your ledger.
         </p>
@@ -384,12 +384,7 @@ export default function BillScanPage() {
 
         {/* Verification Ledger */}
         <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display font-semibold text-foreground">Verification Ledger</h2>
-            <span className="text-xs text-muted-foreground">
-              {rows.length} item{rows.length === 1 ? "" : "s"} · ₹{total.toLocaleString("en-IN")}
-            </span>
-          </div>
+          <h2 className="font-display font-semibold text-foreground">Verification Ledger</h2>
 
           {!scanned ? (
             <div className="h-72 rounded-xl border border-dashed border-border/60 flex items-center justify-center text-sm text-muted-foreground text-center px-6">
@@ -515,6 +510,16 @@ export default function BillScanPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Moved here from the panel header — right above the action it
+              describes reads as "this is what you're about to log," rather
+              than a stat floating in a corner disconnected from the button. */}
+          {scanned && (
+            <div className="flex items-center justify-between text-sm text-muted-foreground border-t border-border/60 pt-3">
+              <span>{rows.length} item{rows.length === 1 ? "" : "s"}</span>
+              <span className="font-medium text-foreground">₹{total.toLocaleString("en-IN")}</span>
             </div>
           )}
 
