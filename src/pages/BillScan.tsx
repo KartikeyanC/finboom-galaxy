@@ -415,7 +415,7 @@ export default function BillScanPage() {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-12 gap-2">
+                  <div className="grid grid-cols-9 gap-2">
                     <Select
                       value={r.category}
                       onValueChange={(v) => updateRow(r.id, { category: v })}
@@ -443,7 +443,7 @@ export default function BillScanPage() {
                       value={r.unit}
                       onValueChange={(v) => updateRow(r.id, { unit: v as ScannedRow["unit"] })}
                     >
-                      <SelectTrigger className="h-9 text-xs col-span-2">
+                      <SelectTrigger className="h-9 text-xs col-span-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -461,15 +461,18 @@ export default function BillScanPage() {
                       className="h-9 col-span-2"
                       placeholder="Amount"
                     />
-                    <div className="col-span-2">
-                      <DatePickerField
-                        value={r.date}
-                        onChange={(v) => updateRow(r.id, { date: v })}
-                        presets="past"
-                        placeholder="Bill date"
-                      />
-                    </div>
                   </div>
+                  {/* Its own row, not squeezed into the grid above — a
+                      "dd MMM yyyy" date plus icon needs more width than a
+                      2/12 column gives it; it was being clipped by the card's
+                      own edge with no ellipsis, so half the date read as
+                      unreadable rather than just short. */}
+                  <DatePickerField
+                    value={r.date}
+                    onChange={(v) => updateRow(r.id, { date: v })}
+                    presets="past"
+                    placeholder="Bill date"
+                  />
                 </div>
               ))}
             </div>

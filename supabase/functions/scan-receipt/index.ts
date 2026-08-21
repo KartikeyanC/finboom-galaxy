@@ -124,7 +124,7 @@ Also extract:
 - date: the transaction date as YYYY-MM-DD if present, else null.
 - currency: the 3-letter currency code if determinable, else "INR".
 - subtotal: the pre-tax subtotal if printed, else null.
-- taxLines: any tax / service-charge / discount lines printed separately from the items (e.g. CGST, SGST, GST, VAT, Service Charge, Discount). Use a negative amount for a discount.
+- taxLines: any tax / service-charge / rounding / discount lines printed separately from the items (e.g. CGST, SGST, GST, VAT, Service Charge, Round Off, Discount) — each as its OWN separate entry, never merged together. Use a negative amount for a discount or a negative round-off.
 - total: the final total amount actually charged, as printed.
 
 Return only the structured data described by the schema.`;

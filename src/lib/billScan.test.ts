@@ -31,20 +31,28 @@ const RECEIPT: ScanResult = {
 };
 
 describe("rowsFromScanResult", () => {
-  it("line-item mode returns one row per item plus one combined tax row", () => {
+  it("line-item mode returns one row per item plus one row per tax line, not merged", () => {
     const rows = rowsFromScanResult(RECEIPT, "lineItem", TODAY);
-    expect(rows).toHaveLength(6); // 5 items + 1 tax row
+    expect(rows).toHaveLength(7); // 5 items + CGST + SGST, each their own row
     expect(rows.slice(0, 5).map((r) => r.name)).toEqual([
       "Awadhi Handi Biryani Full", "Galawati Kabab (Mutton)", "Gosht Roghan Josh", "Phirni", "Soda Sikanji",
     ]);
     expect(rows[0]).toMatchObject({ qty: 2, unit: "pc", amount: 790, category: "Food & Dining" });
-    const taxRow = rows[5];
-    expect(taxRow.amount).toBeCloseTo(93);
-    expect(taxRow.name).toContain("CGST");
-    expect(taxRow.name).toContain("SGST");
+    expect(rows[5]).toMatchObject({ name: "CGST 2.5%", amount: 46.5 });
+    expect(rows[6]).toMatchObject({ name: "SGST 2.5%", amount: 46.5 });
   });
 
-  it("skips the tax row entirely when there is no tax", () => {
+  it("keeps a Round Off line separate from CGST/SGST too", () => {
+    const withRoundOff: ScanResult = {
+      ...RECEIPT,
+      taxLines: [...RECEIPT.taxLines, { label: "Round Off", amount: -0.5 }],
+    };
+    const rows = rowsFromScanResult(withRoundOff, "lineItem", TODAY);
+    expect(rows).toHaveLength(8);
+    expect(rows[7]).toMatchObject({ name: "Round Off", amount: -0.5 });
+  });
+
+  it("skips tax rows entirely when there is no tax", () => {
     const noTax: ScanResult = { ...RECEIPT, taxLines: [] };
     const rows = rowsFromScanResult(noTax, "lineItem", TODAY);
     expect(rows).toHaveLength(5);

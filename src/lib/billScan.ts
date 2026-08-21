@@ -91,20 +91,22 @@ export function rowsFromScanResult(
     unit: toUnit(it.unit),
   }));
 
-  const taxTotal = result.taxLines.reduce((s, t) => s + t.amount, 0);
-  if (Math.abs(taxTotal) > 0.005) {
-    itemRows.push({
+  // One row per tax/charge/round-off line, not lumped together — a CGST +
+  // SGST + Round Off receipt gets three separate, individually editable
+  // rows, matching how the items themselves are broken out.
+  const taxRows: ScannedRow[] = result.taxLines
+    .filter((t) => Math.abs(t.amount) > 0.005)
+    .map((t) => ({
       id: crypto.randomUUID(),
-      name: result.taxLines.map((t) => t.label).join(" + ") || "Tax",
+      name: t.label || "Tax",
       category: result.items[0]?.category ?? "Shopping",
-      amount: Math.round(taxTotal * 100) / 100,
+      amount: Math.round(t.amount * 100) / 100,
       date,
       qty: 1,
-      unit: "pc",
-    });
-  }
+      unit: "pc" as Unit,
+    }));
 
-  return itemRows;
+  return [...itemRows, ...taxRows];
 }
 
 /**
