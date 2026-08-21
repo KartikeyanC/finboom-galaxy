@@ -27,6 +27,7 @@ import {
   validateNewFiles,
   fileToBase64,
   partitionRows,
+  buildApprovalTransaction,
   type ScannedRow,
   type ScanResult,
   type StagedImage,
@@ -162,21 +163,25 @@ export default function BillScanPage() {
 
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
+  // BUG report from real use: itemizing CGST/SGST/Round Off as their own
+  // ledger transactions read as clutter in the actual expense list — nobody
+  // wants "SGST -₹2.70" sitting next to their real spending. Review stays
+  // itemized (still catches an AI mistake before it's saved); the SAVE is
+  // always exactly one transaction, using whatever the rows currently show.
+  const approval = scanResult ? buildApprovalTransaction(rows, scanResult.merchant) : null;
+
   const handleApprove = async () => {
-    if (!rows.length) return;
+    if (!approval || approval.amount <= 0) return;
     try {
-      for (const r of rows) {
-        if (!r.amount || r.amount <= 0) continue;
-        await createTxn.mutateAsync({
-          type: "expense",
-          amount: r.amount,
-          currency: "INR",
-          category: r.category,
-          description: r.name,
-          occurred_at: new Date(r.date).toISOString(),
-        });
-      }
-      toast.success(`Logged ${rows.length} expense${rows.length > 1 ? "s" : ""}`);
+      await createTxn.mutateAsync({
+        type: "expense",
+        amount: approval.amount,
+        currency: "INR",
+        category: approval.category,
+        description: approval.description,
+        occurred_at: new Date(approval.date).toISOString(),
+      });
+      toast.success(`Logged ${approval.description} — ₹${approval.amount.toLocaleString("en-IN")}`);
       reset();
     } catch (e) {
       notifyError(e);
@@ -515,16 +520,30 @@ export default function BillScanPage() {
 
           {/* Moved here from the panel header — right above the action it
               describes reads as "this is what you're about to log," rather
-              than a stat floating in a corner disconnected from the button. */}
+              than a stat floating in a corner disconnected from the button.
+              The two lines say different things on purpose: "N reviewed" is
+              what you checked for accuracy above; "Will be saved as" is the
+              one real ledger entry Approve actually creates — items and
+              CGST/SGST/Round Off are review detail, not separate expenses. */}
           {scanned && (
-            <div className="flex items-center justify-between text-sm text-muted-foreground border-t border-border/60 pt-3">
-              <span>{rows.length} item{rows.length === 1 ? "" : "s"}</span>
-              <span className="font-medium text-foreground">₹{total.toLocaleString("en-IN")}</span>
+            <div className="text-sm border-t border-border/60 pt-3 space-y-1.5">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>{rows.length} reviewed</span>
+                <span>₹{total.toLocaleString("en-IN")}</span>
+              </div>
+              {approval && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    Will be saved as <span className="text-foreground font-medium">{approval.category}</span>
+                  </span>
+                  <span className="font-semibold text-foreground">₹{approval.amount.toLocaleString("en-IN")}</span>
+                </div>
+              )}
             </div>
           )}
 
           <Button
-            disabled={!scanned || !rows.length || createTxn.isPending}
+            disabled={!scanned || !rows.length || !approval || createTxn.isPending}
             onClick={handleApprove}
             className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
           >

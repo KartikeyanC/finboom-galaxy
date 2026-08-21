@@ -118,6 +118,52 @@ export function rowsFromScanResult(
   return [...itemRows, ...taxRows];
 }
 
+export interface ApprovalTransaction {
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+}
+
+/**
+ * What Approve actually logs — always ONE transaction, no matter how many
+ * item/tax rows were shown for review. A receipt scanned in Line-Item mode
+ * still lets the user verify (and correct) every item and CGST/SGST/Round
+ * Off individually before saving; it's the *review* that's granular, not
+ * the ledger entry that results from it. Real per-user feedback: seeing
+ * "SGST −₹2.70" as its own line in a personal expense list reads as
+ * clutter, not detail — nobody wants tax lines mixed in with their actual
+ * transactions.
+ *
+ * Sums the CURRENT row amounts (not the original scan) so a correction
+ * made during review — an edited price, a removed hallucinated line —
+ * is reflected in what gets saved. Category is the most common one across
+ * the rows (almost always unanimous in practice — a restaurant bill's
+ * items are all Food & Dining); ties keep the first row's category.
+ */
+export function buildApprovalTransaction(rows: ScannedRow[], merchant: string): ApprovalTransaction | null {
+  if (!rows.length) return null;
+  const amount = Math.round(rows.reduce((s, r) => s + (Number(r.amount) || 0), 0) * 100) / 100;
+
+  const counts = new Map<string, number>();
+  for (const r of rows) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
+  let category = rows[0].category;
+  let best = 0;
+  for (const [cat, count] of counts) {
+    if (count > best) {
+      best = count;
+      category = cat;
+    }
+  }
+
+  return {
+    amount,
+    category,
+    description: merchant.trim() || rows[0].name,
+    date: rows[0].date,
+  };
+}
+
 /**
  * Cross-checks the rows the user is about to approve against the receipt's
  * own printed total — the "perfect working condition" guard: a scan that

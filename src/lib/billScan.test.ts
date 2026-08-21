@@ -6,6 +6,7 @@ import {
   removeImage,
   validateNewFiles,
   partitionRows,
+  buildApprovalTransaction,
   type ScanResult,
   type StagedImage,
 } from "./billScan";
@@ -94,6 +95,55 @@ describe("partitionRows", () => {
     const { items, taxes } = partitionRows(rowsFromScanResult(RECEIPT, "lumpsum", TODAY));
     expect(items).toHaveLength(1);
     expect(taxes).toHaveLength(0);
+  });
+});
+
+describe("buildApprovalTransaction — Approve always saves ONE transaction, never the tax/item rows individually", () => {
+  it("collapses every item + tax row into one amount, using the merchant as the description", () => {
+    const rows = rowsFromScanResult(RECEIPT, "lineItem", TODAY); // 5 items + CGST + SGST
+    const result = buildApprovalTransaction(rows, "Oudh 1590");
+    expect(result).toEqual({
+      amount: 1953, // 790+350+340+270+110+46.5+46.5
+      category: "Food & Dining",
+      description: "Oudh 1590",
+      date: TODAY,
+    });
+  });
+
+  it("reflects a correction made during review, not the original scan", () => {
+    const rows = rowsFromScanResult(RECEIPT, "lineItem", TODAY);
+    rows[0] = { ...rows[0], amount: 700 }; // user fixed a misread price
+    const result = buildApprovalTransaction(rows, "Oudh 1590");
+    expect(result!.amount).toBe(1863); // 1953 - (790-700)
+  });
+
+  it("reflects a row removed during review (a hallucinated item, say)", () => {
+    const rows = rowsFromScanResult(RECEIPT, "lineItem", TODAY).slice(1); // drop the biryani row
+    const result = buildApprovalTransaction(rows, "Oudh 1590");
+    expect(result!.amount).toBe(1163); // 1953 - 790
+  });
+
+  it("picks the majority category when rows genuinely differ", () => {
+    const mixed = rowsFromScanResult(RECEIPT, "lineItem", TODAY);
+    mixed[0] = { ...mixed[0], category: "Shopping" }; // one outlier
+    const result = buildApprovalTransaction(mixed, "Oudh 1590");
+    expect(result!.category).toBe("Food & Dining"); // still the majority
+  });
+
+  it("falls back to the first row's name when there is no merchant", () => {
+    const rows = rowsFromScanResult(RECEIPT, "lumpsum", TODAY);
+    const result = buildApprovalTransaction(rows, "");
+    expect(result!.description).toBe(rows[0].name);
+  });
+
+  it("lumpsum mode's single row collapses to the same single transaction, as it already was", () => {
+    const rows = rowsFromScanResult(RECEIPT, "lumpsum", TODAY);
+    const result = buildApprovalTransaction(rows, "Oudh 1590");
+    expect(result).toEqual({ amount: 1953, category: "Food & Dining", description: "Oudh 1590", date: TODAY });
+  });
+
+  it("returns null for an empty row list rather than a zero-amount transaction", () => {
+    expect(buildApprovalTransaction([], "Oudh 1590")).toBeNull();
   });
 });
 
