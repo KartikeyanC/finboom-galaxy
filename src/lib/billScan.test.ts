@@ -5,6 +5,7 @@ import {
   moveImage,
   removeImage,
   validateNewFiles,
+  partitionRows,
   type ScanResult,
   type StagedImage,
 } from "./billScan";
@@ -37,9 +38,9 @@ describe("rowsFromScanResult", () => {
     expect(rows.slice(0, 5).map((r) => r.name)).toEqual([
       "Awadhi Handi Biryani Full", "Galawati Kabab (Mutton)", "Gosht Roghan Josh", "Phirni", "Soda Sikanji",
     ]);
-    expect(rows[0]).toMatchObject({ qty: 2, unit: "pc", amount: 790, category: "Food & Dining" });
-    expect(rows[5]).toMatchObject({ name: "CGST 2.5%", amount: 46.5 });
-    expect(rows[6]).toMatchObject({ name: "SGST 2.5%", amount: 46.5 });
+    expect(rows[0]).toMatchObject({ qty: 2, unit: "pc", amount: 790, category: "Food & Dining", kind: "item" });
+    expect(rows[5]).toMatchObject({ name: "CGST 2.5%", amount: 46.5, kind: "tax" });
+    expect(rows[6]).toMatchObject({ name: "SGST 2.5%", amount: 46.5, kind: "tax" });
   });
 
   it("keeps a Round Off line separate from CGST/SGST too", () => {
@@ -76,6 +77,23 @@ describe("rowsFromScanResult", () => {
   it("uses the receipt's own date when present, not today", () => {
     const rows = rowsFromScanResult(RECEIPT, "lumpsum", "2099-01-01");
     expect(rows[0].date).toBe("2021-02-13");
+  });
+});
+
+describe("partitionRows", () => {
+  it("separates purchased items from tax/adjustment lines for the summary strip", () => {
+    const rows = rowsFromScanResult(RECEIPT, "lineItem", TODAY);
+    const { items, taxes } = partitionRows(rows);
+    expect(items).toHaveLength(5);
+    expect(items.every((r) => r.kind === "item")).toBe(true);
+    expect(taxes).toHaveLength(2);
+    expect(taxes.map((t) => t.name)).toEqual(["CGST 2.5%", "SGST 2.5%"]);
+  });
+
+  it("lumpsum mode's single row is an item, never routed to the tax strip", () => {
+    const { items, taxes } = partitionRows(rowsFromScanResult(RECEIPT, "lumpsum", TODAY));
+    expect(items).toHaveLength(1);
+    expect(taxes).toHaveLength(0);
   });
 });
 

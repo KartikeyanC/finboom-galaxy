@@ -26,6 +26,7 @@ import {
   removeImage,
   validateNewFiles,
   fileToBase64,
+  partitionRows,
   type ScannedRow,
   type ScanResult,
   type StagedImage,
@@ -184,6 +185,7 @@ export default function BillScanPage() {
 
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const reconciliation = scanResult ? reconcileTotal(rows, scanResult.total) : null;
+  const { items: itemRows, taxes: taxRows } = partitionRows(rows);
 
   return (
     <div className="px-6 sm:px-8 py-8 space-y-8 max-w-[1400px] mx-auto">
@@ -395,7 +397,7 @@ export default function BillScanPage() {
             </div>
           ) : (
             <div className="space-y-3 max-h-[26rem] overflow-y-auto pr-1">
-              {rows.map((r) => (
+              {itemRows.map((r) => (
                 <div
                   key={r.id}
                   className="rounded-xl border border-border/60 bg-background/40 p-3 space-y-2 animate-fade-in"
@@ -475,6 +477,44 @@ export default function BillScanPage() {
                   />
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Tax & adjustments — a horizontal summary strip, not more item
+              cards. Gestalt's law of common region: a divider plus a row
+              layout marks CGST/SGST/Round Off as one related set, distinct
+              from the purchases above. Horizontal because these are short,
+              same-shaped label:value pairs — the case summary bars exist
+              for (every checkout/receipt reads subtotal/tax/total this way);
+              stacking three short values vertically would only add eye
+              movement, not clarity, and 3 items is well inside how many a
+              reader parses at a glance side-by-side. */}
+          {taxRows.length > 0 && (
+            <div className="border-t border-border/60 pt-3">
+              <div className="flex flex-wrap items-center justify-around gap-x-3 gap-y-2">
+                {taxRows.map((t) => (
+                  <div key={t.id} className="flex items-center gap-1">
+                    <label htmlFor={`tax-${t.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                      {t.name} :
+                    </label>
+                    <span className="text-xs text-muted-foreground">₹</span>
+                    <Input
+                      id={`tax-${t.id}`}
+                      type="number"
+                      value={t.amount}
+                      onChange={(e) => updateRow(t.id, { amount: Number(e.target.value) || 0 })}
+                      className="h-7 w-14 text-xs px-1.5"
+                    />
+                    <button
+                      onClick={() => removeRow(t.id)}
+                      aria-label={`Remove ${t.name}`}
+                      className="w-5 h-5 rounded hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition shrink-0"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

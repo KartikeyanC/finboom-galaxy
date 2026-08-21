@@ -22,6 +22,12 @@ export type ScannedRow = {
   date: string;
   qty: number;
   unit: Unit;
+  /** "item": a real purchased line, shown as a full editable card. "tax": a
+   * CGST/SGST/service-charge/round-off line, shown in the compact summary
+   * strip instead — it still becomes its own logged transaction on approve,
+   * just with a lighter-weight editor since qty/unit/category don't apply
+   * to it the way they do a purchase. */
+  kind: "item" | "tax";
 };
 
 export interface ScanResultItem {
@@ -77,6 +83,7 @@ export function rowsFromScanResult(
         date,
         qty: 1,
         unit: "pc",
+        kind: "item",
       },
     ];
   }
@@ -89,6 +96,7 @@ export function rowsFromScanResult(
     date,
     qty: it.qty,
     unit: toUnit(it.unit),
+    kind: "item",
   }));
 
   // One row per tax/charge/round-off line, not lumped together — a CGST +
@@ -104,6 +112,7 @@ export function rowsFromScanResult(
       date,
       qty: 1,
       unit: "pc" as Unit,
+      kind: "tax",
     }));
 
   return [...itemRows, ...taxRows];
@@ -122,6 +131,15 @@ export function reconcileTotal(rows: ScannedRow[], statedTotal: number) {
   // A few paise of rounding drift across several line items is normal and
   // not worth alarming over; anything past that is worth a second look.
   return { computed, stated, matches: Math.abs(diff) <= 0.5, diff };
+}
+
+/** Splits the review list into the item cards and the tax/adjustment
+ * summary strip render separately — see `ScannedRow.kind`. */
+export function partitionRows(rows: ScannedRow[]): { items: ScannedRow[]; taxes: ScannedRow[] } {
+  return {
+    items: rows.filter((r) => r.kind === "item"),
+    taxes: rows.filter((r) => r.kind === "tax"),
+  };
 }
 
 export interface StagedImage {
