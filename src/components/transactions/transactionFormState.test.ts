@@ -143,3 +143,46 @@ describe("resolvedDuration", () => {
     expect(resolvedDuration(0, "12")).toBe(12);
   });
 });
+
+/**
+ * The tracker is the fourth thing the edit path has to carry across, and it
+ * fails the same way the account link did in BUG-088: reset the state
+ * unconditionally on open and every saved edit silently untags the row.
+ */
+describe("hydrateFromTransaction · tracker", () => {
+  it("hydrates an untagged row to the sentinel, not an empty string", () => {
+    // A Radix SelectItem cannot carry value="", which is the whole reason the
+    // "none" sentinel exists. An empty string here renders a broken select.
+    const f = hydrateFromTransaction(txn({ tracker_id: null }));
+    expect(f.trackerId).toBe("none");
+  });
+
+  it("treats a missing tracker_id the same as an explicit null", () => {
+    const f = hydrateFromTransaction(txn({}));
+    expect(f.trackerId).toBe("none");
+  });
+
+  it("carries a real tracker id across unchanged", () => {
+    const id = "9f1c7e2a-0000-4000-8000-abcdefabcdef";
+    const f = hydrateFromTransaction(txn({ tracker_id: id }));
+    expect(f.trackerId).toBe(id);
+  });
+
+  it("round-trips through the submit-side normaliser", () => {
+    // What the dialog does on save, mirrored from TransactionDialog's payload.
+    const normalise = (v: string) => (v && v !== "none" ? v : null);
+    for (const stored of [null, "9f1c7e2a-0000-4000-8000-abcdefabcdef"]) {
+      const f = hydrateFromTransaction(txn({ tracker_id: stored }));
+      expect(normalise(f.trackerId)).toBe(stored);
+    }
+  });
+
+  it("does not disturb the account link it sits next to", () => {
+    const f = hydrateFromTransaction(
+      txn({ tracker_id: "trk-1", account_id: "acc-1", payment_mode: "Cash" }),
+    );
+    expect(f.linkedAccountId).toBe("acc-1");
+    expect(f.paymentMode).toBe("Cash");
+    expect(f.trackerId).toBe("trk-1");
+  });
+});

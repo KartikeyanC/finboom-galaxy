@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CURRENCIES, GOAL_CATEGORIES, formatCompact } from "@/lib/finance";
+import { percentOf } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 import {
   useContributeToGoal,
@@ -305,9 +306,7 @@ export default function GoalManager() {
       ) : (
         <div className="flex flex-col gap-4">
           {data.map((g, i) => {
-            const pct = g.target_amount > 0
-              ? Math.min(100, Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100))
-              : 0;
+            const pct = percentOf(Number(g.current_amount), Number(g.target_amount));
             return (
               <div key={g.id} className="space-y-2 p-3 rounded-lg bg-secondary/30">
                 <div className="flex items-center justify-between gap-2">

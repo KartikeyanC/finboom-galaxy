@@ -39,6 +39,8 @@ import {
   type Transaction,
   type TxnType,
 } from "@/hooks/useTransactions";
+import { useTrackerNameMap } from "@/hooks/useTrackers";
+import TrackerBadge from "@/components/trackers/TrackerBadge";
 import { formatMoney } from "@/lib/finance";
 import { categoryBadgeClass, getIncomeSubtype, useCustomCategories } from "@/lib/categories";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -58,6 +60,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
   const custom = useCustomCategories();
   const { theme } = useTheme();
   const isLight = theme === "light";
+  const trackerNames = useTrackerNameMap();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -327,14 +330,36 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
                     {new Date(t.occurred_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium",
-                        categoryBadgeClass(type, t.category, isLight),
+                    {/* Both chips share the Category cell rather than the
+                        tracker getting a sixth column: a new column would mean
+                        coordinated edits to two colSpan={5} sites and both
+                        VirtualSpacerRow colSpans inside a VIRTUALISED table,
+                        for a value that is empty on most rows. The virtualiser
+                        measures row height rather than assuming it, so a
+                        wrapped second chip is absorbed correctly. */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* One chip: tracker when there is one, else category
+                          (user decision, 2026-08-28). The category is still
+                          announced, so hiding it costs no information. */}
+                      {t.tracker_id && trackerNames.get(t.tracker_id) ? (
+                        <>
+                          <TrackerBadge
+                            name={trackerNames.get(t.tracker_id) as string}
+                            isLight={isLight}
+                          />
+                          <span className="sr-only">Category: {t.category}</span>
+                        </>
+                      ) : (
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium",
+                            categoryBadgeClass(type, t.category, isLight),
+                          )}
+                        >
+                          {t.category}
+                        </span>
                       )}
-                    >
-                      {t.category}
-                    </span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground max-w-[260px] truncate">
                     {t.description ?? "—"}

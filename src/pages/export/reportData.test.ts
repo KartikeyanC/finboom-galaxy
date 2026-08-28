@@ -6,6 +6,10 @@ import {
   clean,
   makeCSV,
   withinRange,
+  trackerExportFilename,
+  trackerExportRow,
+  trackerSheetName,
+  txnExportRow,
 } from "./reportData";
 
 /**
@@ -134,5 +138,151 @@ describe("SECTIONS", () => {
   it("has a unique id per section", () => {
     const ids = SECTIONS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+// ── transaction export rows (Trackers, Phase 6) ───────────────────────────────
+
+describe("txnExportRow", () => {
+  const txn = {
+    occurred_at: "2026-08-27T10:30:00.000Z",
+    type: "expense",
+    category: "Labour",
+    description: "Labour Salary",
+    amount: 18600,
+    currency: "INR",
+  };
+
+  it("puts Tracker LAST so existing column positions never shift", () => {
+    // A script or spreadsheet built against the old expenses.csv keeps
+    // working only if every prior column stays where it was.
+    expect(Object.keys(txnExportRow(txn))).toEqual([
+      "Date",
+      "Type",
+      "Category",
+      "Description",
+      "Amount",
+      "Currency",
+      "Tracker",
+    ]);
+  });
+
+  it("leaves Tracker blank for an untagged row", () => {
+    expect(txnExportRow(txn).Tracker).toBe("");
+    expect(txnExportRow({ ...txn, tracker_id: null }).Tracker).toBe("");
+  });
+
+  it("resolves a tracker id to its name", () => {
+    const names = new Map([["t1", "Home Construction"]]);
+    expect(txnExportRow({ ...txn, tracker_id: "t1" }, names).Tracker).toBe("Home Construction");
+  });
+
+  it("leaves Tracker blank when the id cannot be resolved", () => {
+    // Menu denied, or deleted between fetches. A raw uuid in a spreadsheet
+    // column is worse than an empty cell.
+    expect(txnExportRow({ ...txn, tracker_id: "ghost" }, new Map()).Tracker).toBe("");
+  });
+
+  it("emits a numeric Amount, not a string", () => {
+    expect(txnExportRow({ ...txn, amount: "18600" }).Amount).toBe(18600);
+  });
+
+  it("produces the same shape the CSV and the spreadsheet both use", () => {
+    // The whole reason this function exists: the two call sites were separate
+    // literals and could drift.
+    const a = txnExportRow(txn);
+    const b = txnExportRow(txn);
+    expect(Object.keys(a)).toEqual(Object.keys(b));
+  });
+});
+
+describe("trackerExportRow", () => {
+  const ctx = {
+    trackerName: "Home Construction",
+    accountName: (id: string | null) => (id === "cash" ? "Cash" : "Unassigned"),
+    splitSub: (d: string | null) => ({ sub: "", note: d ?? "" }),
+  };
+  const txn = {
+    occurred_at: "2026-08-27T10:30:00.000Z",
+    type: "expense",
+    category: "Labour",
+    description: "Labour Salary",
+    amount: 18600,
+    currency: "INR",
+    account_id: "cash",
+    payment_mode: "Cash",
+    created_at: "2026-08-27T10:31:00.000Z",
+  };
+
+  it("carries every column the tracker statement promises", () => {
+    expect(Object.keys(trackerExportRow(txn, ctx))).toEqual([
+      "Date",
+      "Time",
+      "Description",
+      "Category",
+      "Subcategory",
+      "Tracker",
+      "Account",
+      "Payment Mode",
+      "Amount",
+      "Currency",
+      "Transaction Type",
+      "Created At",
+    ]);
+  });
+
+  it("names the account rather than exporting its id", () => {
+    expect(trackerExportRow(txn, ctx).Account).toBe("Cash");
+    expect(trackerExportRow({ ...txn, account_id: null }, ctx).Account).toBe("Unassigned");
+  });
+
+  it("splits a subcategory out of the description when there is one", () => {
+    const withSub = {
+      ...ctx,
+      splitSub: () => ({ sub: "Cement", note: "20 bags" }),
+    };
+    const r = trackerExportRow(txn, withSub);
+    expect(r.Subcategory).toBe("Cement");
+    expect(r.Description).toBe("20 bags");
+  });
+
+  it("survives an unparseable timestamp without throwing", () => {
+    expect(() => trackerExportRow({ ...txn, occurred_at: "nonsense" }, ctx)).not.toThrow();
+  });
+});
+
+describe("trackerSheetName", () => {
+  it("never exceeds Excel's 31-character limit", () => {
+    const long = "A tracker with an extremely long descriptive name indeed";
+    expect(trackerSheetName(long).length).toBeLessThanOrEqual(31);
+  });
+
+  it("strips the characters Excel refuses in a sheet name", () => {
+    // xlsx writes these happily and Excel then refuses to open the file.
+    const n = trackerSheetName(String.raw`Home/Build?[2026]*:x\y`);
+    for (const ch of ["\\", "/", "?", "*", "[", "]", ":"]) {
+      expect(n).not.toContain(ch);
+    }
+    expect(n).toContain("Home");
+  });
+
+  it("falls back to a usable name rather than an empty one", () => {
+    expect(trackerSheetName("///")).toBe("Tracker");
+    expect(trackerSheetName("   ")).toBe("Tracker");
+  });
+});
+
+describe("trackerExportFilename", () => {
+  it("slugs the name and keeps the extension", () => {
+    expect(trackerExportFilename("Home Construction", "csv")).toBe("finroot-home-construction.csv");
+    expect(trackerExportFilename("Dubai Trip", "xlsx")).toBe("finroot-dubai-trip.xlsx");
+  });
+
+  it("never produces a filename that is only punctuation", () => {
+    expect(trackerExportFilename("!!!", "csv")).toBe("finroot-tracker.csv");
+  });
+
+  it("does not leave a trailing separator", () => {
+    expect(trackerExportFilename("Wedding — ", "csv")).toBe("finroot-wedding.csv");
   });
 });

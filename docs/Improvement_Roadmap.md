@@ -470,6 +470,7 @@ duplicate-id check settled it. Do not trust that serialization for accessible na
 | 5.7 | Support channel + a real contact address; a status page | S | ✅ **done 2026-08-12** — one real address (BUG-073 closed), a public `/support` page that pre-fills the details a reply needs, and a public `/status` that checks the API and sign-in live from the visitor's own browser with a PO-editable incident notice. No migration. See the note below. |
 | 5.8 | Product analytics (activation, retention, conversion funnels) | M | ⚠️ **done 2026-08-12, one migration pending** — a new `/po/analytics` console measures the product **without an analytics script, an events table, or a cookie**: every number is derived from records already stored. Growth, conversion, MRR and the plan mix work today; activation, liveness and cohort retention need `20260812120000_stage5_analytics.sql`, and until it is applied the page says so instead of showing zeroes. Recorded as [ADR-0009](./adr/0009-analytics-without-tracking.md). See the note below. |
 | 5.9 | Cost monitoring and alerting on edge invocations | S | |
+| 5.10 | **Trackers** — an optional contextual dimension on a transaction (project / life event) | L | ⚠️ **code complete 2026-08-27, NOT DEPLOYED** — `20260827120000_trackers.sql` is unapplied and `types.ts` is not regenerated, so nothing runs yet. See 5.10 below. |
 
 ### 5.3 · Onboarding without a single stored flag
 
@@ -802,3 +803,54 @@ the suite went from 1.9 min to 53 s.
 | 4 Scale & polish | 1–2 w | 0 |
 | 5 Commercial | ongoing | 1 |
 | **To launch-ready** | **≈5–7 weeks** | **16 / 16** |
+
+
+### 5.10 · A tracker is a label, not a second wallet
+
+The question users could not ask was *"what has the house build cost me?"*. They were answering it
+by inventing categories — `Labour (Home)`, `Cement (Home)` — which poisons every category aggregate
+permanently.
+
+Trips looked like the answer and is not: `trips.expenses` is a jsonb array invisible to
+`dashboard_summary()`, `budget_spend()` and every account balance, on purpose, and the page says so.
+Trips is a sandbox for money you are *about* to spend. A tracker is a label on money you *have*
+spent, and the row keeps counting everywhere it already counted.
+
+So: one nullable FK on `transactions`, one tenant table that names it, and nothing else.
+[ADR-0010](adr/0010-a-tracker-is-a-dimension-not-a-ledger.md) records the alternatives and what this
+one costs.
+
+🔴 **The three promises, each defended rather than asserted:**
+
+- *It never moves money.* Structural — `BalanceTxn` does not mention `tracker_id`, and
+  `accountBalances.test.ts` now pins that so the next person cannot helpfully add it.
+- *It never assigns anything you did not tick.* The historical review starts empty; filtering changes
+  what is shown, never what is selected; the bulk write carries `.is("tracker_id", null)` so it can
+  never steal a row tagged meanwhile.
+- *It never takes a transaction away from anywhere.* Tracker views filter `transactions`; no row is
+  copied or moved.
+
+**What it cost that was not obvious.** `menuContract.test.ts` reads the *latest* migration defining
+`has_menu()` and requires `goal_contribute` and `budget_set_allocation` to live in that same file
+with their menu checks — so the trackers migration restates ~130 lines of two unchanged SECURITY
+DEFINER functions verbatim. That is ADR-0008's one-implementation rule presenting its bill, and it
+was paid rather than weakening the guard.
+
+**Status, honestly.** Eight phases of client work are complete: foundation, tracker management,
+transaction integration, historical review, filtering and saved views, export, and an accessibility
+pass. Gates are green except one *true* failure — `dataExport.test.ts` reports `trackers` as a table
+`types.ts` has never heard of, which is exactly right until the migration is applied.
+
+**Nothing has been run.** No `SUPABASE_ACCESS_TOKEN` was available in the build environment, so the
+migration could not be applied and `types.ts` could not be regenerated. Every read and write to
+`trackers` / `tracker_id` would be refused by PostgREST today. Before this ships:
+
+1. Apply `supabase/migrations/20260827120000_trackers.sql` — **before** any client build carrying
+   the `trackers` menu id, or `get_effective_menus()` returns it for nobody including `"*"`-plan
+   owners (BUG-022 replayed).
+2. Regenerate `types.ts` (Bash redirect, not PowerShell `Out-File`).
+3. Delete `src/hooks/trackersClient.ts`, the temporary widening shim, and restore `tracker_id` to
+   `TransactionInput` — the forms already send it, but the type does not declare it, so it rides
+   through the spread untyped.
+4. Run `e2e/trackers.spec.ts` (`--workers=1`) and the UI/A11Y sweep — `/app/trackers` is now in
+   `APP_ROUTES`, so the new chip colour and progress bars get scanned for the first time.

@@ -32,6 +32,17 @@ export interface Transaction {
   payment_mode: string | null;
   /** Destination account; set only when type is "transfer". */
   transfer_to_account_id: string | null;
+  /**
+   * Optional project / life-event dimension: which tracker this belongs to.
+   * Zero or one per row, NULL for the overwhelming majority.
+   *
+   * A label and nothing more — it NEVER affects an account balance. That is
+   * structural rather than a promise: `BalanceTxn` in lib/accountBalances.ts
+   * does not include this field, and accountBalances.test.ts pins it.
+   *
+   * NULL for the overwhelming majority of rows.
+   */
+  tracker_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -49,7 +60,29 @@ export interface TransactionInput {
   payment_mode?: string | null;
   /** Required when type is "transfer"; must be null otherwise (DB-enforced). */
   transfer_to_account_id?: string | null;
+  /**
+   * Optional project / life-event dimension. Omitted by most callers, which
+   * is the point: the column is nullable and tagging is opt-in, so no
+   * existing entry path changes behaviour.
+   *
+   * Setting it NEVER moves money — see the note on `Transaction.tracker_id`.
+   */
+  tracker_id?: string | null;
 }
+
+/**
+ * ⚠️ TEMPORARY — remove when `types.ts` is regenerated.
+ *
+ * The generated Insert/Update types are built from a schema that predates
+ * `transactions.tracker_id`, and they reject any key they do not recognise
+ * (`RejectExcessProperties` resolves the unknown key to `never`). Widening
+ * only the payload — not the client, not the query — keeps that rejection in
+ * force for every OTHER column while letting this one through.
+ *
+ * Delete this and the two call sites below once the column is in types.ts;
+ * nothing else changes.
+ */
+const withTracker = <T extends object>(payload: T) => payload as T & Record<string, never>;
 
 /**
  * Every transaction in the workspace, or only those inside a period.
@@ -114,7 +147,7 @@ export function useCreateTransaction() {
       // the wrong workspace for anyone who belongs to more than one).
       const { data, error } = await supabase
         .from("transactions")
-        .insert({ ...input, user_id: user.id, tenant_id: currentTenantId })
+        .insert(withTracker({ ...input, user_id: user.id, tenant_id: currentTenantId }))
         .select()
         .single();
       if (error) throw error;
@@ -136,7 +169,7 @@ export function useUpdateTransaction() {
       if (!currentTenantId) throw new Error("No workspace selected");
       const { data, error } = await supabase
         .from("transactions")
-        .update(patch)
+        .update(withTracker(patch))
         .eq("id", id)
         // Guard: an id from another workspace must not be editable from here.
         .eq("tenant_id", currentTenantId)

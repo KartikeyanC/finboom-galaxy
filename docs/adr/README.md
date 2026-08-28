@@ -18,6 +18,7 @@ reason one was taken, and what it costs. If a decision has no cost, it probably 
 | [0007](0007-app-lock-is-not-security.md) | The app lock is a curtain, not an access control | Accepted |
 | [0008](0008-one-implementation-per-rule.md) | A rule has one implementation; every mirror is tested against it | Accepted |
 | [0009](0009-analytics-without-tracking.md) | Product analytics is derived from existing records, not tracked | Accepted |
+| [0010](0010-a-tracker-is-a-dimension-not-a-ledger.md) | A tracker is a dimension on a transaction, not a ledger | Accepted |
 
 ## Writing a new one
 

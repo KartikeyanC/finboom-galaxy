@@ -254,3 +254,26 @@ Append-only, well-commented, phased (1 tenancy → 2a–2j data → 3 permission
 | Migrations | 4 | 4 | 4 | grants never revoked from `PUBLIC` |
 | Edge functions | 4 | 3 | 3 | open mail relay, replayable webhook |
 | Shared libs | 4 | 4 | 4 | menu-id list duplicated client/server |
+
+### Trackers (2026-08-27)
+
+An optional contextual dimension on a transaction — which project or life event it belongs to. Not
+an account, budget, category or ledger, and not a replacement for Trips
+([ADR-0010](adr/0010-a-tracker-is-a-dimension-not-a-ledger.md)).
+
+| File | Responsibility |
+|---|---|
+| `src/lib/trackers.ts` | Pure core: types, `foldTrackerSpend`, `trackerDisplayLabel`, window maths |
+| `src/lib/trackerReview.ts` | Historical-review selection logic — the "never auto-assign" rules |
+| `src/lib/trackerFilters.ts` | Filter model, date presets, saved-view normalisation |
+| `src/lib/progress.ts` | `percentOf`, extracted from `GoalManager` when trackers became a second consumer |
+| `src/hooks/useTrackers.ts` | CRUD, lifecycle, soft delete, `reviewed_at`, `useTrackerNameMap` |
+| `src/hooks/useTrackerSpend.ts` | `tracker_spend()` RPC + the pure fold |
+| `src/hooks/useTrackerTransactions.ts` | Rows by tracker, untagged candidates, bulk assign/unassign |
+| `src/hooks/trackersClient.ts` | ⚠️ **Temporary.** Widens past the generated types until `types.ts` is regenerated — delete then |
+| `src/components/trackers/` | Badge, card, dialog, workspace, filter bar, review dialog, export menu |
+| `src/components/transactions/TrackerField.tsx` | The optional picker on transaction forms; renders **nothing** until a tracker exists |
+| `src/pages/Trackers.tsx` | Index + detail switch (state mirrored into `?id=`) |
+
+Menu id `trackers` is **enforced** (`ENFORCED_MENUS`): the table is gated, the column on
+`transactions` is not.

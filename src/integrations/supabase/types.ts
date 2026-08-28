@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   graphql_public: {
     Tables: {
@@ -1531,6 +1531,74 @@ export type Database = {
           },
         ]
       }
+      trackers: {
+        Row: {
+          archived_at: string | null
+          budget: number | null
+          completed_at: string | null
+          created_at: string
+          currency: string
+          deleted_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          reviewed_at: string | null
+          start_date: string
+          status: string
+          tenant_id: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          budget?: number | null
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          reviewed_at?: string | null
+          start_date: string
+          status?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          budget?: number | null
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          reviewed_at?: string | null
+          start_date?: string
+          status?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trackers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string | null
@@ -1545,6 +1613,7 @@ export type Database = {
           payment_mode: string | null
           source_recurring_id: string | null
           tenant_id: string
+          tracker_id: string | null
           transfer_to_account_id: string | null
           type: string
           updated_at: string
@@ -1563,6 +1632,7 @@ export type Database = {
           payment_mode?: string | null
           source_recurring_id?: string | null
           tenant_id?: string
+          tracker_id?: string | null
           transfer_to_account_id?: string | null
           type: string
           updated_at?: string
@@ -1581,6 +1651,7 @@ export type Database = {
           payment_mode?: string | null
           source_recurring_id?: string | null
           tenant_id?: string
+          tracker_id?: string | null
           transfer_to_account_id?: string | null
           type?: string
           updated_at?: string
@@ -1599,6 +1670,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_tracker_id_fkey"
+            columns: ["tracker_id"]
+            isOneToOne: false
+            referencedRelation: "trackers"
             referencedColumns: ["id"]
           },
           {
@@ -1853,8 +1931,8 @@ export type Database = {
       po_create_coupon: {
         Args: {
           p_code: string
-          p_description: string
-          p_discount_percent: number
+          p_description?: string
+          p_discount_percent?: number
           p_expires_at?: string
         }
         Returns: string
@@ -2073,6 +2151,7 @@ export type Database = {
           status: string
         }[]
       }
+      tracker_spend: { Args: { p_tenant_id: string }; Returns: Json }
       update_member_role: {
         Args: { p_role: string; p_tenant_id: string; p_user_id: string }
         Returns: undefined

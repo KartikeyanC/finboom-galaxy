@@ -16,6 +16,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useTrackerNameMap } from "@/hooks/useTrackers";
 import { useGoals } from "@/hooks/useGoals";
 import { useBudgets } from "@/hooks/useBudgets";
 import { useRecurring } from "@/hooks/useRecurring";
@@ -58,6 +59,7 @@ export default function GlobalSearch({ open, onOpenChange }: Props) {
   // Search legitimately wants the whole ledger; it just does not want it until
   // someone opens the palette.
   const { data: allTxns = [] }    = useTransactions(undefined, "all", { enabled: open });
+  const trackerNames              = useTrackerNameMap();
   // The rest are small, tenant-scoped tables and are left eager for now.
   const { data: goals = [] }      = useGoals();
   const { data: budgets = [] }    = useBudgets();
@@ -187,7 +189,11 @@ export default function GlobalSearch({ open, onOpenChange }: Props) {
                       {t.description || t.category}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {t.category} · {format(new Date(t.occurred_at), "dd MMM yyyy")}
+                      {t.category}
+                      {t.tracker_id && trackerNames.get(t.tracker_id)
+                        ? ` · T-${trackerNames.get(t.tracker_id)}`
+                        : ""}{" "}
+                      · {format(new Date(t.occurred_at), "dd MMM yyyy")}
                     </p>
                   </div>
                   <span className={`text-sm font-semibold tabular-nums shrink-0 ${

@@ -133,7 +133,17 @@ async function applyTheme(page: Page, theme: (typeof THEMES)[number]) {
 }
 
 const PUBLIC_ROUTES = ["/", "/auth", "/privacy", "/terms", "/support", "/status"];
-const APP_ROUTES = ["/app", "/app/income", "/app/expenses", "/app/budget", "/app/investments"];
+const APP_ROUTES = [
+  "/app",
+  "/app/income",
+  "/app/expenses",
+  "/app/budget",
+  "/app/investments",
+  // Trackers joins the full scan deliberately: it introduces a new colour
+  // pair (the tracker chip) and a progress bar, which are exactly the two
+  // things a contrast/aria sweep exists to catch.
+  "/app/trackers",
+];
 
 const SR_RULES = [
   // Can this control be announced at all?
@@ -699,7 +709,7 @@ test.describe("UI · app routes", () => {
   test("UI-T13 · no route renders a blank region instead of an empty state", async () => {
     test.setTimeout(180_000);
     const bare: string[] = [];
-    for (const route of [...APP_ROUTES, "/app/goals", "/app/reminders", "/app/trips"]) {
+    for (const route of [...APP_ROUTES, "/app/goals", "/app/reminders", "/app/trips", "/app/trackers"]) {
       await page.goto(route);
       await expect(page.locator("main")).not.toBeEmpty({ timeout: 30_000 });
       await page.waitForTimeout(700);

@@ -155,3 +155,35 @@ Supabase and is also permissive by default.
 Supabase auto-publishes an OpenAPI document at `/rest/v1/` for tables and RPCs. Edge functions
 are **not** described anywhere. No spec is committed to the repo and none is used for client
 generation or contract testing.
+
+---
+
+## `tracker_spend(p_tenant_id uuid) → jsonb`
+
+Added 2026-08-27 (`20260827120000_trackers.sql`). `SECURITY DEFINER`, `search_path = public`.
+
+Derived tracker totals for the whole workspace: one object per
+`(tracker_id, type, currency)` with `total`, `count`, `first_at`, `last_at`.
+
+```json
+[{ "tracker_id": "…", "type": "expense", "currency": "INR",
+   "total": 284500, "count": 12,
+   "first_at": "2026-01-04T…", "last_at": "2026-08-19T…" }]
+```
+
+**Guards — both required, because definer bypasses RLS:**
+`is_tenant_member(p_tenant_id, 'viewer')` and `has_menu(p_tenant_id, 'trackers')`.
+`REVOKE ALL FROM PUBLIC, anon; GRANT EXECUTE TO authenticated`.
+
+**Why it exists:** the Trackers index page needs N totals. The alternative is
+`useTransactions(…, "all")` — the whole ledger in the browser to render a few numbers, which is
+exactly the pattern Stage 4.2 removed. The **detail** view does not call this: it selects its own
+rows by `tracker_id` and folds them with the same pure function (`foldTrackerSpend`), so the two
+paths cannot disagree.
+
+**Unlike `budget_spend`** there is no `join lateral` and no date window: a transaction belongs to a
+tracker because someone assigned it, not because of when it happened. `start_date`/`end_date` are
+metadata that seed the review flow, not a filter on membership.
+
+**Grouped by currency, not summed raw** — a tracker can legitimately mix AED and INR. Conversion
+stays in `toINR()` (`src/lib/finance.ts`); do not add rates to SQL.

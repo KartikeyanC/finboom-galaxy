@@ -46,6 +46,7 @@ import CategoryPickerDrawer from "@/components/transactions/CategoryPickerDrawer
 import CustomCategoryPopover from "@/components/transactions/CustomCategoryPopover";
 import DebtFields from "@/components/transactions/DebtFields";
 import PaymentModeField from "@/components/transactions/PaymentModeField";
+import TrackerField from "@/components/transactions/TrackerField";
 import SplitFields from "@/components/transactions/SplitFields";
 import {
   composeDescription,
@@ -105,6 +106,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
   // Payment mode & account
   const [paymentMode, setPaymentMode] = useState<string>("UPI");
   const [linkedAccountId, setLinkedAccountId] = useState<string>("none");
+  const [trackerId, setTrackerId] = useState<string>("none");
 
   // Split state
   const [splitOn, setSplitOn] = useState(false);
@@ -126,6 +128,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       // back to the legacy description prefix only for pre-backfill rows.
       setPaymentMode(f.paymentMode);
       setLinkedAccountId(f.linkedAccountId);
+      setTrackerId(f.trackerId);
       setOccurredAt(f.occurredAt);
     } else {
       setActiveType(type);
@@ -141,6 +144,10 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       // its account and moved that account's balance (BUG-088).
       setPaymentMode("UPI");
       setLinkedAccountId("none");
+      // Reset only on create, for the same BUG-088 reason as the two above:
+      // resetting unconditionally would wipe the tracker recovered from the
+      // row being edited, silently untagging it on every save.
+      setTrackerId("none");
     }
     setDebtMode(false);
     setDebtTotal("");
@@ -197,6 +204,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       description: parsed.data.description ?? null,
       account_id: linkedAccountId && linkedAccountId !== "none" ? linkedAccountId : null,
       payment_mode: paymentMode || null,
+      tracker_id: trackerId && trackerId !== "none" ? trackerId : null,
       occurred_at: new Date(parsed.data.occurred_at).toISOString(),
     };
     try {
@@ -238,6 +246,11 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
         currency,
         category: cat,
         description: finalDesc,
+        // A split dinner on the Dubai trip belongs to the Dubai trip: the
+        // user's share is a real expense and carries the tracker like any
+        // other. Only their share is tagged, which is also the only part
+        // that reaches their accounts.
+        tracker_id: trackerId && trackerId !== "none" ? trackerId : null,
         occurred_at: new Date(occurredSafe).toISOString(),
       });
       // The net-worth mirror of a split is a convenience, not the record: the
@@ -481,6 +494,12 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
               </Select>
             </div>
           )}
+
+          {/* After Account, before Payment mode: "where the money came from →
+              what project it is for → how it was paid". The money-critical
+              fields above it are untouched, and this renders nothing at all
+              until the user has created a tracker. */}
+          <TrackerField value={trackerId} onChange={setTrackerId} occurredAt={occurredAt} />
 
           {activeType === "expense" && (
             <PaymentModeField value={paymentMode} onChange={setPaymentMode} />

@@ -48,6 +48,8 @@ import {
   useTransactions,
   type Transaction,
 } from "@/hooks/useTransactions";
+import { useTrackerNameMap } from "@/hooks/useTrackers";
+import TrackerBadge from "@/components/trackers/TrackerBadge";
 import { formatMoney, toINR } from "@/lib/finance";
 import { categoryBadgeClass } from "@/lib/categories";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -135,6 +137,9 @@ export default function ExpenseLedger() {
   const del = useDeleteTransaction();
   const { theme } = useTheme();
   const isLight = theme === "light";
+  // Built once for the whole ledger and threaded down. One hook per row would
+  // mean one subscription per row.
+  const trackerNames = useTrackerNameMap();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -305,6 +310,7 @@ export default function ExpenseLedger() {
                       date={day.date}
                       items={day.items}
                       isLight={isLight}
+                      trackerNames={trackerNames}
                       onEdit={(t) => { setEditing(t); setDialogOpen(true); }}
                       onDelete={(id) => setDeleteId(id)}
                     />
@@ -355,6 +361,7 @@ function DayBlock({
   date,
   items,
   isLight,
+  trackerNames,
   onEdit,
   onDelete,
 }: {
@@ -362,6 +369,7 @@ function DayBlock({
   date: Date;
   items: Transaction[];
   isLight: boolean;
+  trackerNames: Map<string, string>;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
 }) {
@@ -440,7 +448,7 @@ function DayBlock({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.16 }}
             >
-              <Row t={t} isLight={isLight} onEdit={onEdit} onDelete={onDelete} />
+              <Row t={t} isLight={isLight} trackerNames={trackerNames} onEdit={onEdit} onDelete={onDelete} />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -457,11 +465,13 @@ function DayBlock({
 function Row({
   t,
   isLight,
+  trackerNames,
   onEdit,
   onDelete,
 }: {
   t: Transaction;
   isLight: boolean;
+  trackerNames: Map<string, string>;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
 }) {
@@ -476,6 +486,8 @@ function Row({
   const hasDescription = !!cleanDesc.trim();
   const CategoryIcon = CATEGORY_ICONS[t.category] ?? CircleDot;
   const isOwe = split?.mode === "owe";
+  /** null when untagged, or when the tracker is unreadable on this plan. */
+  const trackerName = t.tracker_id ? (trackerNames.get(t.tracker_id) ?? null) : null;
   return (
     <div
       className={cn(
@@ -494,14 +506,28 @@ function Row({
         <span className="text-xs font-mono text-foreground/65 shrink-0 tabular-nums" title={slotMeta.short}>
           {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
-        <span
-          className={cn(
-            "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium shrink-0",
-            categoryBadgeClass("expense", t.category, isLight),
-          )}
-        >
-          {t.category}
-        </span>
+        {/* One chip per row: the TRACKER when the row has one, otherwise the
+            category (user decision, 2026-08-28 — it overrides the original
+            "never replace Category" rule).
+            The category is not lost, only unshown: the icon at the head of
+            the row is already category-derived and carries `title={t.category}`,
+            and the sr-only text below keeps it announced. Hiding a value from
+            sight must not delete it from the record. */}
+        {trackerName ? (
+          <>
+            <TrackerBadge name={trackerName} isLight={isLight} />
+            <span className="sr-only">Category: {t.category}</span>
+          </>
+        ) : (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium shrink-0",
+              categoryBadgeClass("expense", t.category, isLight),
+            )}
+          >
+            {t.category}
+          </span>
+        )}
         {split && (
           <span
             className="inline-flex items-center text-indigo-300/90 shrink-0"

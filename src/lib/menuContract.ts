@@ -36,6 +36,13 @@ export const ENFORCED_MENUS: Readonly<Record<string, readonly string[]>> = {
   goals: ["goals"],
   budget: ["budgets"],
   income: ["income_streams"],
+  // Trackers owns exactly one table, which is ADR-0002's test for enforcement.
+  // The `transactions.tracker_id` COLUMN is deliberately not gated — gating
+  // `transactions` is forbidden below and would break every aggregate. The
+  // visible consequence, accepted: without the menu a tracker row is
+  // unreadable, so the badge simply does not render on a transaction that
+  // carries one. The transaction itself is never hidden.
+  trackers: ["trackers"],
 } as const;
 
 /**

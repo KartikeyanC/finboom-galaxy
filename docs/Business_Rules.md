@@ -139,6 +139,17 @@
 | BR-064 | More than 12 hours since the last password login → the lock screen demands the **password**, not the PIN. | `needsPassword()` |
 | BR-065 | A forgotten PIN is reset with the account password ("Forgot your PIN?"), which clears the PIN and asks for a new one. Nobody can look the old one up — it is only ever stored as a hash, on the device. *(Stage 5.4 — there used to be no reset at all.)* | `LockScreen` recover mode, `clearPin()` |
 | BR-066 | Turning the lock off deletes the stored PIN, so switching it back on later never expects a PIN nobody remembers. | `AppLockSettings`, `PinSetup` |
+| BR-067 | A transaction has **zero or one** tracker. There is no join table — a second tracker on one row would make every aggregate double-count. | `transactions.tracker_id` is a single nullable column (`20260827120000_trackers.sql`) |
+| BR-068 | Assigning or removing a tracker **never changes an account balance**. A tracker holds no money. | `BalanceTxn` (`src/lib/accountBalances.ts`) does not include `tracker_id`; pinned by `accountBalances.test.ts` |
+| BR-069 | A tagged transaction stays visible in every view it already appeared in — All Transactions, Expenses, its account, its category, Reports, Search, Export. Tagging adds a label and removes nothing. | Tracker views filter `transactions` by `tracker_id`; no row is copied or moved |
+| BR-070 | Tracker spend is **derived, never stored**. There is no `spent` column and there must never be one. | `tracker_spend()` RPC + `foldTrackerSpend()` (ADR-0006) |
+| BR-071 | A tracker's `start_date` is the real project start and may long predate `created_at`. Creating a tracker never modifies any transaction's `occurred_at`. | `start_date date NOT NULL`, separate from `created_at` |
+| BR-072 | No transaction is **ever** assigned to a tracker without an explicit user action. The historical review starts with nothing selected, and filtering changes what is shown, never what is selected. | `src/lib/trackerReview.ts`, pinned by `trackerReview.test.ts` |
+| BR-073 | A bulk assign never steals a row tagged meanwhile: the write carries `.is("tracker_id", null)`, so it is idempotent and replayable. | `useAssignToTracker` (`src/hooks/useTrackerTransactions.ts`) |
+| BR-074 | Deleting a tracker is **soft** and untags nothing: transactions keep their `tracker_id` and no balance changes. | `deleted_at` + `useSoftDeleteTracker`; reads filter `deleted_at IS NULL` |
+| BR-075 | The `trackers` TABLE is menu-gated; `transactions` is not. Without the menu a tracker row is unreadable so no badge renders — but the transaction is never hidden. | `has_menu(tenant_id,'trackers')` on `trk_*` policies only (ADR-0002, ADR-0010) |
+| BR-076 | A tracker budget is in INR. Transactions keep their own currency and aggregate through `toINR()`, which stays the single FX implementation. | `src/lib/finance.ts` `toINR`; no per-tracker currency selector |
+| BR-077 | "T-" is a display convention only. The stored tracker name never carries the prefix. | `trackerDisplayLabel()`, pinned by `trackers.test.ts` |
 
 ---
 

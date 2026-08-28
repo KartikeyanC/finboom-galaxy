@@ -26,6 +26,8 @@ export type TransactionFormValues = {
   description: string;
   paymentMode: string;
   linkedAccountId: string;
+  /** Tracker uuid, or the "none" sentinel — same shape as linkedAccountId. */
+  trackerId: string;
   occurredAt: string;
 };
 
@@ -56,6 +58,11 @@ export function hydrateFromTransaction(initial: Transaction): TransactionFormVal
     description: isSub ? (sepIdx > -1 ? desc.slice(sepIdx + 3) : "") : desc,
     paymentMode: initial.payment_mode ?? pmMatch?.[1] ?? "UPI",
     linkedAccountId: initial.account_id ?? pmMatch?.[2] ?? "none",
+    // An untagged row hydrates to the sentinel, never to "" — a Radix
+    // SelectItem cannot carry an empty value, which is why "none" exists at
+    // all. Getting this wrong on the EDIT path is the shape of BUG-088: the
+    // dialog would silently drop the tracker on every save.
+    trackerId: initial.tracker_id ?? "none",
     occurredAt: new Date(initial.occurred_at).toISOString(),
   };
 }

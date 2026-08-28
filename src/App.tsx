@@ -54,6 +54,7 @@ const BillScanPage = lazy(() => import("./pages/BillScan.tsx"));
 const InsurancePage = lazy(() => import("./pages/Insurance.tsx"));
 const NetWorthPage = lazy(() => import("./pages/NetWorth.tsx"));
 const TripsPage = lazy(() => import("./pages/Trips.tsx"));
+const TrackersPage = lazy(() => import("./pages/Trackers.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite.tsx"));
 const Landing = lazy(() => import("./pages/Landing.tsx"));
@@ -212,6 +213,7 @@ const App = () => (
                             <Route path="/net-worth" element={<MenuGuard menuId="net-worth"><NetWorthPage /></MenuGuard>} />
                             <Route path="/subscriptions" element={<Navigate to="/app/expenses" replace />} />
                             <Route path="/trips" element={<MenuGuard menuId="trips"><TripsPage /></MenuGuard>} />
+                            <Route path="/trackers" element={<MenuGuard menuId="trackers"><TrackersPage /></MenuGuard>} />
                             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                             <Route path="*" element={<Navigate to="/app" replace />} />
                           </Routes>

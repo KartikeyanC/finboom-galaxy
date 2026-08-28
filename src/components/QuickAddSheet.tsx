@@ -21,6 +21,7 @@ import { HandCoins, Wallet, Check, Loader2 } from "lucide-react";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES } from "@/lib/finance";
 import { useCustomCategories } from "@/lib/categories";
 import { useCreateTransaction } from "@/hooks/useTransactions";
+import TrackerField from "@/components/transactions/TrackerField";
 
 interface Props {
   open: boolean;
@@ -37,6 +38,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
   const [note, setNote]         = useState("");
   const [date, setDate]         = useState(() => new Date().toISOString().slice(0, 10));
   const [currency, setCurrency] = useState("INR");
+  const [trackerId, setTrackerId] = useState("none");
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
 
@@ -60,6 +62,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
       setAmount("");
       setNote("");
       setDate(new Date().toISOString().slice(0, 10));
+      setTrackerId("none");
       setSaved(false);
       // slight delay so the sheet animation completes before focusing
       setTimeout(() => amountRef.current?.focus(), 200);
@@ -83,6 +86,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
         currency,
         category,
         description: note.trim() || null,
+        tracker_id: trackerId !== "none" ? trackerId : null,
         occurred_at: new Date(date).toISOString(),
       });
       setSaved(true);
@@ -147,10 +151,20 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
 
           {/* Amount — large, prominent */}
           <div className="relative">
+            {/* The field is deliberately unlabelled on screen — it is the hero
+                input and the ₹ glyph beside it is decorative
+                (pointer-events-none, no text alternative). That left it with
+                NO accessible name at all: a screen reader announced only
+                "0", the placeholder. An sr-only label keeps the visual design
+                exactly as it is and gives the control a real name. */}
+            <Label htmlFor="qa-amount" className="sr-only">
+              Amount
+            </Label>
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground select-none pointer-events-none">
               {currencySymbol}
             </span>
             <Input
+              id="qa-amount"
               ref={amountRef}
               type="number"
               inputMode="decimal"
@@ -171,7 +185,12 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
             {/* currency selector inline */}
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="h-8 w-20 text-xs border-border/50 bg-muted/60 focus:ring-0">
+                {/* No room for a visible label inside the amount field, so the
+                    name is carried on the trigger itself. */}
+                <SelectTrigger
+                  aria-label="Currency"
+                  className="h-8 w-20 text-xs border-border/50 bg-muted/60 focus:ring-0"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -186,9 +205,11 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
           {/* Category + Date row */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Category</Label>
+              <Label htmlFor="qa-category" className="text-xs text-muted-foreground">
+                Category
+              </Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger id="qa-category" className="h-9 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-52">
@@ -199,8 +220,11 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Date</Label>
+              <Label htmlFor="qa-date" className="text-xs text-muted-foreground">
+                Date
+              </Label>
               <Input
+                id="qa-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -209,10 +233,25 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
             </div>
           </div>
 
+          {/* Tracker — BELOW the Category+Date pair, not a third cell inside
+              it: a third item in a two-column grid breaks the pairing on
+              mobile. Renders zero pixels until the user has a tracker, so the
+              5-10 second flow is unchanged for everyone who does not use it. */}
+          <TrackerField
+            id="qa-tracker"
+            value={trackerId}
+            onChange={setTrackerId}
+            occurredAt={date ? new Date(date).toISOString() : undefined}
+            compact
+          />
+
           {/* Note */}
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Note (optional)</Label>
+            <Label htmlFor="qa-note" className="text-xs text-muted-foreground">
+              Note (optional)
+            </Label>
             <Input
+              id="qa-note"
               placeholder="e.g. Paid via GPay for dinner"
               value={note}
               onChange={(e) => setNote(e.target.value)}

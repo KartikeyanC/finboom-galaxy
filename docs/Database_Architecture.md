@@ -157,3 +157,61 @@ time by `plan_menus()` / `tenant_subscription_status()`.
 **Drift:** `src/integrations/supabase/types.ts` predates the last four migrations —
 `income_streams`, `demat_accounts`, `demat_ledger`, `account_balance_history` and the
 `po_*_secret`/`po_*_identifiers` RPCs are all missing from it.
+
+---
+
+## `trackers` (2026-08-27, `20260827120000_trackers.sql`)
+
+An **optional contextual dimension** on a transaction: which project or life event it belongs to
+(Home Construction, Dubai Trip, Wedding). It holds no money and owns no balance. See
+[ADR-0010](adr/0010-a-tracker-is-a-dimension-not-a-ledger.md) for why this is a column on
+`transactions` rather than a second ledger, and why it does not absorb Trips.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | |
+| `tenant_id` | `uuid NOT NULL` | → `tenants(id) ON DELETE CASCADE` |
+| `user_id` | `uuid` | → `auth.users(id) ON DELETE SET NULL` |
+| `name` | `text NOT NULL` | 1–80 chars trimmed. The REAL name — `"T-"` is display-only |
+| `type` | `text NOT NULL` | CHECK: Home Construction / Travel / Wedding / Vehicle / Education / Business Project / Event / Custom |
+| `start_date` | `date NOT NULL` | The **project's** start, which may predate `created_at` |
+| `end_date` | `date` | NULL = ongoing |
+| `budget` | `numeric(14,2)` | **NULL means no budget** — never render that as zero. INR |
+| `currency` | `text NOT NULL` | `'INR'`; not user-selectable in v1 |
+| `description` | `text` | |
+| `status` | `text NOT NULL` | CHECK `active` / `completed` / `archived` |
+| `completed_at`, `archived_at` | `timestamptz` | Set alongside `status` |
+| `deleted_at` | `timestamptz` | **Soft delete.** Every read filters `IS NULL` |
+| `reviewed_at` | `timestamptz` | Historical review answered — by assigning *or* skipping |
+| `created_at`, `updated_at` | `timestamptz NOT NULL` | `trg_trackers_updated` |
+
+**Indexes:** `idx_trackers_tenant (tenant_id, start_date DESC)`; unique
+`(tenant_id, lower(btrim(name))) WHERE status = 'active' AND deleted_at IS NULL` — two live
+trackers with the same name would make every badge ambiguous.
+
+**RLS:** `trk_select|insert|update|delete` = `is_tenant_member(tenant_id, 'viewer'|'admin')
+AND has_menu(tenant_id, 'trackers')`. The table is menu-enforced; `transactions` is **not** (see
+below).
+
+**There is deliberately no `spent` column** (ADR-0006). Spend is derived by `tracker_spend()`.
+
+### `transactions.tracker_id`
+
+```sql
+ALTER TABLE public.transactions
+  ADD COLUMN tracker_id uuid REFERENCES public.trackers(id) ON DELETE SET NULL;
+CREATE INDEX transactions_tenant_tracker_idx
+  ON public.transactions (tenant_id, tracker_id, occurred_at DESC)
+  WHERE tracker_id IS NOT NULL;
+```
+
+- **Nullable, permanently.** `mark_recurring_generated()` inserts server-side without naming it;
+  `NOT NULL` would break every recurring generation.
+- **`ON DELETE SET NULL`**, mirroring `account_id`. Deleting a tracker untags rows, never deletes
+  them.
+- **Not `has_menu()`-gated, and must not become so.** `menuContract.test.ts` fails if `transactions`
+  appears in the gated list — every aggregate reads that table.
+- Partial index because the overwhelming majority of rows are untagged.
+
+Saved tracker views are **not** a table: they are a registered `tenant_settings` key
+(`tracker_views`), because that table constrains a key's shape rather than its spelling.

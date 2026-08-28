@@ -64,6 +64,7 @@ export const EXPORT_TABLES: ExportTable[] = [
   { table: "net_worth_entries", scope: "tenant", what: "Net-worth assets and liabilities" },
   { table: "net_worth_snapshots", scope: "tenant", what: "Net-worth history" },
   { table: "trips", scope: "tenant", what: "Trips and their budgets" },
+  { table: "trackers", scope: "tenant", what: "Projects and life events your transactions are grouped under" },
 ];
 
 /**

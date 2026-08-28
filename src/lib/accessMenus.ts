@@ -16,6 +16,12 @@ export const ACCESS_MENUS: { id: string; label: string }[] = [
   { id: "insurance", label: "Insurance" },
   { id: "net-worth", label: "Net Worth" },
   { id: "trips", label: "Trips" },
+  // Trackers: recognized here and in all_feature_menus() (see
+  // supabase/migrations/20260827120000_trackers.sql) so this list and the DB
+  // stay in step per accessMenus.test.ts. Apply that migration BEFORE shipping
+  // a build carrying this line — until the DB knows the id,
+  // get_effective_menus() returns it for nobody, including "*"-plan owners.
+  { id: "trackers", label: "Trackers" },
   { id: "billing", label: "Billing" },
 ];
 

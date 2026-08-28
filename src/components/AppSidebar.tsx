@@ -10,6 +10,7 @@ import {
   Upload,
   Download,
   Landmark,
+  FolderKanban,
   CreditCard,
   ScanLine,
   HandCoins,
@@ -54,6 +55,11 @@ const mainItems = [
   { title: "Investments", url: "/app/investments", icon: TrendingUp, menuId: "investments" },
   { title: "Budget", url: "/app/budget", icon: PieChart, menuId: "budget" },
   { title: "Goals", url: "/app/goals", icon: Target, menuId: "goals" },
+  // Overview rather than Wealth: a tracker is a lens over everyday
+  // transactions, and sitting it next to Trips would reinforce exactly the
+  // "it's another Trips" confusion — Trips is an isolated sandbox, a tracker
+  // is a label on the real ledger.
+  { title: "Trackers", url: "/app/trackers", icon: FolderKanban, menuId: "trackers" },
   { title: "Accounts", url: "/app/accounts", icon: Landmark, menuId: "accounts" },
 ];
 

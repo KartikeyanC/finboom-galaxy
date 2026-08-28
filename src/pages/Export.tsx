@@ -32,11 +32,13 @@ import {
   dlBlob,
   makeCSV,
   rupee,
+  txnExportRow,
   withinRange,
   type DatePreset,
   type SectionId,
 } from "./export/reportData";
 import FullDataExportCard from "./export/FullDataExportCard";
+import { useTrackerNameMap } from "@/hooks/useTrackers";
 import {
   BarTooltip,
   BudgetTable,
@@ -54,6 +56,10 @@ export default function ExportPage() {
   const [customTo,   setTo]    = useState("");
 
   const { data: rawTxns = [] }   = useTransactions();
+  // Names, not ids: an exported spreadsheet has to be readable by a person.
+  // Empty when the trackers menu is not on this plan, which simply leaves the
+  // column blank rather than failing the export.
+  const trackerNames             = useTrackerNameMap();
   const { data: budgets  = [] }  = useBudgets();
   const { accounts }             = useAccounts();
   const { records: investments } = useInvestments();
@@ -105,7 +111,7 @@ export default function ExportPage() {
   const handlePrint = () => window.print();
 
   const handleCSV = () => {
-    const toRow = (t: typeof rawTxns[0]) => ({ Date: t.occurred_at.slice(0,10), Type: t.type, Category: t.category, Description: clean(t.description), Amount: Number(t.amount), Currency: t.currency });
+    const toRow = (t: typeof rawTxns[0]) => txnExportRow(t, trackerNames);
     if (active.has("expenses")    && expenses.length)    dlBlob(makeCSV(expenses.map(toRow)),    "expenses.csv",    "text/csv");
     if (active.has("income")      && incomes.length)     dlBlob(makeCSV(incomes.map(toRow)),     "income.csv",      "text/csv");
     if (active.has("investments") && investments.length) dlBlob(makeCSV(investments.map(r => ({ Name: getRecordName(r), Asset: r.asset, Broker: r.broker ?? "", Invested: getInvested(r), Current: getCurrent(r), GL: getCurrent(r)-getInvested(r) }))), "investments.csv", "text/csv");
@@ -115,7 +121,7 @@ export default function ExportPage() {
   const handleExcel = async () => {
     const xlsx = await import("xlsx");
     const wb   = xlsx.utils.book_new();
-    const toRow = (t: typeof rawTxns[0]) => ({ Date: t.occurred_at.slice(0,10), Type: t.type, Category: t.category, Description: clean(t.description), Amount: Number(t.amount), Currency: t.currency });
+    const toRow = (t: typeof rawTxns[0]) => txnExportRow(t, trackerNames);
     const add = (name: string, rows: object[]) => {
       if (!rows.length) return;
       xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(rows), name.slice(0,31));

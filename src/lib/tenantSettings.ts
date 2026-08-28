@@ -15,6 +15,7 @@
  */
 
 import { DEFAULT_ONBOARDING, type OnboardingState } from "@/lib/onboarding";
+import type { SavedTrackerView } from "@/lib/trackerFilters";
 
 export type CustomCategories = {
   income: { active: string[]; passive: string[] };
@@ -36,6 +37,7 @@ export type TenantSettingsMap = {
   budget_planner: BudgetPlannerState;
   base_currency: string;
   onboarding: OnboardingState;
+  tracker_views: SavedTrackerView[];
 };
 
 export type TenantSettingKey = keyof TenantSettingsMap;
@@ -74,6 +76,14 @@ export const TENANT_SETTINGS: {
   // through creating a first transaction in a workspace that already has 400.
   onboarding: {
     defaultValue: DEFAULT_ONBOARDING,
+  },
+  // Saved tracker views. Tenant-scoped, like every other setting here: a
+  // saved view describes the WORKSPACE's data ("Labour", "Cash payments"),
+  // so a collaborator opening the same tracker should find the same shortcuts
+  // rather than rebuilding them. No migration — tenant_settings constrains
+  // the key's shape, not its spelling, which is the whole point of this file.
+  tracker_views: {
+    defaultValue: [],
   },
 };
 

@@ -161,6 +161,7 @@ export const MENU_BLURBS: Record<string, string> = {
   insurance: "Every policy, premium date and document in one place, with carryover tracking.",
   "net-worth": "Assets minus liabilities over time, derived from your accounts and holdings.",
   trips: "Trip budgets with companions, shared costs and per-person settlement.",
+  trackers: "Group transactions under a project or life event — a build, a wedding, a car — without moving any money.",
   billing: "Your plan, invoices and payment method.",
 };
 

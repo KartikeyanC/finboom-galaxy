@@ -252,3 +252,24 @@ cast that existed only because a function wasn't in the generated types yet
 
 > Regenerating `types.ts` on Windows: PowerShell's `Out-File -Encoding utf8` writes a BOM and CRLFs.
 > Redirect with Bash (`> src/integrations/supabase/types.ts`) instead, or strip both afterward.
+
+## Trackers (2026-08-27) — code complete, NOT deployed
+
+An optional contextual dimension on a transaction: `transactions.tracker_id` → `trackers`. It holds
+no money, never changes a balance, and never removes a row from any view it already appeared in.
+See [ADR-0010](./docs/adr/0010-a-tracker-is-a-dimension-not-a-ledger.md). It does **not** replace or
+absorb Trips, which stays a deliberate jsonb sandbox invisible to every aggregate.
+
+🔴 **`supabase/migrations/20260827120000_trackers.sql` HAS NOT BEEN APPLIED**, and `types.ts` has
+not been regenerated. Until both happen, every tracker read/write is refused by PostgREST and
+`dataExport.test.ts` fails reporting `trackers` as a table the generated types do not know — that
+failure is correct and should disappear on regeneration, not be silenced. Apply the migration
+**before** shipping a build carrying the `trackers` menu id (BUG-022 ordering trap).
+
+Two cleanups are waiting on that regeneration, both commented at the site:
+`src/hooks/trackersClient.ts` is a temporary widening shim to be deleted, and `tracker_id` must be
+restored to `TransactionInput` — the forms already send it, but the type does not declare it, so it
+currently rides through the spread untyped and nothing would catch it being dropped.
+
+🔴 **Never gate `transactions` by menu.** `menuContract.test.ts` fails on it and every aggregate
+reads that table. The `trackers` TABLE is the paywall; the column is not.
