@@ -70,6 +70,8 @@ export function useMonthEvents(startKey: string, endKey: string): CalendarEvent[
     if (showGoals) {
       for (const g of goals ?? []) {
         if (!g.target_date) continue;
+        // A reached or paused goal's target date is not a live milestone.
+        if (g.status && g.status !== "active") continue;
         out.push({
           id: `goal-${g.id}`,
           kind: "goal",

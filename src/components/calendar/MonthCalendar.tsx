@@ -38,12 +38,19 @@ export default function MonthCalendar({
 }: Props) {
   const headers = weekdayLabels(1);
 
-  // Bars are scaled to the largest single-day inflow OR outflow on screen, so
-  // the visual is comparable across the month rather than each cell self-scaling.
-  const scale = useMemo(() => {
-    let max = 0;
-    for (const c of view.weeks.flat()) max = Math.max(max, c.income, c.expense);
-    return max || 1;
+  // In and out bars are scaled to their OWN busiest day, not a shared max — one
+  // large salary would otherwise flatten every expense bar in the month to the
+  // floor and hide the spending pattern the view exists to show. The two bars
+  // are never compared to each other (different colours, side by side), so
+  // independent scales lose nothing.
+  const { incomeScale, expenseScale } = useMemo(() => {
+    let inc = 0;
+    let exp = 0;
+    for (const c of view.weeks.flat()) {
+      inc = Math.max(inc, c.income);
+      exp = Math.max(exp, c.expense);
+    }
+    return { incomeScale: inc || 1, expenseScale: exp || 1 };
   }, [view]);
 
   return (
@@ -94,7 +101,8 @@ export default function MonthCalendar({
               <DayButton
                 key={cell.key}
                 cell={cell}
-                scale={scale}
+                incomeScale={incomeScale}
+                expenseScale={expenseScale}
                 selected={cell.key === selectedKey}
                 onSelect={onSelect}
                 events={eventsByDay.get(cell.key) ?? []}
@@ -111,19 +119,21 @@ export default function MonthCalendar({
 
 function DayButton({
   cell,
-  scale,
+  incomeScale,
+  expenseScale,
   selected,
   onSelect,
   events,
 }: {
   cell: DayCell;
-  scale: number;
+  incomeScale: number;
+  expenseScale: number;
   selected: boolean;
   onSelect: (key: string) => void;
   events: CalendarEvent[];
 }) {
-  const incPct = Math.round((cell.income / scale) * 100);
-  const expPct = Math.round((cell.expense / scale) * 100);
+  const incPct = Math.round((cell.income / incomeScale) * 100);
+  const expPct = Math.round((cell.expense / expenseScale) * 100);
   const hasActivity = cell.count > 0;
 
   // Distinct kinds present, in a fixed order, for the dot row.
