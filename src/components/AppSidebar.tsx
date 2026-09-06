@@ -5,6 +5,7 @@ import {
   PieChart,
   Target,
   Calculator,
+  CalendarDays,
   Settings,
   Bell,
   Upload,
@@ -55,6 +56,7 @@ const mainItems = [
   { title: "Investments", url: "/app/investments", icon: TrendingUp, menuId: "investments" },
   { title: "Budget", url: "/app/budget", icon: PieChart, menuId: "budget" },
   { title: "Goals", url: "/app/goals", icon: Target, menuId: "goals" },
+  { title: "Calendar", url: "/app/calendar", icon: CalendarDays, menuId: "calendar" },
   // Overview rather than Wealth: a tracker is a lens over everyday
   // transactions, and sitting it next to Trips would reinforce exactly the
   // "it's another Trips" confusion — Trips is an isolated sandbox, a tracker
