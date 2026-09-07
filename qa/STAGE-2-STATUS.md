@@ -1,7 +1,7 @@
 # FinRoot — Stage 2 (Fix + Regression) status
 
-Branch: `fix/qa-stage-2` (off `master` @ `2a4b0d3`) · started 2026-09-07.
-Scope chosen by the user: **P2 + P3 + the P4 batch** (excludes the "needs real-browser check" items).
+Branch: `fix/qa-stage-2` (off `master` @ `2a4b0d3`) · started 2026-09-07 · **round 2 added 2026-09-08**.
+Round 1 scope: P2 + P3 + the P4 batch. Round 2 (user asked): BUG-006, 009, 014, 016 and the full BUG-001.
 
 ## Gates after the fixes
 
@@ -31,14 +31,21 @@ Scope chosen by the user: **P2 + P3 + the P4 batch** (excludes the "needs real-b
 | BUG-013 | P4 | fix(insurance): don't zero-pad the KPI counts | code |
 | BUG-015 | P4 | fix(expenses): clarify the ledger entry count | code |
 
-## Not done (as agreed) — carried forward
+## Round 2 (2026-09-08)
+
+| Bug | Outcome | Detail |
+|---|---|---|
+| **BUG-006** | **Not a bug — retracted** | Re-verified a 3rd time: "Edit account" → heading "Edit Account", button "Save Changes" + Cancel. Correct in code and live. No change. |
+| **BUG-009** | **Not a bug** | Verified live in a foreground pane: the Quick Add sheet closes ~700 ms after "Record Expense" (the deliberate checkmark delay) and re-opens empty. The Stage 1 "stayed open" reading was hidden-tab `setTimeout` throttling. No change. |
+| **BUG-014** | **Not a bug** | Root cause found: `Landing.tsx` sets `document.documentElement.style.scrollBehavior = "smooth"`. The automated pane doesn't animate CSS smooth-scroll, so programmatic `window.scrollTo` looked frozen. `window.scroll({behavior:"instant"})` works, `/privacy` scrolls fine in the same pane, and every landing section (hero → product → pricing → FAQ → CTA) renders. A real user's wheel/keyboard scroll is unaffected by `scroll-behavior`. No change. |
+| **BUG-016** | **Fixed** | `feat(workspace): pending-invitations list with revoke`. Uses the already-shipped `list_invitations` / `revoke_invitation` RPCs — **no migration**. Verified live: the section listed the leftover Stage 1 invite, Revoke removed it, persisted through reload. |
+| **BUG-001 (full)** | **Migration written** | `supabase/migrations/20260907190000_bug001_link_recurring_to_income_stream.sql` — FK + `ON DELETE CASCADE`, backfill, orphan cleanup. **Not applied** (no `SUPABASE_ACCESS_TOKEN` this session). The round-1 interim fix (`useIncomeStreams.remove()` deletes the twin by name+amount) already prevents new orphans and stays correct until the migration lands. |
+
+## Carried forward
 
 | Item | Reason |
 |---|---|
-| BUG-006 | **Retracted** — re-verified, code + live both correct. |
-| BUG-009 | Needs a real-browser check (likely a hidden-tab timer artefact). |
-| BUG-014 | Landing deep-scroll — needs a real desktop + mobile browser to confirm it's a real trap vs a harness artefact. |
-| BUG-016 | Pending-invitation revoke — needs a `list_invitations` / `revoke_invitation` RPC + migration; not in the chosen scope. |
+| **Apply the BUG-001 migration** | Needs `SUPABASE_ACCESS_TOKEN` + `supabase db push` + `supabase gen types`, then a 1-line follow-up to drop the now-redundant manual delete in `useIncomeStreams.remove()`. |
 | OBS-1 / OBS-2 / OBS-3 | Product / environment questions, not code defects. |
 
 ## Notes for the reviewer

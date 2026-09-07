@@ -1,8 +1,10 @@
 # FinRoot — QA Stage 1 Bug Log
 
-> **Stage 2 update (2026-09-07, branch `fix/qa-stage-2`):** BUG-001, 002, 003, 004, 005, 007, 008,
-> 010, 011, 012, 013, 015 and 018 are **fixed** (typecheck 0 · lint 0 · 813 tests green). BUG-006
-> **retracted**. BUG-009, 014, 016 carried forward. Full status + commit list: `qa/STAGE-2-STATUS.md`.
+> **Stage 2 (branch `fix/qa-stage-2`, PR #6):** BUG-001, 002, 003, 004, 005, 007, 008, 010, 011,
+> 012, 013, 015, 016, 018 **fixed** (typecheck 0 · lint 0 · 813 tests green). BUG-006 / 009 / 014
+> investigated and confirmed **not bugs** (see `qa/STAGE-2-STATUS.md`). BUG-001's structural
+> FK+CASCADE version is written as a migration but not yet applied (needs a Supabase access token);
+> the interim frontend fix is live. Only carry-forward: apply that migration.
 
 
 Commit `2a4b0d3` · env: Vite dev `http://localhost:5188` against live Supabase `ludbntvhagefadfkhrjj` · account `demo@finroot.app` (owner + platform admin, Canopy).
