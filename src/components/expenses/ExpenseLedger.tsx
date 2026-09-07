@@ -173,8 +173,12 @@ export default function ExpenseLedger() {
           <h2 className="font-display text-sm font-semibold text-foreground uppercase tracking-wider">
             Expense Ledger
           </h2>
+          {/* BUG-015 — this is the count for the whole period (after the chip
+              and search filters, before the day/category matrix below). It read
+              "in view", which contradicted the matrix's own "Transactions
+              found: N" when a day or category was selected. */}
           <p className="text-xs text-muted-foreground mt-0.5">
-            {preFiltered.length} {preFiltered.length === 1 ? "entry" : "entries"} in view
+            {preFiltered.length} {preFiltered.length === 1 ? "entry" : "entries"}
             {" · "}
             <span className="lowercase">{ledgerPeriodLabel(period)}</span>
           </p>
