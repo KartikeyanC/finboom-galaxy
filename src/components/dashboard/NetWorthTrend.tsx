@@ -1,28 +1,27 @@
-import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Scale, TrendingUp, TrendingDown } from "lucide-react";
-import { useAccounts } from "@/lib/accountsStore";
-import { useInvestments, getCurrent } from "@/lib/investmentsStore";
-import { useDebts, debtSummary } from "@/lib/debtsStore";
 import { formatCompact } from "@/lib/finance";
-import { useLiveAccountBalances, calcLiveTotalBalance } from "@/hooks/useLiveAccountBalances";
 
-const NetWorthTrend = () => {
-  const { accounts } = useAccounts();
-  const { records: investments } = useInvestments();
-  const debts = useDebts();
-  const liveBalances = useLiveAccountBalances();
+interface NetWorthTrendProps {
+  assets: number;
+  liabilities: number;
+  netWorth: number;
+  hasData: boolean;
+}
 
-  const { assets, liabilities, netWorth, hasData } = useMemo(() => {
-    const acc = calcLiveTotalBalance(accounts, liveBalances);
-    const inv = investments.reduce((s, r) => s + getCurrent(r), 0);
-    const assets = acc + inv;
-    const liabilities = debts.records.reduce((s, d) => s + Math.max(0, debtSummary(d).remaining), 0);
-    const netWorth = assets - liabilities;
-    const hasData = accounts.length > 0 || investments.length > 0 || debts.records.length > 0;
-    return { assets, liabilities, netWorth, hasData };
-  }, [accounts, investments, debts.records]);
-
+/**
+ * BUG-017 — this panel used to re-derive net worth itself from the localStorage
+ * stores, with a `useMemo` whose dependency list was missing `liveBalances`.
+ * The live balances load asynchronously, so the memo locked onto whatever it
+ * computed before they arrived (opening balances only) and never updated —
+ * leaving the "Wealth Overview" figure contradicting the top metric card on the
+ * same screen (e.g. -₹8,128 vs ₹52,000).
+ *
+ * It is now purely presentational. `DashboardClassic` computes the figures once
+ * — the same `fin` the metric cards use — and passes them in, so the two can
+ * never diverge again.
+ */
+const NetWorthTrend = ({ assets, liabilities, netWorth, hasData }: NetWorthTrendProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
