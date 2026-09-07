@@ -117,10 +117,13 @@ that would have caught all of this, was never written. Stages 2–4 were spot-ch
 **Stages 0, 2, 3 and 4 are complete.** 64 migrations written for Supabase project `ludbntvhagefadfkhrjj`,
 all applied as of 2026-08-15 — see "Pending migrations" below for the four that landed that day;
 32 tables, all finance tables tenant-scoped with RLS; 5 edge functions (`send-email` is deliberately
-NOT deployed — it was an authenticated open relay, BUG-005). Gates: `tsc` 0 · eslint 0 errors /
-27 known warnings · vitest **597 passing** · Playwright **`--workers=1`, with 7 known failures**.
-Those 7 are the open UI/A11Y findings (BUG-093 … 097), not flakes — see
-[docs/REMAINING_TESTS.md](./docs/REMAINING_TESTS.md) §2.
+NOT deployed — it was an authenticated open relay, BUG-005). Gates (re-measured 2026-09-07 on
+`master`): `tsc` 0 · eslint **0 errors / 24 known warnings** · vitest **813 passing** (57 files) ·
+Playwright **`--workers=1`**. The Playwright failure baseline needs a fresh full run — the `calendar`
+and `tracker-tagging` specs were added since — but the standing failures are the open UI/A11Y
+findings (BUG-093 … 097, see [docs/REMAINING_TESTS.md](./docs/REMAINING_TESTS.md) §2), plus
+`data-export`, `onboarding-wizard` (needs a service-role key) and `support-status` (fails while the
+live status page reports degraded).
 
 **The PWA suite is separate and needs the production build**, because the service worker registers
 only under `import.meta.env.PROD`:
