@@ -71,9 +71,15 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   type: TxnType;
   initial?: Transaction | null;
+  /**
+   * Seeds the date field on the CREATE path only — the Calendar page opens the
+   * dialog on whichever day the user clicked. Ignored when editing, where the
+   * row's own `occurred_at` wins.
+   */
+  defaultDate?: string | null;
 }
 
-export default function TransactionDialog({ open, onOpenChange, type, initial }: Props) {
+export default function TransactionDialog({ open, onOpenChange, type, initial, defaultDate }: Props) {
   const isEdit = !!initial;
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
@@ -137,7 +143,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
       setCategory(type === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0]);
       setSubcategory(null);
       setDescription("");
-      setOccurredAt(new Date().toISOString());
+      setOccurredAt(defaultDate || new Date().toISOString());
       // Only the create path resets these. They used to be reset here
       // unconditionally, which overwrote the values just recovered from the row
       // being edited — so saving an edit silently detached the transaction from
@@ -159,8 +165,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial }:
     setSplitMode("paid_full");
     setSplitTotal("");
     setSplitFriend("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initial, type]);
+  }, [open, initial, type, defaultDate]);
 
   // When user toggles type within the dialog, reset category to a sensible default.
   useEffect(() => {

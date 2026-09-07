@@ -43,6 +43,7 @@ const Investments = lazy(() => import("./pages/Investments.tsx"));
 const Budget = lazy(() => import("./pages/Budget.tsx"));
 const Goals = lazy(() => import("./pages/Goals.tsx"));
 const CalculatorPage = lazy(() => import("./pages/Calculator.tsx"));
+const CalendarPage = lazy(() => import("./pages/Calendar.tsx"));
 const RemindersPage = lazy(() => import("./pages/Reminders.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
 const ProfilePage = lazy(() => import("./pages/Profile.tsx"));
@@ -193,6 +194,10 @@ const App = () => (
                             <Route path="/budget" element={<MenuGuard menuId="budget"><Budget /></MenuGuard>} />
                             <Route path="/goals" element={<MenuGuard menuId="goals"><Goals /></MenuGuard>} />
                             <Route path="/calculator" element={<MenuGuard menuId="calculator"><CalculatorPage /></MenuGuard>} />
+                            {/* Calendar is a lens over `transactions`, which is never
+                                menu-gated (see menuContract). It is always-allowed like
+                                Accounts — resolved in AccessContext, not all_feature_menus(). */}
+                            <Route path="/calendar" element={<CalendarPage />} />
                             <Route path="/calculators" element={<Navigate to="/app/calculator" replace />} />
                             <Route path="/reminders" element={<MenuGuard menuId="reminders"><RemindersPage /></MenuGuard>} />
                             <Route path="/settings" element={<SettingsPage />} />

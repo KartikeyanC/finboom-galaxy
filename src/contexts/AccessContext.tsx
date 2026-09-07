@@ -68,6 +68,10 @@ const ALWAYS_ALLOWED = new Set([
   "settings",
   "profile",
   "notifications",
+  // Calendar is a read-through view of `transactions` (never menu-gated, see
+  // menuContract) — navigation-only, not a plan feature, so it is not in
+  // all_feature_menus() and resolves here instead.
+  "calendar",
 ]);
 
 function memberToProfile(m: TenantMemberInfo): AccessProfile {

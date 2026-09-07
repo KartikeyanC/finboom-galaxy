@@ -143,6 +143,11 @@ const APP_ROUTES = [
   // pair (the tracker chip) and a progress bar, which are exactly the two
   // things a contrast/aria sweep exists to catch.
   "/app/trackers",
+  // Calendar, same reasoning: a 42-cell grid of buttons with their own
+  // accessible names, plus the in/out bar colours — a contrast/aria sweep is
+  // exactly what catches a gridcell that cannot be announced or a bar that
+  // fails AA against the card behind it.
+  "/app/calendar",
 ];
 
 const SR_RULES = [
