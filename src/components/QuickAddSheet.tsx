@@ -28,6 +28,19 @@ interface Props {
   onOpenChange: (v: boolean) => void;
 }
 
+/**
+ * BUG-010 — `new Date("2026-09-07")` parses as UTC midnight, so an entry made
+ * this afternoon showed up in the ledger stamped 05:30 AM (IST). Quick Add only
+ * captures a date; stamp the real wall-clock time when that date is today, and
+ * local noon otherwise so a timezone offset can never shift the calendar day.
+ */
+function occurredAtFor(date: string): string {
+  const today = new Date();
+  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  if (date === localToday) return today.toISOString();
+  return new Date(`${date}T12:00:00`).toISOString();
+}
+
 export default function QuickAddSheet({ open, onOpenChange }: Props) {
   const createTxn = useCreateTransaction();
   const { store: customCats } = useCustomCategories();
@@ -87,7 +100,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
         category,
         description: note.trim() || null,
         tracker_id: trackerId !== "none" ? trackerId : null,
-        occurred_at: new Date(date).toISOString(),
+        occurred_at: occurredAtFor(date),
       });
       setSaved(true);
       toast.success(`${type === "expense" ? "Expense" : "Income"} recorded`);
