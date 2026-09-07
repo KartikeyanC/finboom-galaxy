@@ -12,11 +12,17 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { notifyError } from "@/lib/errorMessages";
 import { useTenantSetting } from "@/hooks/useTenantSetting";
+import { usePlansCatalogue } from "@/hooks/usePricingContent";
+import { formatPlanPrice } from "@/lib/pricing";
 
 
 /* ── Plan info ─────────────────────────────────────────────────────────────── */
-const ROOTS_FEATURES = ["Unlimited transactions", "1 budget cycle", "3 active goals", "Email digests"];
-const PRO_FEATURES   = ["Everything in Roots", "Unlimited budgets & goals", "Multi-currency portfolio", "Screenshot → transaction AI", "Insurance carryover engine"];
+// BUG-007 — the old copy assumed a defunct two-tier "Roots / Pro @ ₹199/mo"
+// model. The real plans are Roots (free) / Canopy / Heritage, priced yearly and
+// editable in the PO console, so the price and the next tier's name are read
+// from the `plans` catalogue rather than hard-coded.
+const FREE_FEATURES = ["Unlimited transactions", "1 budget cycle", "3 active goals", "Email digests"];
+const PAID_FEATURES = ["Everything in Roots", "Unlimited budgets & goals", "Multi-currency portfolio", "Screenshot → transaction AI", "Insurance carryover engine"];
 
 function PlanCard() {
   const { currentTenantId } = useTenant();
@@ -25,6 +31,7 @@ function PlanCard() {
   const [status, setStatus] = useState<string | null>(null);
   const [end, setEnd]       = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { data: catalogue } = usePlansCatalogue();
 
   useEffect(() => {
     if (!currentTenantId) return;
@@ -43,8 +50,12 @@ function PlanCard() {
     })();
   }, [currentTenantId]);
 
-  const isPro    = plan?.toLowerCase().includes("pro");
   const isActive = status === "active" || status === "trialing";
+  // Any plan that isn't the free "Roots" tier and is currently in force.
+  const isPaid = !!plan && plan.toLowerCase() !== "roots" && isActive;
+  // The cheapest paid plan — what a free user would be offered to upgrade to.
+  const nextPlan = (catalogue ?? []).find((p) => p.price_cents > 0);
+  const nextPlanPrice = nextPlan ? formatPlanPrice(nextPlan) : null;
 
   if (loading) return (
     <div className="glass-card p-6 flex items-center gap-2 text-muted-foreground text-sm">
@@ -52,41 +63,43 @@ function PlanCard() {
     </div>
   );
 
+  const upgradeLabel = nextPlan ? `Upgrade to ${nextPlan.name}` : "Upgrade";
+
   return (
     <div className={cn(
       "glass-card p-6 space-y-4",
-      isPro && "border-primary/30 bg-primary/5",
+      isPaid && "border-primary/30 bg-primary/5",
     )}>
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <h2 className="font-display font-semibold text-foreground flex items-center gap-2">
-            {isPro ? <Crown className="w-4 h-4 text-primary" /> : <Sparkles className="w-4 h-4 text-muted-foreground" />}
+            {isPaid ? <Crown className="w-4 h-4 text-primary" /> : <Sparkles className="w-4 h-4 text-muted-foreground" />}
             Current Plan
           </h2>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-2xl font-bold font-display text-foreground">{plan ?? "Roots"}</span>
-            <Badge variant={isActive && isPro ? "default" : "secondary"} className="text-xs">
+            <Badge variant={isPaid ? "default" : "secondary"} className="text-xs">
               {isActive ? (status === "trialing" ? "Trial" : "Active") : "Free"}
             </Badge>
           </div>
-          {end && isPro && (
+          {end && isPaid && (
             <p className="text-xs text-muted-foreground">
               Renews {new Date(end).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </p>
           )}
         </div>
 
-        {!isPro && (
+        {!isPaid && (
           <Button
             size="sm"
             className="shrink-0 gap-1.5"
             onClick={() => navigate("/billing")}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Upgrade to Pro
+            {upgradeLabel}
           </Button>
         )}
-        {isPro && (
+        {isPaid && (
           <Button size="sm" variant="outline" className="shrink-0 gap-1.5" onClick={() => navigate("/billing")}>
             Manage plan
           </Button>
@@ -95,23 +108,28 @@ function PlanCard() {
 
       {/* features */}
       <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5">
-        {(isPro ? PRO_FEATURES : ROOTS_FEATURES).map(f => (
+        {(isPaid ? PAID_FEATURES : FREE_FEATURES).map(f => (
           <div key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CheckCircle2 className={cn("w-3.5 h-3.5 shrink-0", isPro ? "text-primary" : "text-muted-foreground/60")} />
+            <CheckCircle2 className={cn("w-3.5 h-3.5 shrink-0", isPaid ? "text-primary" : "text-muted-foreground/60")} />
             {f}
           </div>
         ))}
       </div>
 
       {/* upgrade banner for free users */}
-      {!isPro && (
+      {!isPaid && (
         <button
           onClick={() => navigate("/billing")}
           className="w-full mt-1 rounded-lg border border-primary/20 bg-primary/8 hover:bg-primary/12 transition-colors p-3 flex items-center justify-between gap-3 group"
         >
           <div className="text-left">
-            <p className="text-sm font-medium text-foreground">Upgrade to Pro — ₹199/mo</p>
-            <p className="text-xs text-muted-foreground">Unlimited budgets, AI bill scan, multi-currency & more</p>
+            <p className="text-sm font-medium text-foreground">
+              {upgradeLabel}
+              {nextPlanPrice && nextPlanPrice.price !== "Free"
+                ? ` — ${nextPlanPrice.price}${nextPlanPrice.period}`
+                : ""}
+            </p>
+            <p className="text-xs text-muted-foreground">Unlimited budgets, AI bill scan, multi-currency &amp; more</p>
           </div>
           <ArrowRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
         </button>
@@ -187,7 +205,7 @@ export default function ProfilePage() {
       <header>
         <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Account</span>
         <h1 className="font-display text-3xl font-bold text-foreground mt-1 flex items-center gap-2">
-          <User className="w-7 h-7" /> Profile
+          <User className="w-7 h-7" /><span>Profile</span>
         </h1>
       </header>
 
