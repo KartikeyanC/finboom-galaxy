@@ -20,6 +20,17 @@
 -- follow-up (the CASCADE does it).
 -- ===========================================================================
 
+-- 0. snapshot ------------------------------------------------------------
+-- The database is shared and has NO backups (docs/Disaster_Recovery.md), and
+-- steps 2 and 3 below run an UPDATE and a DELETE against production rows.
+-- docs/runbooks/apply-a-migration.md §1 requires a manual copy first. Kept in a
+-- separate schema so `supabase gen types` (public only) never sees it; drop it
+-- once the verification queries at the bottom check out:
+--   DROP TABLE _backup.recurring_items_bug001;
+CREATE SCHEMA IF NOT EXISTS _backup;
+CREATE TABLE IF NOT EXISTS _backup.recurring_items_bug001 AS
+  SELECT * FROM public.recurring_items;
+
 -- 1. the link -------------------------------------------------------------
 ALTER TABLE public.recurring_items
   ADD COLUMN IF NOT EXISTS income_stream_id uuid
@@ -61,6 +72,20 @@ UPDATE public.recurring_items ri
 -- A recurring income the user created directly on the Recurring Income tab is
 -- NOT deleted — those never had a matching stream name by coincidence often
 -- enough to matter, and this only removes rows the "add stream" flow created.
+--
+-- ⚠️  This is the only destructive statement in the migration. Before running
+-- it on a database you cannot restore, list exactly what it will remove:
+--
+--   SELECT ri.id, ri.tenant_id, ri.name, ri.amount, ri.next_due_date, ri.created_at
+--     FROM public.recurring_items ri
+--    WHERE ri.type = 'income'
+--      AND ri.income_stream_id IS NULL
+--      AND NOT EXISTS (SELECT 1 FROM public.income_streams s
+--                       WHERE s.tenant_id = ri.tenant_id AND s.name = ri.name);
+--
+-- If any row in that list is a deliberate manual recurring income, stop and
+-- soft-delete instead:  UPDATE ... SET is_active = false  (same dashboard
+-- outcome — ActionableReminders filters on is_active — and reversible).
 DELETE FROM public.recurring_items ri
  WHERE ri.type = 'income'
    AND ri.income_stream_id IS NULL
