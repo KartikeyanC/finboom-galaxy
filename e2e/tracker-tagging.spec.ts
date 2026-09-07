@@ -133,7 +133,7 @@ test.describe("tracker tagging", () => {
       return {
         month: /THIS MONTH\s+(₹[\d,]+)/.exec(t)?.[1],
         records: /TOTAL RECORDS\s+(\d+)/.exec(t)?.[1],
-        rowAmount: new RegExp(`${NOTE}\s*−?\s*(₹[\d,]+)`).exec(t)?.[1],
+        rowAmount: new RegExp(`${NOTE}\\s*−?\\s*(₹[\\d,]+)`).exec(t)?.[1],
       };
     };
 
