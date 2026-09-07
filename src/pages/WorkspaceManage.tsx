@@ -3,6 +3,7 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
+  Clock,
   Eye,
   Mail,
   Plus,
@@ -13,6 +14,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +69,35 @@ export default function WorkspaceManage() {
   // Shown once, right after creating an invitation — the token is never
   // retrievable again (only its hash is stored).
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+
+  /* ── pending invitations (BUG-016) ── */
+  type InviteRow = {
+    id: string; email: string; role: string;
+    expires_at: string; accepted_at: string | null; created_at: string; status: string;
+  };
+  const [invites, setInvites] = useState<InviteRow[]>([]);
+
+  const reloadInvites = async () => {
+    if (!currentTenantId) return;
+    const { data, error } = await supabase.rpc("list_invitations", { p_tenant_id: currentTenantId });
+    if (error) return notifyError(error);
+    setInvites((data ?? []) as InviteRow[]);
+  };
+
+  useEffect(() => {
+    void reloadInvites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTenantId]);
+
+  const handleRevokeInvite = async (id: string, email: string) => {
+    const { error } = await supabase.rpc("revoke_invitation", { p_invitation_id: id });
+    if (error) return notifyError(error);
+    toast.success(`Invitation to ${email} revoked`);
+    void reloadInvites();
+  };
+
+  // Only the rows the owner can still act on: not yet accepted.
+  const openInvites = invites.filter((i) => i.status === "pending" || i.status === "expired");
 
   /* ── helpers ── */
   const persistMenus = async (userId: string, menus: string[]) => {
@@ -156,6 +187,7 @@ export default function WorkspaceManage() {
     setInviteEmail(""); setInviteRole("viewer"); setInviteMenus([...ALL_MENU_IDS]);
     setShowInviteMenus(false);
     await refresh();
+    void reloadInvites();
   };
 
   const collaborators = rows.filter((r) => !r.isOwner);
@@ -370,6 +402,59 @@ export default function WorkspaceManage() {
             </div>
           </div>
 
+          {/* ── Pending invitations (BUG-016) ── */}
+          {openInvites.length > 0 && (
+            <div className="space-y-3">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                Pending Invitations ({openInvites.length})
+              </Label>
+              <div className="space-y-2">
+                {openInvites.map((inv) => {
+                  const expired = inv.status === "expired";
+                  return (
+                    <div
+                      key={inv.id}
+                      className="glass-card flex items-center gap-3 p-3 text-sm"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        <Mail className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-foreground">{inv.email}</div>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className="capitalize">{inv.role}</span>
+                          <span>·</span>
+                          <Clock className="h-3 w-3" />
+                          {expired ? (
+                            <span className="text-destructive">expired</span>
+                          ) : (
+                            <span>
+                              expires{" "}
+                              {new Date(inv.expires_at).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRevokeInvite(inv.id, inv.email)}
+                        aria-label={`Revoke the invitation to ${inv.email}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        {expired ? "Clear" : "Revoke"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Member list ── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -379,7 +464,7 @@ export default function WorkspaceManage() {
               <Button
                 size="sm" variant="ghost"
                 className="h-7 gap-1.5 text-xs text-muted-foreground"
-                onClick={() => refresh()}
+                onClick={() => { void refresh(); void reloadInvites(); }}
               >
                 <RefreshCw className="h-3 w-3" /> Refresh
               </Button>
