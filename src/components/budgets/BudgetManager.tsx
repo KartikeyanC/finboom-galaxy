@@ -50,7 +50,9 @@ import { toast } from "sonner";
 // `spent` is deliberately absent: it is derived from transactions, never typed.
 const schema = z.object({
   bucket: z.string().min(1),
-  allocated: z.number().nonnegative().max(1e12),
+  // BUG-005 — was `.nonnegative()`, so a blank field (Number("") === 0) saved a
+  // meaningless ₹0 budget and still toasted "Budget saved".
+  allocated: z.number().positive("Enter an allocation greater than zero").max(1e12),
   period_start: z.string().min(1),
 });
 
@@ -67,7 +69,7 @@ function BudgetDialog({
   // period), so the same bucket can never end up allocated twice.
   const save = useSetBudgetAllocation();
   const [bucket, setBucket] = useState<string>(BUDGET_BUCKETS[0]);
-  const [allocated, setAllocated] = useState("0");
+  const [allocated, setAllocated] = useState("");
   const [periodStart, setPeriodStart] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
@@ -81,7 +83,7 @@ function BudgetDialog({
       setPeriodStart(initial.period_start);
     } else {
       setBucket(BUDGET_BUCKETS[0]);
-      setAllocated("0");
+      setAllocated("");
       const d = new Date();
       setPeriodStart(new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10));
     }
