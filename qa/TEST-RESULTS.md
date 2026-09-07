@@ -1,6 +1,24 @@
 ```
 FINROOT QA AUDIT
-STAGE 1
+STAGE 1  (+ STAGE 2 fix outcome, appended 2026-09-08)
+
+================================================================
+STAGE 2 OUTCOME — branch fix/qa-stage-2 · PR #6
+  FIXED (typecheck 0 · lint 0 · 813 tests green; key ones re-verified live):
+    BUG-002, 003, 004, 005, 007, 008, 010, 011, 012, 013, 015, 016, 017, 018
+  NOT BUGS (investigated, confirmed):
+    BUG-006  account edit button label is correct
+    BUG-009  quick-add sheet closes ~700ms after save (Stage-1 reading was a hidden-tab timer throttle)
+    BUG-014  landing sets scroll-behavior:smooth; automation pane can't animate it — real scroll is fine
+  BLOCKED — MIGRATION NOT APPLIED:
+    BUG-001  interim frontend fix is SHIPPED (stops new orphans). The structural fix
+             (supabase/migrations/20260907190000_bug001_link_recurring_to_income_stream.sql —
+             FK + ON DELETE CASCADE + backfill + orphan cleanup) is written and reviewed SAFE,
+             but CANNOT be applied here: no SUPABASE_ACCESS_TOKEN, no DB password, CLI not logged in.
+             Target is the LIVE project ludbntvhagefadfkhrjj (no backups) — applying it is
+             production-affecting. Full blocker + apply steps: qa/BUGS.md §BUG-001.
+             ↳ do NOT mark BUG-001 FIXED until the migration is applied and the repro re-tested.
+================================================================
 
 Date:                         2026-09-07
 Application version / commit: 2a4b0d3  (master — "Merge pull request #5 from KartikeyanC/docs/gate-counts")
@@ -70,9 +88,9 @@ Passed:       6  (transactions, income streams, budgets, goals, trackers, accoun
 Failed:       0
 Not Tested:   6  (investments, insurance, reminders, net-worth entries, trips, demat accounts —
                   all sit on empty states on the demo account; not exercised)
-  Defects: BUG-001 (income-stream delete orphans its recurring item),
-           BUG-003 (account delete has no confirmation),
-           BUG-005 (budget accepts a ₹0 allocation).
+  Defects (all addressed in Stage 2): BUG-001 (income-stream delete orphans its recurring item —
+           interim fix shipped, DB migration BLOCKED), BUG-003 (account delete has no confirmation —
+           FIXED), BUG-005 (budget accepts a ₹0 allocation — FIXED).
 
 ================================
 
@@ -146,27 +164,22 @@ Not Tested:  Tablet 768/1024 and the 1280/1920 desktop steps (spot checks only);
 
 ================================
 
-BUG SUMMARY
+BUG SUMMARY   (status as of Stage 2, 2026-09-08)
 P0:  0
 P1:  0
-P2:  2    BUG-001  income-stream delete leaves an orphaned recurring item (phantom dashboard reminder + "Mark received")
-          BUG-017  dashboard shows two contradictory net-worth figures at once (−₹8,128 top card vs
-                   ₹52,000 "Wealth Overview"); root cause = "Wealth Overview" reads legacy localStorage
-                   stores while everything else reads server data. Root cause confirmed in code;
-                   exact repro trigger NEEDS VERIFICATION on a clean browser.
-P3:  6    BUG-002  Ctrl+K command palette dialog has no accessible name (console error every open)
-          BUG-003  deleting an account has no confirmation dialog (one-click, permanent) + no aria-label
-          BUG-004  goal card icon buttons have no aria-label
-          BUG-005  "Add budget" accepts a blank / ₹0 allocation, reports "Budget saved"
-          BUG-007  Profile "Upgrade to Pro — ₹199/mo" — isPro check always false, wrong plan model
-          BUG-018  account card "Archive" button is a mock ("Archived (mock)" toast, does nothing)
-P4:  9    BUG-008  /reset-password enables the form from a normal session (signed-out path is fine) ·
-          BUG-009 quick-add field-reset inconsistency · BUG-010 quick-add uses midnight-UTC time ·
-          BUG-011 Import page has no <h1> · BUG-012 leading space in several <h1>s ·
-          BUG-013 Insurance counters render "00" · BUG-014 landing deep-scroll NEEDS VERIFICATION
-          in a real browser · BUG-015 Expenses "N entries in view" vs filtered count ·
-          BUG-016 no way to view/revoke a pending workspace invite
-RETRACTED: BUG-006 (account edit button label) — re-verified, code + live both correct.
+P2:  2    BUG-001  income-stream delete orphans its recurring item — interim fix SHIPPED;
+                   structural DB migration BLOCKED (not applied — no Supabase credentials). See above.
+          BUG-017  dashboard showed two contradictory net-worth figures — FIXED. Real root cause was
+                   NetWorthTrend's useMemo missing `liveBalances` from its deps; new useNetWorthSummary
+                   hook is the single source. Verified live: all three figures now read −₹8,128.
+P3:  6 (all FIXED)  BUG-002 command palette a11y · BUG-003 account delete confirm + aria-label ·
+          BUG-004 goal icon button labels · BUG-005 budget rejects ₹0 · BUG-007 Profile plan card
+          uses the real catalogue · BUG-018 removed the mock "Archive" button
+P4:  9 (7 FIXED, 2 not bugs)  BUG-008 reset-password recovery guard ✓ · BUG-010 quick-add time ✓ ·
+          BUG-011 Import <h1> ✓ · BUG-012 heading whitespace ✓ · BUG-013 Insurance counters ✓ ·
+          BUG-015 Expenses count wording ✓ · BUG-016 pending-invite list+revoke ✓ ·
+          BUG-009 not a bug · BUG-014 not a bug
+NOT A BUG: BUG-006 (account edit button label) — re-verified, code + live both correct.
 + 5 observations (negative "total assets", budget summary spent=0, dev-server restarts,
   realtime WS drops, lingering closed Radix dialogs) — see qa/BUGS.md.
 
@@ -199,25 +212,20 @@ FINAL STATUS:  PARTIAL
 
 ================================
 
-PRODUCTION READY?  NO — not yet
+PRODUCTION READY?  NO — not yet (but close)
 
-REASON:
-  1. Two P2 defects. BUG-001: deleting an income stream leaves a live recurring item that nags the
-     user on the dashboard and offers to log income for a source they removed. BUG-017: the
-     dashboard shows two different net-worth numbers at the same time because one panel still reads
-     the old localStorage stores — the localStorage→server migration must finish.
-  2. The P3 batch is small but user-facing: a screen-reader user can't identify the command
-     palette or several icon buttons; an account can be deleted with one mis-click and no confirm;
-     the budget form saves meaningless ₹0 rows; the Profile page advertises a plan that doesn't
-     exist.
-  3. Coverage gaps that must close before a real launch: a genuine multi-role permission test
-     (owner vs admin vs viewer, UI and RLS), a fresh sign-up + onboarding run, and a billing
-     path check. These need infrastructure Stage 1 didn't have (a service-role key / provisioned
-     test accounts / a second real user).
+REASON (updated after Stage 2):
+  1. BUG-017 and the whole P3 batch are FIXED and on PR #6.
+  2. BUG-001 is only half-closed: the interim fix stops new orphans, but the structural migration
+     (and the cleanup of orphans already in the live DB) is BLOCKED on Supabase credentials. Apply
+     that migration, re-test the repro, then it can be marked FIXED.
+  3. Coverage gaps unchanged from Stage 1: a genuine multi-role permission test (owner vs admin vs
+     viewer, UI and RLS), a fresh sign-up + onboarding run, and a billing path check — all need
+     infrastructure this audit didn't have (service-role key / provisioned test accounts / a
+     second real user).
 
-  The codebase itself is mature — 813 passing unit tests, 0 tsc/eslint errors, code-split routes,
-  RLS-first design — so the distance to "ready" is short: fix BUG-001 and the P3s, then run the
-  multi-role and fresh-signup passes that Stage 1 was blocked from doing.
+  813 passing tests, 0 tsc/eslint errors. Once the BUG-001 migration lands and the multi-role +
+  fresh-signup passes run, this is launch-ready.
 
 ================================
 Full detail: qa/PROJECT-OVERVIEW.md · qa/PAGE-INVENTORY.md · qa/BUTTON-INVENTORY.md ·

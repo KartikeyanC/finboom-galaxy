@@ -1,10 +1,13 @@
 # FinRoot — QA Stage 1 Bug Log
 
-> **Stage 2 (branch `fix/qa-stage-2`, PR #6):** BUG-001, 002, 003, 004, 005, 007, 008, 010, 011,
-> 012, 013, 015, 016, 018 **fixed** (typecheck 0 · lint 0 · 813 tests green). BUG-006 / 009 / 014
-> investigated and confirmed **not bugs** (see `qa/STAGE-2-STATUS.md`). BUG-001's structural
-> FK+CASCADE version is written as a migration but not yet applied (needs a Supabase access token);
-> the interim frontend fix is live. Only carry-forward: apply that migration.
+> **Stage 2 (branch `fix/qa-stage-2`, PR #6):** BUG-002, 003, 004, 005, 007, 008, 010, 011,
+> 012, 013, 015, 016, 018 **FIXED** (typecheck 0 · lint 0 · 813 tests green). BUG-006 / 009 / 014
+> investigated and confirmed **NOT BUGS** (see `qa/STAGE-2-STATUS.md`).
+> **BUG-001 — BLOCKED — MIGRATION NOT APPLIED.** The interim frontend fix (stop new orphans) is
+> live and shipped. The structural fix (FK + `ON DELETE CASCADE` + backfill + orphan cleanup) is
+> written as `supabase/migrations/20260907190000_bug001_link_recurring_to_income_stream.sql` and
+> **reviewed as safe**, but cannot be applied from this environment — no Supabase access token, no
+> DB password, CLI not logged in. See the BUG-001 entry below for the exact blocker + apply steps.
 
 
 Commit `2a4b0d3` · env: Vite dev `http://localhost:5188` against live Supabase `ludbntvhagefadfkhrjj` · account `demo@finroot.app` (owner + platform admin, Canopy).
@@ -15,6 +18,7 @@ Severity: **P0** unusable/data-loss · **P1** major feature broken · **P2** imp
 ---
 
 ## BUG-001 — Deleting an income stream orphans its recurring item
+- **STATUS:** **BLOCKED — MIGRATION NOT APPLIED.** Interim frontend fix is live (commit `5b58362`); structural DB fix is written & reviewed but unapplied. Do **not** mark FIXED until the migration is applied and the reproduction re-tested. Details in the "Structural fix" block below.
 - **SEVERITY:** P2
 - **MODULE:** Income / Recurring
 - **PAGE / ROUTE:** `/app/income` (both tabs) + `/app` dashboard "Reminders"
@@ -28,7 +32,47 @@ Severity: **P0** unusable/data-loss · **P1** major feature broken · **P2** imp
 - **CONSOLE / NETWORK:** none (silent).
 - **DATABASE IMPACT:** orphaned `recurring_items` row; `useIncomeStreams.remove()` (`src/hooks/useIncomeStreams.ts:229`) only does `db.from("income_streams").delete().eq("id", id)` and never touches `recurring_items`.
 - **EVIDENCE:** reproduced during this audit; recurring item had to be deleted separately from the Recurring Income tab.
-- **NOTES:** Either cascade the delete, or don't auto-create the recurring item, or surface it as the same object in both places.
+
+### Interim fix — SHIPPED (commit `5b58362`)
+`useIncomeStreams.remove()` now also deletes the twin `recurring_items` row, matched on `(tenant_id, type='income', name, amount)`. Stops **new** orphans. Verified live in Stage 2. Does not touch orphans that already exist in the DB, and has a narrow edge case (two streams with identical name+amount → both twins removed when one stream is deleted).
+
+### Structural fix — WRITTEN, REVIEWED, **NOT APPLIED**
+File: `supabase/migrations/20260907190000_bug001_link_recurring_to_income_stream.sql`
+
+**What it does**
+| # | Statement | Effect |
+|---|---|---|
+| 0 | `CREATE SCHEMA _backup; CREATE TABLE _backup.recurring_items_bug001 AS SELECT * FROM public.recurring_items` | full snapshot before the DML (DB has no backups; runbook §1) — kept out of `public` so `gen types` ignores it |
+| 1 | `ALTER TABLE public.recurring_items ADD COLUMN income_stream_id uuid REFERENCES public.income_streams(id) ON DELETE CASCADE` + index | the link. Nullable — manual recurring items keep it NULL and are never cascade-affected |
+| 2 | `UPDATE recurring_items … SET income_stream_id = (matching stream)` | backfill: for each `type='income'` row with NULL link, set it to the `income_streams` row in the **same tenant** with the **same `name` AND `amount`** (tie-break `ORDER BY display_order, id`) |
+| 3 | `DELETE FROM recurring_items WHERE type='income' AND income_stream_id IS NULL AND NOT EXISTS (stream with same tenant+name)` | remove the pre-fix orphans — rows still unlinked whose stream is gone |
+
+**Review verdict — SAFE to apply, with two caveats:**
+1. **Step 3 is the only destructive statement.** Mitigations in the file: the step-0 snapshot, a pre-flight `SELECT` to list exactly what it will delete, and a note to switch to `UPDATE … SET is_active = false` (reversible, same dashboard outcome — `ActionableReminders` filters on `is_active`) if any listed row looks like a deliberate manual entry.
+2. **Backfill mis-link edge case:** a *manual* recurring income that happens to share `name`+`amount` with a stream would get linked and then cascade-deleted with that stream. Requires an exact collision; the auto-created twin and such a manual row are already near-indistinguishable. Acceptable; flagged.
+- `ON DELETE CASCADE` direction is **correct**: the stream is the parent, the reminder is the dependent; deleting the stream should remove the reminder. Only linked rows cascade; NULL-linked (manual) rows never do.
+- Additive DDL, tiny table (~12 tenants), locks are milliseconds.
+- Live-schema check (read-only, this session): `GET /rest/v1/recurring_items?income_stream_id=is.null` → **400** — column does not exist yet, i.e. migration confirmed unapplied.
+
+**BLOCKER — cannot apply from this environment.** Missing (all three, per `docs/runbooks/apply-a-migration.md`):
+| Credential | Where it lives | Status |
+|---|---|---|
+| `SUPABASE_ACCESS_TOKEN` (`sbp_…`) | shell env var; Dashboard → Account → Access Tokens. **Never** in a repo file (`rotate-credentials.md`) | **absent** — not in env, not in any `.env*`, `supabase` CLI returns `LegacyPlatformAuthRequiredError` |
+| Database password | chosen at project creation; not stored in the repo by policy | **absent** |
+| Session-pooler host (`aws-N-<region>.pooler.supabase.com`, port 5432) | Dashboard → Project Settings → Database → Connection pooling | **absent** |
+
+**Apply procedure** (someone with the three above, from `F:\Movie\AK\FinRoot\_extracted`):
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = '<sbp_ token>'
+$sb   = 'F:\Movie\AK\FinRoot\.tools\supabase\supabase.exe'
+$pw   = [System.Web.HttpUtility]::UrlEncode('<db-password>')
+$url  = "postgresql://postgres.ludbntvhagefadfkhrjj:$pw@<pooler-host>:5432/postgres"
+'y' | & $sb db push --db-url $url --workdir 'F:\Movie\AK\FinRoot\_extracted'
+& $sb gen types typescript --project-id ludbntvhagefadfkhrjj > src/integrations/supabase/types.ts   # strip BOM/CRLF
+```
+Then run the verification queries at the foot of the migration, drop `_backup.recurring_items_bug001`, and the 1-line follow-up: remove the manual twin-delete from `useIncomeStreams.remove()` (CASCADE covers it) + set `income_stream_id` on the insert in `AddIncomeDialog`.
+
+**Production impact:** YES. Target is the LIVE shared project `ludbntvhagefadfkhrjj` (`supabase/config.toml`), no backups. Step 2 (`UPDATE`) and step 3 (`DELETE`) touch real rows across all tenants. The step-0 snapshot and the pre-flight `SELECT` are the safety net.
 
 ## BUG-002 — Command palette (Ctrl+K) dialog has no accessible name
 - **SEVERITY:** P3
