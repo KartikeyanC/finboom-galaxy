@@ -46,7 +46,7 @@ export default function SettingsPage() {
       <header>
         <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Preferences</span>
         <h1 className="font-display text-3xl font-bold text-foreground mt-1 flex items-center gap-2">
-          <SettingsIcon className="w-7 h-7" /> Settings
+          <SettingsIcon className="w-7 h-7" /><span>Settings</span>
         </h1>
       </header>
 

@@ -433,11 +433,12 @@ export function TransactionImporter() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header — BUG-011: this is the page's title, so it is the <h1>
+          (every other app page has one). */}
       <div>
-        <h2 className="font-display text-2xl font-bold">Import</h2>
+        <h1 className="font-display text-2xl font-bold">Import</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Bulk import assets, expenses, income, goals & budgets
+          Bulk import assets, expenses, income, goals &amp; budgets
         </p>
       </div>
 

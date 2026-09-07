@@ -514,7 +514,7 @@ export default function CalculatorPage() {
           Tools
         </span>
         <h1 className="font-display text-3xl font-bold text-foreground mt-1 flex items-center gap-2">
-          <CalcIcon className="w-7 h-7" /> Investment Calculator Suite
+          <CalcIcon className="w-7 h-7" /><span>Investment Calculator Suite</span>
         </h1>
         <p className="text-muted-foreground mt-2 max-w-xl">
           Institutional-grade calculators for averaging down, SIPs, CAGR, and P&L targets.

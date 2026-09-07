@@ -16,7 +16,7 @@ export default function RemindersPage() {
           Stay on track
         </span>
         <h1 className="font-display text-3xl font-bold text-foreground mt-1 flex items-center gap-2">
-          <Bell className="w-7 h-7" /> Reminders
+          <Bell className="w-7 h-7" /><span>Reminders</span>
         </h1>
         <p className="text-muted-foreground mt-2">
           {active.length} active · {dueSoon} need attention within the next 7 days.

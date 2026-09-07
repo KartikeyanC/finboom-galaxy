@@ -38,7 +38,7 @@ export default function NotificationsPage() {
         <div>
           <span className="text-xs font-semibold uppercase tracking-widest text-primary font-display">Inbox</span>
           <h1 className="font-display text-3xl font-bold text-foreground mt-1 flex items-center gap-2">
-            <Bell className="w-7 h-7" /> Notifications
+            <Bell className="w-7 h-7" /><span>Notifications</span>
           </h1>
           <p className="text-muted-foreground mt-2">Workspace, access and subscription updates.</p>
         </div>
