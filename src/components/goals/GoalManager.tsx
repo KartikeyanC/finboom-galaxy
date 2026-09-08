@@ -328,15 +328,16 @@ export default function GoalManager() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-emerald-500 hover:text-emerald-500"
-                      onClick={() => setFunding(g)}>
+                      onClick={() => setFunding(g)} aria-label={`Add funds to ${g.title}`}>
                       <PiggyBank className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline text-xs">Add funds</span>
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8"
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${g.title}`}
                       onClick={() => { setEditing(g); setOpen(true); }}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-coral hover:text-coral"
+                      aria-label={`Delete ${g.title}`}
                       onClick={() => setDeleteId(g.id)}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>

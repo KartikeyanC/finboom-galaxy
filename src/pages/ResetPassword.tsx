@@ -41,15 +41,27 @@ const ResetPassword = () => {
       setReady(true);
     };
 
-    // Supabase places a recovery token in the URL hash; the SDK consumes it
-    // and emits a PASSWORD_RECOVERY event on the auth listener.
+    // BUG-008 — this page must only open the "set a new password" form for a
+    // genuine recovery, never just because someone who is already signed in
+    // navigated here. A real reset link carries recovery params in the URL
+    // (hash `type=recovery` / `access_token`, or a PKCE `?code=`); the SDK
+    // consumes them and fires PASSWORD_RECOVERY.
+    const hasRecoveryParams =
+      hashParams.get("type") === "recovery" ||
+      hashParams.has("access_token") ||
+      searchParams.has("code");
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") becomeReady();
+      if (event === "PASSWORD_RECOVERY") becomeReady();
     });
-    // Also handle the case where the session is already established.
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) becomeReady();
-    });
+    // The SDK sometimes finishes consuming the hash before this listener is
+    // attached. Only fall back to the current session when this load actually
+    // carried recovery params — a plain existing session is not a reset.
+    if (hasRecoveryParams) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) becomeReady();
+      });
+    }
     return () => {
       subscription.unsubscribe();
       window.clearTimeout(timeout);
@@ -90,13 +102,14 @@ const ResetPassword = () => {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Sprout className="h-5 w-5" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">FinRoot</h1>
+          {/* Brand mark, not the page heading — the CardTitle below is the <h1>. */}
+          <span className="text-2xl font-semibold tracking-tight">FinRoot</span>
         </div>
         <Card>
           {linkInvalid ? (
             <>
               <CardHeader>
-                <CardTitle>This link isn't working</CardTitle>
+                <CardTitle as="h1">This link isn't working</CardTitle>
                 <CardDescription>
                   Password reset links expire after a while, and each one only works once. Request
                   a fresh one and it'll work the same way.
@@ -111,7 +124,7 @@ const ResetPassword = () => {
           ) : (
             <>
               <CardHeader>
-                <CardTitle>Set a new password</CardTitle>
+                <CardTitle as="h1">Set a new password</CardTitle>
                 <CardDescription>
                   {ready
                     ? "Choose a strong password to finish resetting your account."

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import MetricCard from "@/components/dashboard/MetricCard";
 import NetWorthTrend from "@/components/dashboard/NetWorthTrend";
+import { useNetWorthSummary } from "@/hooks/useNetWorthSummary";
 import { TrendingUp, PieChart, Coins, LineChart, Plus } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useGoals } from "@/hooks/useGoals";
@@ -31,6 +32,7 @@ const Investments = () => {
   const [editing, setEditing] = useState<InvestmentRecord | null>(null);
   const [allocMode, setAllocMode] = useState<"current" | "invested">("current");
   const { records, upsert, remove } = useInvestments();
+  const netWorth = useNetWorthSummary();
 
   const alloc = useMemo(() => {
     // "Account" ring — allocation by asset class at current value.
@@ -141,7 +143,12 @@ const Investments = () => {
           icon={<Coins className="w-4 h-4" />} delay={0.2} />
       </div>
 
-      <NetWorthTrend />
+      <NetWorthTrend
+        assets={netWorth.assets}
+        liabilities={netWorth.liabilities}
+        netWorth={netWorth.netWorth}
+        hasData={netWorth.hasData}
+      />
 
       <DematAccountsSection />
 

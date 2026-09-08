@@ -228,14 +228,33 @@ export function useIncomeStreams() {
 
   const remove = useCallback(
     async (id: string) => {
+      const target = streams.find((s) => s.id === id);
       patchCache((prev) => prev.filter((s) => s.id !== id));
       const { error } = await db.from(TABLE).delete().eq("id", id);
       if (error) {
         notifyError(error);
         invalidate();
+        return;
+      }
+      // BUG-001 — `AddIncomeDialog` creates a paired `recurring_items` row every
+      // time a stream is added. Delete its twin here so removing the stream
+      // doesn't leave an orphan that keeps nagging on the dashboard "Reminders"
+      // widget (with a "Mark received" button for income the user has deleted).
+      // Matched on the fields the two rows share — there is no FK between them
+      // yet. Best-effort: the stream delete already succeeded, so a failure
+      // cleaning up the twin must not surface as an error.
+      if (target && currentTenantId) {
+        await db
+          .from("recurring_items")
+          .delete()
+          .eq("tenant_id", currentTenantId)
+          .eq("type", "income")
+          .eq("name", target.name)
+          .eq("amount", target.amount);
+        qc.invalidateQueries({ queryKey: ["recurring"] });
       }
     },
-    [patchCache, invalidate],
+    [streams, patchCache, invalidate, currentTenantId, qc],
   );
 
   const resetAll = useCallback(async () => {

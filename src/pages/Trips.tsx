@@ -72,7 +72,7 @@ export default function TripsPage() {
             Sandbox · Isolated from Daily Ledger
           </span>
           <h1 className="font-display text-3xl font-bold text-foreground mt-1 flex items-center gap-2">
-            <Plane className="w-7 h-7 text-primary" /> Trip Tracker Hub
+            <Plane className="w-7 h-7 text-primary" /><span>Trip Tracker Hub</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Fund trips from your real accounts, credit lines and wallets. Spending stays out

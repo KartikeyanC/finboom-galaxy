@@ -60,7 +60,10 @@ import { formatMoney } from "@/lib/finance";
 
 const CATEGORY_ORDER: InsuranceCategory[] = ["health", "life", "vehicle", "gadget", "other"];
 
-const pad2 = (n: number) => String(n).padStart(2, "0");
+// BUG-013 — these counts were zero-padded to two digits, so an empty account
+// showed "00" on every KPI card, which reads as a broken widget. Plain numbers
+// match every other count in the app (Calendar, dashboard, …).
+const kpiCount = (n: number) => String(n);
 
 function KpiCard({
   label,
@@ -408,7 +411,7 @@ const Insurance = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
         <KpiCard
           label="Active Policies"
-          value={pad2(items.length)}
+          value={kpiCount(items.length)}
           icon={<ShieldCheck className="w-6 h-6" />}
           tone="emerald"
         />
@@ -420,7 +423,7 @@ const Insurance = () => {
         />
         <KpiCard
           label="Renewing Soon"
-          value={pad2(urgentCount)}
+          value={kpiCount(urgentCount)}
           icon={<Clock className="w-6 h-6" />}
           tone="amber"
           subline={`IN ${URGENT_DAYS} DAYS`}
@@ -428,7 +431,7 @@ const Insurance = () => {
         />
         <KpiCard
           label="Overdue Policies"
-          value={pad2(overdueCount)}
+          value={kpiCount(overdueCount)}
           icon={<AlertTriangle className="w-6 h-6" />}
           tone="destructive"
           ring={overdueCount > 0}

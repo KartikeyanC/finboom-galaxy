@@ -9,10 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useDashboardSummary } from "@/hooks/useDashboardSummary";
-import { useAccounts } from "@/lib/accountsStore";
-import { useLiveAccountBalances, calcLiveTotalBalance } from "@/hooks/useLiveAccountBalances";
-import { useInvestments, getCurrent } from "@/lib/investmentsStore";
-import { useDebts, debtSummary } from "@/lib/debtsStore";
+import { useNetWorthSummary } from "@/hooks/useNetWorthSummary";
 import { formatCompact } from "@/lib/finance";
 import MetricCard from "@/components/dashboard/MetricCard";
 import NetWorthTrend from "@/components/dashboard/NetWorthTrend";
@@ -53,19 +50,11 @@ const DashboardClassic = () => {
   // Stage 4.2: month income/expense come pre-aggregated from the server rather
   // than from every transaction row the workspace has ever held.
   const { summary, isError: summaryError } = useDashboardSummary();
-  const { accounts } = useAccounts();
-  const { records: investments } = useInvestments();
-  const debts = useDebts();
-  const liveBalances = useLiveAccountBalances();
+  const netWorth = useNetWorthSummary();
   const fin = useMemo(() => {
     const { income, expense, savings, savingsRate } = summary;
-    const cash = calcLiveTotalBalance(accounts, liveBalances);
-    const inv = investments.reduce((s, r) => s + getCurrent(r), 0);
-    const assets = cash + inv;
-    const liabilities = debts.records.reduce((s, d) => s + Math.max(0, debtSummary(d).remaining), 0);
-    const netWorth = assets - liabilities;
-    return { income, expense, savings, savingsRate, assets, liabilities, netWorth };
-  }, [summary, accounts, investments, debts.records, liveBalances]);
+    return { income, expense, savings, savingsRate, ...netWorth };
+  }, [summary, netWorth]);
 
   return (
     <div className="px-6 sm:px-8 py-8 space-y-8 max-w-[1400px] mx-auto">
@@ -172,7 +161,12 @@ const DashboardClassic = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
             {showNetWorth && (
               <div className="lg:col-span-2 h-full">
-                <NetWorthTrend />
+                <NetWorthTrend
+                  assets={fin.assets}
+                  liabilities={fin.liabilities}
+                  netWorth={fin.netWorth}
+                  hasData={fin.hasData}
+                />
               </div>
             )}
             {showBudget && (

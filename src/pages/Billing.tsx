@@ -253,7 +253,7 @@ export default function BillingPage() {
             Account
           </span>
           <h1 className="font-display text-3xl font-bold text-foreground mt-1 flex items-center gap-2">
-            <CreditCard className="w-7 h-7" /> Billing & Invoices
+            <CreditCard className="w-7 h-7" /><span>Billing &amp; Invoices</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage your subscription and download payment receipts.
