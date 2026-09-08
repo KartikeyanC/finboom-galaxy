@@ -3,11 +3,22 @@
 > **Stage 2 (branch `fix/qa-stage-2`, PR #6):** BUG-002, 003, 004, 005, 007, 008, 010, 011,
 > 012, 013, 015, 016, 018 **FIXED** (typecheck 0 · lint 0 · 813 tests green). BUG-006 / 009 / 014
 > investigated and confirmed **NOT BUGS** (see `qa/STAGE-2-STATUS.md`).
-> **BUG-001 — BLOCKED — MIGRATION NOT APPLIED.** The interim frontend fix (stop new orphans) is
-> live and shipped. The structural fix (FK + `ON DELETE CASCADE` + backfill + orphan cleanup) is
-> written as `supabase/migrations/20260907190000_bug001_link_recurring_to_income_stream.sql` and
-> **reviewed as safe**, but cannot be applied from this environment — no Supabase access token, no
-> DB password, CLI not logged in. See the BUG-001 entry below for the exact blocker + apply steps.
+>
+> **BUG-001 — MIGRATION NOT APPLIED.** Interim frontend fix (stop new orphans) is live and shipped.
+> The v1 structural migration (`20260907190000_…`) was **rejected as RISK: HIGH** (irreversible hard
+> DELETE, name+amount auto-link, weak snapshot) and **neutralised to a no-op**. Replaced by **v2**
+> `supabase/migrations/20260908120000_bug001_link_recurring_to_income_stream_v2.sql` — no DELETE, no
+> `is_active` change, versioned snapshots of `recurring_items` **and** `recurring_reminders`,
+> conservative fingerprint matching, verification assertions. Live read-only impact audit run
+> 2026-09-08: v2 would link **0** / delete **0** / deactivate **0**; 3 unmatched inert orphan rows
+> left untouched; `income_streams` and `recurring_reminders` tables are empty. **V2 status: READY FOR
+> MIGRATION APPLY — NOT YET APPLIED** (no `SUPABASE_ACCESS_TOKEN` / DB password / pooler host in this
+> environment). Detail: `qa/BUG-001-MIGRATION-REVIEW-V2.md` (§9 results, §10 recommendation),
+> `qa/BUG-001-MIGRATION-IMPACT-V2-SUPABASE.sql`, `qa/BUG-001-PRE-MIGRATION-IMPACT.md`.
+>
+> **UX review (2026-09-08):** the design-level side of the BUG-001 flow is logged below as
+> **UX-1…UX-11** (see `qa/BUG-001-UX-REVIEW-income-recurring-flow.md`). UX-1/UX-2/UX-3 are
+> independent of the migration and worth doing first.
 
 
 Commit `2a4b0d3` · env: Vite dev `http://localhost:5188` against live Supabase `ludbntvhagefadfkhrjj` · account `demo@finroot.app` (owner + platform admin, Canopy).
@@ -18,7 +29,12 @@ Severity: **P0** unusable/data-loss · **P1** major feature broken · **P2** imp
 ---
 
 ## BUG-001 — Deleting an income stream orphans its recurring item
-- **STATUS:** **BLOCKED — MIGRATION NOT APPLIED.** Interim frontend fix is live (commit `5b58362`); structural DB fix is written & reviewed but unapplied. Do **not** mark FIXED until the migration is applied and the reproduction re-tested. Details in the "Structural fix" block below.
+- **STATUS:** **MIGRATION NOT APPLIED.** Interim frontend fix is live (commit `5b58362`). ⚠️ The
+  "Structural fix" block below describes **v1**, which was **rejected (RISK: HIGH) and neutralised** —
+  it is superseded by **v2** (`20260908120000_…_v2.sql`), impact-audited live on 2026-09-08 (0 link /
+  0 delete / 0 deactivate). See the top-of-file banner and `qa/BUG-001-MIGRATION-REVIEW-V2.md` for
+  the current state; read the block below only for the history of why v1 failed.
+  The UX side of this flow is now tracked as **UX-1…UX-11** (`qa/BUG-001-UX-REVIEW-income-recurring-flow.md`).
 - **SEVERITY:** P2
 - **MODULE:** Income / Recurring
 - **PAGE / ROUTE:** `/app/income` (both tabs) + `/app` dashboard "Reminders"
@@ -192,6 +208,137 @@ Then run the verification queries at the foot of the migration, drop `_backup.re
 - **STEPS:** click the archive (box) icon on an account card.
 - **ACTUAL:** toast **"Archived (mock)"**, nothing changes (`AccountList.tsx:121` — `onClick={() => toast.message("Archived (mock)")}`). A placeholder control shipped to production on a data-management screen. The icon also has **no `aria-label`** (same as BUG-003's trash icon).
 - **EXPECTED:** wire it to a real archive (soft-hide) action, or remove the button until it exists.
+
+---
+
+## UX review findings (2026-09-08) — Income / Recurring / dashboard Reminders flow
+
+From the design review in `qa/BUG-001-UX-REVIEW-income-recurring-flow.md` (heuristic + WCAG 2.2 AA,
+no app run). These are the UX side of BUG-001 — the flow is confusing before the data is wrong.
+
+> **Numbering:** `UX-N` (not `BUG-0NN`) on purpose — `docs/BUG_TRACKER.md` already allocates
+> BUG-001…BUG-118 and this file's own BUG-001…018 overlap it as different bugs. A `UX-N` namespace
+> (like the existing `OBS-N`) avoids adding a third colliding set. Renumber into the main tracker
+> if/when these are triaged there.
+>
+> Severity map: **S1 → P2**, **S2 → P3**, **S3 → P4** (review's own scale in the doc).
+
+### UX-1 — One "Add Income" action silently creates two unlinked objects  *(review S1-1)*
+- **SEVERITY:** P2 · **MODULE:** Income / Recurring · **PAGE:** `/app/income` (both tabs) + `/app` Reminders
+- **FINDING:** `AddIncomeDialog.submit()` (`src/components/income/AddIncomeDialog.tsx:127-151`) fires two
+  independent writes with no transaction and no link — an `income_streams` row **and** a
+  `recurring_items` row — and shows two toasts ("Recurring item added" + "`<name>` added"). The user
+  did one thing; they now have a card on the Streams tab, a card on the Recurring tab, and a row in
+  the dashboard "Reminders" widget, all identically named, with nothing signposting that they are the
+  same thing. This is the UX root of BUG-001 (delete one half → the other is orphaned).
+- **FIX:** either (A) make the monthly reminder an explicit opt-in checkbox in `AddIncomeDialog` and
+  only create the `recurring_items` row when checked; or (B) after the migration adds
+  `income_stream_id`, show the relationship (stream card: "↻ monthly reminder" chip; recurring card:
+  read-only "from income stream" badge, no independent delete). Do not ship the current
+  "two objects, zero signposting" state past the migration.
+
+### UX-2 — "Remove stream" is a one-tap, unconfirmed, irreversible delete  *(review S1-2)*
+- **SEVERITY:** P2 · **MODULE:** Income · **PAGE:** `/app/income` (Income Streams tab)
+- **FINDING:** `IncomeCard.tsx:97-105` — bare icon button, `aria-label="Remove stream"`,
+  `onClick={() => onRemove(stream.id)}`, **no `AlertDialog`**. It is the only delete in the app with
+  no confirmation: `RecurringList.tsx:302-327` confirms, Accounts confirms (post-BUG-003),
+  transactions/budgets/goals/trackers all confirm. Also deletes the paired reminder (interim fix)
+  with no warning to that effect. WCAG **3.3.4 Error Prevention**.
+- **FIX:** wrap the trigger in the same `AlertDialog` pattern. Copy: *"Remove "<name>"? This also
+  removes its monthly reminder from your dashboard. Income you've already recorded stays in your
+  log."* Cancel / Remove.
+
+### UX-3 — Delete affordance is an `X` icon; the reversible "hide" is buried  *(review S1-3)*
+- **SEVERITY:** P3 · **MODULE:** Income · **PAGE:** `/app/income` (Income Streams tab)
+- **FINDING:** `IncomeCard.tsx:3,104` uses `X` from lucide for a permanent delete. A trailing-edge
+  `X` reads as *dismiss / hide this*, not *delete forever*. Meanwhile the genuinely safe, reversible
+  "hide" (`toggleVisible`) is behind the gear in `ManageCategoriesSheet`. Affordances inverted:
+  destructive is prominent and looks benign; reversible is hidden.
+- **FIX:** use `Trash2` (destructive tint) for delete, matching `RecurringList` / `TransactionsTable`.
+  Add a visible per-card hide/`EyeOff` toggle — that is the action most "get this off my list" taps
+  actually want.
+
+### UX-4 — Two front doors to "recurring income" with different capabilities, no cross-reference  *(review S2-4)*
+- **SEVERITY:** P3 · **MODULE:** Income / Recurring · **PAGE:** `/app/income`
+- **FINDING:** "Add Income" (`AddIncomeDialog`) and "Add Recurring Income" (`RecurringDialog`) both
+  create a `recurring_items` row. Only "Add Income" creates a stream; only "Add Recurring Income" has
+  a reminder toggle; the date field is "Received On" in one and "Next due date" in the other. A user
+  who wants "salary every month, remind me" must guess which button. *Recognition rather than recall.*
+- **FIX:** one entry point — "Add Income" with two checkboxes: `☑ Track as an income stream` and
+  `☐ Remind me each period`. The Recurring tab becomes a view, not a second creation path.
+
+### UX-5 — Dashboard "Reminders" widget lists non-reminders, and every row is inert  *(review S2-5)*
+- **SEVERITY:** P3 · **MODULE:** Dashboard · **PAGE:** `/app`
+- **FINDING:** `ActionableReminders.tsx:80-95` lists **every** `is_active` recurring item with a
+  `next_due_date`, regardless of whether a reminder is enabled (`DEFAULT_REMINDER.enabled = false`,
+  `src/lib/recurringReminders.ts:20`) — so an `AddIncomeDialog` twin with no reminder still shows
+  under a heading that says "Reminders". Each row is title + "category · frequency · due today" with
+  **no "Mark received", no link to the item, no dismiss** (`:150-174`). A BUG-001 orphan cannot be
+  cleared from the dashboard at all. `filter === "all"` shows `merged.slice(0, 5)` with no "View all".
+- **FIX:** list only reminder-enabled or overdue items; make each row actionable ("Mark received" +
+  click-through to the Income page); add "View all →".
+
+### UX-6 — "Received On" collects a date+time that is discarded and repurposed as a future due date  *(review S2-6)*
+- **SEVERITY:** P3 · **MODULE:** Income · **PAGE:** `/app/income` → Add Income
+- **FINDING:** `AddIncomeDialog.tsx:65,123-126,146` — a `DateTimeField` labelled **"Received On"**
+  (past tense) whose value is used only as `next_due_date: safeISO.slice(0,10)` for the recurring
+  twin (a **future** date); the time component is truncated. Label contradicts behaviour. Related to
+  BUG-010 (Quick Add midnight-UTC).
+- **FIX:** if the reminder becomes opt-in (UX-1 A), relabel to "First reminder date" and show it only
+  when the reminder box is checked; drop the time picker.
+
+### UX-7 — Keyboard users cannot reorder income streams on desktop  *(review S2-7)*
+- **SEVERITY:** P3 (a11y — WCAG **2.1.1 Keyboard**, **4.1.2 Name/Role/Value**) · **MODULE:** Income
+- **PAGE:** `/app/income` (Income Streams tab)
+- **FINDING:** `IncomeCard.tsx:52-68` — the `ChevronUp`/`ChevronDown` move buttons are
+  `className="sm:hidden"`. At `sm` and above the only reorder mechanism is native HTML drag-and-drop
+  on the `motion.div` (`:32-46`); `GripVertical` (`:60`) is a decorative icon, not focusable, no
+  `role`/`aria`, no live-region announcement of the new position.
+- **FIX:** show the up/down buttons at all breakpoints (they already call `onMove` and are correctly
+  `disabled` at the ends). Announce reorder via `aria-live="polite"`. Keep drag as an enhancement.
+
+### UX-8 — Long form dialogs: no sticky submit, no focus-to-error  *(review S2-8)*
+- **SEVERITY:** P3 (a11y — WCAG **3.3.1**, **2.4.3**) · **MODULE:** Income / Recurring
+- **PAGE:** Add Income / Add Recurring dialogs
+- **FINDING:** both dialogs are tall forms in `max-h-[90vh] overflow-y-auto`
+  (`AddIncomeDialog.tsx:162`); the submit button sits below the fold on a laptop and the footer does
+  not stick. On validation failure `toast.error(parsed.error.issues[0].message)` (`:119`) fires but
+  focus stays put and the error is not programmatically tied to the field.
+- **FIX:** `position: sticky` footer with the primary button always visible; on `safeParse` failure
+  move focus to the first invalid field and render an inline `<p role="alert">` beneath it.
+
+### UX-9 — Add Income / Add Recurring dialogs have no `DialogDescription`  *(review S2-9)*
+- **SEVERITY:** P3 · **MODULE:** Income / Recurring · **PAGE:** Add Income / Add Recurring dialogs
+- **FINDING:** `AddIncomeDialog.tsx:163-165`, `RecurringDialog.tsx:136-138` — `DialogTitle` present,
+  no `DialogDescription`. Radix logs a warning; SR users get a title with no framing. Same class as
+  the fixed BUG-002 (command palette).
+- **FIX:** add a `DialogDescription` (visible or `sr-only`), e.g. "Set up an income source. It'll
+  appear on your Income page and feed your projections."
+
+### UX-10 — Reminder-due pulse animation has no reduced-motion guard  *(review S2-10)*
+- **SEVERITY:** P4 (a11y — WCAG **2.3.3**, **2.2.2**) · **MODULE:** Recurring / Dashboard
+- **PAGE:** `/app/income` (Recurring tab), `/app`
+- **FINDING:** `RecurringList.tsx:252-257` renders `animate-ping` on due/overdue items with no
+  `prefers-reduced-motion` gate.
+- **FIX:** `motion-safe:` prefix (or gate on `prefers-reduced-motion`). The static dot + text label
+  already convey the state.
+
+### UX-11 — Polish batch (Income / Recurring dialogs)  *(review S3-11…15)*
+- **SEVERITY:** P4 · **MODULE:** Income / Recurring
+- **FINDINGS:**
+  - **Name field** — `AddIncomeDialog.tsx:106,224` name is "(optional)"; blank ⇒ stream named after
+    its category ("Salary"), so two salaries = two identical cards, and the twin `recurring_items`
+    row is also "Salary". This is the ambiguity that made BUG-001's backfill matching hard. Drop
+    "(optional)", pre-fill `"<Category> — "`, or auto-suffix a disambiguator on collision.
+  - **"Exchange rate to INR"** — `AddIncomeDialog.tsx:276-283`, `RecurringDialog.tsx:237-244` — raw
+    `type="number"` FX field the user is unlikely to know. Pre-fill from `live-price` / `DEFAULT_FX`,
+    move under "Advanced", show the resulting INR amount live.
+  - **Toast copy** — `useRecurring.ts:84` `"Recurring item added"` is developer language, and it
+    double-toasts with `AddIncomeDialog`'s own `"<name> added"`. One toast per user action.
+  - **Icon picker** — scrolling 8×~5 grid of ~40 icons with per-icon transitions, `aria-label` =
+    PascalCase key ("PiggyBank button"). Collapse to a popover with a sensible default; human labels.
+  - **Empty state** — `RecurringList.tsx:187-194` "No recurring income yet." doesn't explain that
+    adding an income stream also creates one. Add: "Income streams with a reminder show up here."
 
 ---
 
