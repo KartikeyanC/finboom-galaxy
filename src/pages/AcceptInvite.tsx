@@ -83,7 +83,7 @@ export default function AcceptInvite() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-xl text-center space-y-4">
-        <FinrootLogo className="w-12 h-12 mx-auto rounded-xl" />
+        <FinrootLogo className="h-12 w-auto block mx-auto text-primary" />
 
         {state === "working" && (
           <>

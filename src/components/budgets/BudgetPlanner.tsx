@@ -17,16 +17,31 @@ type AllocatorState = BudgetPlannerState;
 
 const DEFAULTS: AllocatorState = TENANT_SETTINGS.budget_planner.defaultValue;
 
+/**
+ * Bucket colours come from `--bucket-*` in index.css, not from raw Tailwind
+ * shades. The old set was `sky-500` / `fuchsia-500` / `emerald-500`, which had
+ * two problems: -500 is the shade tuned for white surfaces, so on the dark card
+ * the row read dull (fuchsia was the dimmest thing here at 5.1:1); and the
+ * classes are hardcoded, so the light theme rendered dark-theme colours at
+ * 2.8 / 3.5 / 2.5 to 1 — the three big percentages were barely visible.
+ *
+ * Fuchsia is gone for a third reason that is not about brightness: `sky-500`
+ * and `fuchsia-500` are 8 apart out of 255 under deuteranopia. Needs and Wants,
+ * the two largest buckets, were literally the same colour to a red-green
+ * colour-blind user — in the bar, the glow and the number alike. Amber sits 237
+ * away from the blue and is what the rest of the app already uses for "watch
+ * this", which is what Wants is.
+ */
 const BUCKET_META: Record<AllocationKey, { label: string; subtitle: string; tone: string; bar: string }> = {
-  needs: { label: "Needs", subtitle: "Essentials & must-pays", tone: "border-sky-500/30 bg-sky-500/[0.06]", bar: "bg-sky-500" },
-  wants: { label: "Wants", subtitle: "Lifestyle & freedom", tone: "border-fuchsia-500/30 bg-fuchsia-500/[0.06]", bar: "bg-fuchsia-500" },
-  savings: { label: "Savings & Goals", subtitle: "Future wealth", tone: "border-emerald-500/30 bg-emerald-500/[0.06]", bar: "bg-emerald-500" },
+  needs: { label: "Needs", subtitle: "Essentials & must-pays", tone: "border-bucket-needs/30 bg-bucket-needs/[0.06]", bar: "bg-bucket-needs" },
+  wants: { label: "Wants", subtitle: "Lifestyle & freedom", tone: "border-bucket-wants/30 bg-bucket-wants/[0.06]", bar: "bg-bucket-wants" },
+  savings: { label: "Savings & Goals", subtitle: "Future wealth", tone: "border-bucket-savings/30 bg-bucket-savings/[0.06]", bar: "bg-bucket-savings" },
 };
 
 const NEON: Record<AllocationKey, { range: string; thumb: string; text: string }> = {
-  needs: { range: "bg-sky-500 shadow-[0_0_12px_hsl(199_89%_55%/0.7)]", thumb: "border-sky-400 shadow-[0_0_14px_hsl(199_89%_55%/0.9)]", text: "text-sky-500" },
-  wants: { range: "bg-fuchsia-500 shadow-[0_0_12px_hsl(292_84%_61%/0.7)]", thumb: "border-fuchsia-400 shadow-[0_0_14px_hsl(292_84%_61%/0.9)]", text: "text-fuchsia-500" },
-  savings: { range: "bg-emerald-500 shadow-[0_0_12px_hsl(160_84%_45%/0.7)]", thumb: "border-emerald-400 shadow-[0_0_14px_hsl(160_84%_45%/0.9)]", text: "text-emerald-500" },
+  needs: { range: "bg-bucket-needs shadow-[0_0_12px_hsl(var(--bucket-needs)/0.7)]", thumb: "border-bucket-needs shadow-[0_0_14px_hsl(var(--bucket-needs)/0.9)]", text: "text-bucket-needs" },
+  wants: { range: "bg-bucket-wants shadow-[0_0_12px_hsl(var(--bucket-wants)/0.7)]", thumb: "border-bucket-wants shadow-[0_0_14px_hsl(var(--bucket-wants)/0.9)]", text: "text-bucket-wants" },
+  savings: { range: "bg-bucket-savings shadow-[0_0_12px_hsl(var(--bucket-savings)/0.7)]", thumb: "border-bucket-savings shadow-[0_0_14px_hsl(var(--bucket-savings)/0.9)]", text: "text-bucket-savings" },
 };
 
 function NeonSlider({ value, onChange, tone }: { value: number; onChange: (v: number) => void; tone: AllocationKey }) {
@@ -163,7 +178,7 @@ export default function BudgetPlanner() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className={cn("rounded-lg border px-3 py-2 text-xs font-medium", total === 100 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "border-destructive/40 bg-destructive/10 text-destructive")}>
+            <div className={cn("rounded-lg border px-3 py-2 text-xs font-medium", total === 100 ? "border-success/30 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive")}>
               Total: {total}%
             </div>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setState({ ...DEFAULTS, income: state.income })}>

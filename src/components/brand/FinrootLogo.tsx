@@ -1,48 +1,47 @@
 /**
- * FinRoot brand mark — Figma export (40×40 canvas).
- * Inner mark scaled to 78% and centred to give proper padding inside the chip.
+ * FinRoot brand mark — the R with a leaf counter (Figma export, `Finroot
+ * Navbar.svg`, viewBox 479.27 × 600.6).
+ *
+ * Replaced the original 40×40 chip — a rounded green square holding a white
+ * mark drawn in 1.8px strokes — on 2026-08-30. Two consequences, both of which
+ * bite silently if ignored:
+ *
+ * **It is not square.** Aspect is 0.798. Size it by height and let the width
+ * follow (`h-8 w-auto`), never with a square box (`w-8 h-8`) — that letterboxes
+ * the mark inside dead space. See the note in `BrandLogo` for the full reasoning.
+ *
+ * **It carries no background.** The old mark supplied its own field, so it was
+ * white-on-green at every size on every surface and needed no thought. This one
+ * takes its colour from whatever is behind it, and the surfaces genuinely
+ * differ: the landing header is near-black with a white wordmark, the sidebar
+ * is near-black in `obsidian` and pure white in `light`. So `fill` defaults to
+ * `currentColor` — set a text colour on the element or an ancestor. Use
+ * `text-primary` on themed app surfaces (it is tuned per theme) and the
+ * landing's own `#19B886` on the fixed-dark marketing pages.
+ *
+ * The artwork's native colour is `#377861`, which is deliberately not the
+ * default here: it is a mid-dark green that goes muddy on a near-black header.
  */
 export function FinrootLogo({
   className,
-  bg = "#377861",
-  stroke = "#ffffff",
+  fill = "currentColor",
 }: {
   className?: string;
-  bg?: string;
-  stroke?: string;
+  /** Any CSS colour. Defaults to `currentColor` — see the note above. */
+  fill?: string;
 }) {
   return (
     <svg
-      viewBox="0 0 40 40"
+      viewBox="0 0 479.27 600.6"
       className={className}
       role="img"
       aria-label="FinRoot"
       xmlns="http://www.w3.org/2000/svg"
-      fill="none"
     >
-      {/* rounded-square background */}
       <path
-        d="M32.165 0H7.83502C3.50786 0 0 3.50786 0 7.83502V32.165C0 36.4921 3.50786 40 7.83502 40H32.165C36.4921 40 40 36.4921 40 32.165V7.83502C40 3.50786 36.4921 0 32.165 0Z"
-        fill={bg}
+        fill={fill}
+        d="M294.8,417.2c48.21-5.73,91.39-27.81,123.82-60.59,37.51-37.85,60.65-89.9,60.65-147.37s-23.14-109.52-60.65-147.37C383.05,25.88,334.49,2.74,280.57,0h0C125.63,0,.02,125.61.02,280.55v14.57s-.02,0-.02,0v305.48h94.15c1.76,0,3.15-1.41,3.21-3.17,0-.01,0-.02,0-.03.65-114.56.89-205.03,0-273.7-.12-9.52-.25-27.75,6.63-50.17,22.71-73.95,95.45-105.67,111.97-112.87,59.2-25.82,113.84-18.05,137.01-13.28,1.87,10.97,15.5,99.95-49.35,171.89-54.6,60.56-126.55,66.6-148.77,67.1-5.58.13-10.97,2.32-14.83,6.37-.02.02-.04.04-.06.06-11.35,11.97-6.08,31.54-4.91,35.9,4.06,15.18,14.34,24.24,18.91,27.79,39.94,48.04,79.88,96.07,119.83,144.11h174.12l-153.09-183.38-.02-.02Z"
       />
-
-      {/* mark scaled to 78% around the centre point (20,20) for padding */}
-      <g transform="translate(20 20) scale(0.78) translate(-20 -20)">
-        <path
-          d="M8.31127 34.0967C8.13887 31.3116 8.20223 25.8923 11.039 20.0412C12.0303 17.9961 14.1818 13.6935 19.0378 10.2391C23.6473 6.96011 28.3214 6.13347 30.8888 5.90547C31.3396 5.86539 31.7297 6.21536 31.7387 6.6679C31.7849 8.98535 31.4948 13.3694 28.8864 17.9603C26.0833 22.8943 22.1315 25.3756 20.4023 26.3289"
-          stroke={stroke}
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M11.11 34.0966C10.935 31.6848 10.9191 26.7904 13.455 21.4629C14.3567 19.5683 16.7211 14.7661 22.165 11.4613C24.5708 10.0007 26.8516 9.27314 28.5096 8.89042C28.7557 8.83353 28.9837 9.03868 28.9527 9.28952C28.7187 11.1816 28.0204 14.4455 25.7064 17.6827C23.2812 21.0754 20.1691 22.9162 17.8417 23.8984C16.6043 24.4208 16.2134 25.9857 17.0642 27.0249C17.5581 27.6283 18.058 28.3243 18.5283 29.1199C19.6704 31.0529 20.2096 32.8515 20.4807 34.097"
-          stroke={stroke}
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
     </svg>
   );
 }

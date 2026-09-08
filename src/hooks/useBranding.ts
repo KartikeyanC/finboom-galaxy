@@ -30,6 +30,30 @@ export function normalizeBranding(value: unknown): BrandingContent {
 }
 
 /**
+ * 2026-08-30 — the built-in mark currently wins over a PO-uploaded logo.
+ *
+ * The brand mark was replaced with the R, but this tenant's stored branding
+ * still points at an upload of the OLD chip design and that row could not be
+ * cleared from `/po/branding`. Rather than leave the app serving artwork that
+ * no longer exists as a design, `logoUrl` is dropped here.
+ *
+ * It lives in the hook rather than in the components because there are two
+ * consumers and missing one is invisible: `BrandLogo` paints the mark, and
+ * `BrandDocumentTitle` rewrites `<link rel="icon">`. Fixing only the first left
+ * every browser tab still showing the old logo — which is exactly what happened.
+ *
+ * `normalizeBranding` is deliberately untouched: `/po/branding` calls it
+ * directly and must keep seeing the real stored value, or the PO could not
+ * manage the very logo this is suppressing.
+ *
+ * ⚠️ This disables PO custom logos for every tenant, which is a shipped
+ * feature. It is a stopgap, not a decision. To restore it: clear the stale
+ * `logoUrl` from `site_settings` (key `landing_branding`), then flip this back
+ * to `true` and delete this block.
+ */
+const ALLOW_CUSTOM_LOGO = false;
+
+/**
  * Public read of the PO-editable branding (RLS allows anon for landing_* keys).
  * Always resolves to a usable value via DEFAULT_BRANDING, so callers never see undefined.
  */
@@ -47,5 +71,6 @@ export function useBranding(): BrandingContent {
       return normalizeBranding(data.value);
     },
   });
-  return data ?? DEFAULT_BRANDING;
+  const branding = data ?? DEFAULT_BRANDING;
+  return ALLOW_CUSTOM_LOGO ? branding : { ...branding, logoUrl: null };
 }

@@ -5,8 +5,7 @@ import {
 } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BrandLogo } from "@/components/brand/BrandLogo";
-import { useBranding } from "@/hooks/useBranding";
+import { BrandLockup } from "@/components/brand/BrandLockup";
 
 import { NAV } from "./content";
 import { CTA_PRIMARY } from "./tokens";
@@ -42,7 +41,6 @@ export default function FloatingNav() {
   const [open, setOpen] = useState(false);
   const last = useRef(0);
   const active = useActiveSection(["product", "workflow", "voices", "pricing", "faq"]);
-  const { appName } = useBranding();
 
   // Track the promo banner so the nav floats *below* it at the top of the page
   // and slides up to the edge as the banner scrolls away (or is dismissed).
@@ -77,27 +75,56 @@ export default function FloatingNav() {
       className="fixed inset-x-0 z-50 px-4"
     >
       <div className={`mx-auto max-w-5xl flex items-center justify-between gap-4 rounded-2xl border px-4 h-14 transition-colors duration-300 ${scrolled ? "border-white/10 bg-[#06070a]/70 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.4)]" : "border-white/[0.06] bg-white/[0.02] backdrop-blur-md"}`}>
-        <Link to="/" data-cursor className="flex items-center gap-2.5 shrink-0">
-          <BrandLogo className="w-8 h-8 rounded-[2px]" />
-          <span className="text-base font-semibold tracking-tight text-white">{appName}</span>
+        {/*
+          The full lockup, tagline included, replacing the old mark-plus-text
+          pair. `#19B886` rather than the artwork's own `#377861`: this bar is
+          near-black, where the brand green measures 3.86:1 and the tagline's
+          `#0a3f2a` only 1.69:1. The mask discards both and takes this fill
+          instead, putting the whole lockup at about 7.8:1. White was the other
+          candidate; it would have split the lockup into two colours and fought
+          the mark, which is already established in green on these pages.
+
+          At `size="sm"` the tagline renders around 3.9 px — well under the 12 px
+          floor in UI-003, and a deliberate choice rather than an oversight. It
+          needs roughly 82 px of lockup height to clear 10 px, which this 56 px
+          bar cannot give it.
+
+          The `min-h-[44px]` on the link is the tap target and is deliberately
+          larger than the art — the logo's size must not decide what you can
+          click (UI-004).
+        */}
+        <Link to="/" data-cursor className="flex items-center shrink-0 min-h-[44px]">
+          <BrandLockup size="sm" className="bg-[#19B886]" />
         </Link>
+        {/*
+          UI-004 / BUG-053 — every target in this bar sat under the 44 px floor:
+          the nav links at 30 px, "Sign in" at 36, and the "Start free" wrapper
+          at 102 × 22, because an inline <a> around a button collapses to its
+          line box. The mobile menu button was fixed for exactly this in
+          BUG-053; the rest of the bar never was.
+
+          The hit areas grow, the design does not. Each link becomes a 44 px
+          flex box with the padding moved off the vertical axis, and the active
+          pill — which used to be `inset-0` and so would have grown with it — is
+          pinned to `inset-y-[7px]`, keeping its original 30 px height.
+        */}
         <nav className="hidden md:flex items-center gap-1 text-[12px] text-[#9aa3a0]">
           {NAV.map((n) => {
             const id = n.href.slice(1);
             const is = active === id;
             return (
               <a key={n.label} href={n.href} data-cursor
-                className={`relative px-3 py-1.5 rounded-lg transition-colors ${is ? "text-white" : "hover:text-white"}`}>
-                {is && <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-lg bg-white/[0.07] border border-white/10" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
+                className={`relative flex items-center min-h-[44px] px-3 rounded-lg transition-colors ${is ? "text-white" : "hover:text-white"}`}>
+                {is && <motion.span layoutId="nav-pill" className="absolute inset-x-0 inset-y-[7px] rounded-lg bg-white/[0.07] border border-white/10" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
                 <span className="relative">{n.label}</span>
               </a>
             );
           })}
         </nav>
         <div className="hidden md:flex items-center gap-2">
-          <Link to="/auth" data-cursor className="text-sm text-[#9aa3a0] hover:text-white transition-colors px-3 py-2">Sign in</Link>
+          <Link to="/auth" data-cursor className="flex items-center min-h-[44px] px-3 text-sm text-[#9aa3a0] hover:text-white transition-colors">Sign in</Link>
           <Magnetic>
-            <Link to="/auth?tab=signup" data-cursor><Button className={`${CTA_PRIMARY} px-5 h-9`}>Start free</Button></Link>
+            <Link to="/auth?tab=signup" data-cursor className="inline-flex items-center min-h-[44px]"><Button className={`${CTA_PRIMARY} px-5 h-9`}>Start free</Button></Link>
           </Magnetic>
         </div>
         {/* BUG-053 — p-2 + a w-5 icon was a 36×36 target, under the 44px

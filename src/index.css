@@ -50,6 +50,22 @@
     --coral: 12 80% 60%;
     --coral-foreground: 220 20% 7%;
 
+    /* 50/30/20 budget buckets. Tokens rather than raw Tailwind classes for two
+       reasons. The classes were `sky-500` / `fuchsia-500` / `emerald-500` — the
+       shade tuned for WHITE, used on a near-black card, which is why the row
+       read dull (5.1:1 on the fuchsia). And `sky-500` and `fuchsia-500` are the
+       same colour under deuteranopia: 8 apart out of 255, so Needs and Wants —
+       the two largest buckets in the planner — were indistinguishable to a
+       red-green colour-blind user, in the bar, the glow AND the percentage.
+
+       Amber replaces fuchsia because it is the one hue that stays separated
+       from blue under every form of colour blindness (237 apart here), and it
+       is already how the rest of the app says "watch this" — which is what the
+       Wants bucket is. Dark themes take the -400 shades; light takes -700. */
+    --bucket-needs: 198 93% 60%;
+    --bucket-wants: 43 96% 56%;
+    --bucket-savings: 158 64% 52%;
+
     --chart-1: 160 76% 41%;
     --chart-2: 210 70% 55%;
     --chart-3: 35 90% 55%;
@@ -130,6 +146,14 @@
 
     --coral: 12 80% 55%;
     --coral-foreground: 0 0% 100%;
+
+    /* The -700 partners. The planner previously kept its dark-theme colours in
+       this theme, putting the three big percentage figures at 2.8, 3.5 and 2.5
+       to 1 on white. These clear 4.5 (5.9 / 5.0 / 5.5) and stay separated under
+       deuteranopia (168 / 75 / 93). */
+    --bucket-needs: 201 96% 32%;
+    --bucket-wants: 26 90% 37%;
+    --bucket-savings: 163 94% 24%;
 
     --border: 215 20% 89%;
     --input: 215 20% 85%;

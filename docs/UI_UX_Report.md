@@ -8,6 +8,13 @@
 > dashboard and feature pages below is `[code]` and should be re-verified by an operator with
 > test credentials — see [Testing_Master_Plan.md](./Testing_Master_Plan.md).
 > Journey-level findings: [UX_Report.md](./UX_Report.md).
+>
+> **Amended 2026-08-30.** UI-007 was re-measured against `localhost:8080`, re-diagnosed
+> (Low → High), fixed and closed — see the entry for what it actually was. Nothing else in
+> this report has been re-verified since 2026-08-04; treat the rest as findings of that date.
+> The recurring gate that came out of this work is
+> [UI_Review_Checklist.md](./UI_Review_Checklist.md) — this file records what was found once,
+> that one is what to run every time.
 
 ---
 
@@ -17,7 +24,7 @@
 |---|---|
 | Tokens | HSL CSS custom properties in `src/index.css`; **5 themes** — `obsidian` (default dark), `light`, cyber, mint, copper |
 | Theme switch | `ThemeContext`; the top bar exposes only a light ↔ obsidian toggle, so **three of the five themes are unreachable from the UI** |
-| Typography | `--font-display` / `--font-body` both resolve to IBM Plex Sans → Fira Sans → system. **DM Serif Display is loaded from Google Fonts but never used** [code] |
+| Typography | ~~`--font-display` / `--font-body` both resolve to IBM Plex Sans → Fira Sans → system. **DM Serif Display is loaded from Google Fonts but never used**~~ — **stale, corrected 2026-08-30.** Fonts are now **self-hosted** (`src/fonts.css`); there is no Google Fonts `<link>` or `@import` left. Two faces are declared: **IBM Plex Sans** and **Space Grotesk**. Fira Sans was dropped (it only ever sat behind IBM Plex as a fallback, so five weights downloaded for nothing) and DM Serif with it (its single decorative quote glyph on the landing page is now a generic serif). Note the remaining split: `--font-display` and `--font-body` in `index.css` both resolve to IBM Plex Sans, while Tailwind's `font-display` utility maps to Space Grotesk — so which display face you get depends on whether you reach for the CSS variable or the utility class |
 | Primitives | 50 shadcn/Radix components + 5 project-specific (`icon-chip`, `money-input`, `category-chart`, `date-picker-field`, `password-input`) |
 | Charts | single source of truth — `lib/chartColors.ts` (12-colour theme-aware deck, ~50 % greens) + `lib/chartShapes.tsx` (shared active-slice renderer). Genuinely consistent ✔ |
 | Money formatting | `lib/finance.ts`, `en-IN` lakh/crore grouping, applied through `MoneyInput` everywhere except FX rates, trip days, coupon % and the calculator — a deliberate, documented exception list ✔ |
@@ -78,11 +85,62 @@ depends entirely on framer-motion running. If JS fails, is blocked, or a crawler
 without executing animation, the primary headline of the marketing site is invisible.
 Fix: animate **from** a visible base state, or gate on `useReducedMotion` to render statically.
 
-### UI-007 · Preloader remains mounted after load — **Low, verify** [measured]
-`div.fixed.inset-0.z-[100]` (the preloader curtain) is still in the DOM and not
-`display:none` after the page has fully settled. It may be transparent/`pointer-events-none`
-and harmless, but a full-viewport top-layer element is worth confirming — it is a plausible
-cause of stray tap-blocking on mobile.
+### UI-007 · Preloader could hang permanently over a loaded page — ~~**Low, verify**~~ → **High** — **FIXED 2026-08-30** [measured]
+
+> **Re-diagnosed and fixed 2026-08-30.** The original text guessed this was probably
+> harmless. It was not. Severity raised Low → High, then closed.
+
+**Original finding (2026-08-04, as written):**
+> `div.fixed.inset-0.z-[100]` (the preloader curtain) is still in the DOM and not
+> `display:none` after the page has fully settled. It may be transparent/`pointer-events-none`
+> and harmless, but a full-viewport top-layer element is worth confirming — it is a plausible
+> cause of stray tap-blocking on mobile.
+
+**What it actually was.** The curtain is opaque (`bg-[#06070a]`, `opacity: 1`), full-viewport
+and `pointer-events: auto` — not transparent, and not harmless. It can hang **indefinitely**
+over a landing page that has already finished rendering. Not "stray tap-blocking": a black
+screen, permanently, on the top of the funnel.
+
+**Mechanism.** `Preloader` drove its own dismissal entirely from `animate()`'s `onComplete`
+— that is, from `requestAnimationFrame`. Browsers suspend rAF completely in a background tab,
+so the count froze mid-flight (displaying `100`, because `Math.round` reaches 100 slightly
+before the eased animation ends), `onComplete` never fired, and `setGone(true)` never ran.
+
+The sharp part: **BUG-051 had already anticipated exactly this.** `Landing.tsx:45` carries a
+2.5 s fallback that reveals the hero regardless, with the comment *"the animation is a
+flourish, and it must not be able to withhold the page."* That guard protected the **content**.
+Nothing protected the **curtain covering it** — and both ran on the same suspended rAF. So the
+hero dutifully revealed itself on schedule, invisibly, behind a black screen.
+
+**Reproduced** 2026-08-30 against `localhost:8080` on a hidden tab: curtain present at 20 s,
+`opacity: 1`, `pointer-events: auto`, `transform: none` (the exit slide had never begun),
+while `document.body.innerText` confirmed the real page had rendered underneath.
+
+**Scope, honestly stated.** A visitor with the tab in front never suspends rAF and never sees
+this. The realistic path in is arriving in a **background tab** — middle-click, "open link in
+new tab", a restored browser session — which is a normal way to open a marketing page.
+
+**Fix** — `src/pages/landing/effects.tsx`:
+
+1. **A hard escape at 3.4 s** that unmounts the curtain outright. It cannot go through `gone`,
+   because that starts the 0.9 s exit slide, which is another rAF animation and stalls for the
+   same reason. 3.4 s sits past the healthy path (1.7 s count + 0.22 s hold + 0.9 s slide =
+   2.82 s), so a normal load never reaches it and the slide is never cut short.
+2. **`onDone` held in a ref.** It is written inline at the call site
+   (`onDone={() => setReady(true)}`, `Landing.tsx:83`), so it had a new identity every render —
+   and it sat in the effect's dependency array, restarting the count from 0 on any re-render.
+   A latent second cause of the same symptom.
+3. **Shown once per tab**, via `finroot.landing.splashSeen` in `sessionStorage` (registered in
+   `src/lib/deviceLocal.ts`). The 2.8 s previously replayed on *every* arrival at `/` — most
+   often immediately after signing out, which lands there. First visit is unchanged.
+
+**Verified.** Under the original failing condition: curtain gone, hero at `opacity: 1`,
+`elementFromPoint` at the viewport centre returns the hero grid. `tsc` clean · eslint 0 ·
+vitest 796 passing · Playwright `ui-a11y.spec.ts` 21 passed, including
+`UI-T19 · preloader unmounts once the landing has loaded`.
+
+**Lesson worth keeping.** A "Low, verify" that is never verified is indistinguishable from a
+High that nobody has looked at yet. This one sat for 26 days behind a guess in its own text.
 
 ### UI-008 · No `<main>` landmark and no skip link — **Medium** [measured]
 `main: 0`, no `a[href^="#main"]`. Keyboard and screen-reader users must tab through the entire
@@ -185,5 +243,5 @@ toasts; a 200-row CSV import produces 200. See PERF-008.
 | 9 | UI-013 drop the Cmd+N hijack | Medium | XS |
 | 10 | UI-017 ARIA for custom controls; keyboard path for Smart Split | Medium | M |
 | 11 | UI-016 split the nine 30 kB+ files | Medium | L |
-| 12 | UI-007 confirm the preloader unmounts | Low | XS |
+| ~~12~~ | ~~UI-007 confirm the preloader unmounts~~ — **done 2026-08-30.** Confirmed, and it did not: the curtain could hang **indefinitely**, opaque and hit-blocking, over a rendered page. Was mis-ranked Low here on a guess; it was High. | ~~Low~~ High | XS |
 | 13 | UI-014 / UI-015 / UI-018 hygiene | Low | S |

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   AnimatePresence,
@@ -45,25 +45,65 @@ export function GlobalFX() {
 }
 
 /* ── 1. Cinematic preloader ─────────────────────────────────────── */
+/** Once per browser tab. See SEEN_KEY use below. */
+const SEEN_KEY = "finroot.landing.splashSeen";
+
 export function Preloader({ onDone }: { onDone: () => void }) {
   const reduce = useReducedMotion();
   const [n, setN] = useState(0);
   const [gone, setGone] = useState(false);
+  /* `gone` starts the exit slide, which is itself a rAF animation and so can
+     stall for the same reason the count can. `skip` is the hard escape: it
+     unmounts the curtain outright, animation or no animation. */
+  const [skip, setSkip] = useState(() => {
+    try { return sessionStorage.getItem(SEEN_KEY) === "1"; } catch { return false; }
+  });
 
   const { appName } = useBranding();
 
+  /* `onDone` is written inline at the call site (`onDone={() => setReady(true)}`),
+     so it is a new function on every render of Landing. In the effect's
+     dependency array that tore the animation down and restarted it from 0
+     whenever the page re-rendered. A ref keeps the effect stable. */
+  const doneRef = useRef(onDone);
+  useEffect(() => { doneRef.current = onDone; });
+
   useEffect(() => {
-    if (reduce) { setGone(true); onDone(); return; }
+    try { sessionStorage.setItem(SEEN_KEY, "1"); } catch { /* private mode */ }
+  }, []);
+
+  useEffect(() => {
+    if (reduce || skip) { setSkip(true); doneRef.current(); return; }
+
+    let settle: ReturnType<typeof setTimeout>;
     const c = animate(0, 100, {
       duration: 1.7, ease: [0.22, 1, 0.36, 1],
       onUpdate: (v) => setN(Math.round(v)),
-      onComplete: () => setTimeout(() => setGone(true), 220),
+      onComplete: () => { settle = setTimeout(() => setGone(true), 220); },
     });
-    return () => c.stop();
-  }, [reduce, onDone]);
+
+    /* BUG-051 gave the HERO a 2.5 s fallback so a stalled flourish could not
+       withhold the page. The curtain covering that hero got no such guard, and
+       both run on requestAnimationFrame — which browsers suspend entirely in a
+       background tab. Reproduced 2026-08-30 on a hidden tab: the count froze
+       displaying "100", `onComplete` never fired, and an opaque full-viewport
+       div with `pointer-events: auto` was still sitting over a fully rendered
+       page twenty seconds later. The hero underneath had revealed on schedule;
+       nobody could see it.
+
+       So: the same rule BUG-051 applied to the content, now applied to the
+       thing on top of it. 3.4 s is comfortably past the healthy path (1.7 s
+       count + 0.22 s hold + 0.9 s slide = 2.82 s), so a normal load never
+       reaches this and the exit animation is never cut short. */
+    const bail = setTimeout(() => { setSkip(true); doneRef.current(); }, 3400);
+
+    return () => { c.stop(); clearTimeout(settle); clearTimeout(bail); };
+  }, [reduce, skip]);
+
+  if (skip) return null;
 
   return (
-    <AnimatePresence onExitComplete={onDone}>
+    <AnimatePresence onExitComplete={() => doneRef.current()}>
       {!gone && (
         /* BUG-097 — `role="status"` because this is a splash screen whose text
            ("FinRoot", "100%") sat outside every landmark, so axe reported the
@@ -85,7 +125,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-center gap-3"
           >
-            <BrandLogo className="w-12 h-12 rounded-[2px]" />
+            <BrandLogo className="h-12 w-auto text-[#19B886]" />
             <span className="text-2xl font-semibold tracking-tight text-white">{appName}</span>
           </motion.div>
           <div className="mt-8 w-56 h-px bg-white/10 overflow-hidden rounded-full">

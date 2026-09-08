@@ -149,6 +149,13 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
       "How much history this device is willing to pull down (Stage 4.2). It is a performance choice about this browser and connection, not a fact about the workspace — a phone on mobile data and a desktop want different answers, and syncing it would impose the slow one on both.",
   },
   {
+    key: "finroot.landing.splashSeen",
+    store: "session",
+    label: "Landing splash already shown",
+    reason:
+      "sessionStorage on purpose: the splash is a first-impression flourish, and the impression is per visit, not per person. Recording it in localStorage would mean a returning visitor never sees the landing page as designed again; recording it server-side would be worse still — it is not a fact about the account, and it would have to be fetched before the page could decide whether to render, which is the opposite of what a splash is for. Scoped to the tab so the 2.8 s plays once and not again on every return to `/` — most often after signing out, which lands there.",
+  },
+  {
     key: "finroot.signin.intent",
     store: "session",
     label: "Signing in",

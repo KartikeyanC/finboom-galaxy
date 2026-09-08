@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { BrandLogo } from "@/components/brand/BrandLogo";
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import { SkipLink } from "@/components/SkipLink";
 import { useBranding } from "@/hooks/useBranding";
 import { z } from "zod";
@@ -27,7 +27,7 @@ import { notifyError } from "@/lib/errorMessages";
 import { recordLegalAcceptance } from "@/lib/legalAcceptance";
 import { clearSignInIntent, markSignInIntent } from "@/lib/appLock";
 import { signInLockStatus, recordFailedSignIn, clearSignInAttempts, formatRetryAfter } from "@/lib/signInLockout";
-import { UserCircle2, X } from "lucide-react";
+import { ArrowLeft, UserCircle2, X } from "lucide-react";
 
 const credentialsSchema = z.object({
   email: z.string().email("Enter a valid email").max(255),
@@ -76,7 +76,7 @@ const AuthPage = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
   const { user, loading } = useAuth();
-  const { appName } = useBranding();
+  const { appName, tagline } = useBranding();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -240,25 +240,50 @@ const AuthPage = () => {
           to orient on: no <main>, so every control was "outside any region". */}
       <SkipLink target="auth-main" />
       <main id="auth-main" tabIndex={-1} className="w-full max-w-md">
+        {/* The way back. The brand below has always linked home, but a logo is
+            not a visible affordance — nothing told anyone it was clickable, so
+            the page read as a dead end. This is the explicit route out.
+            min-h-[44px] per UI-004; `-ml-3` keeps the text optically flush with
+            the card edge despite the padding that makes the target. */}
         <Link
           to="/"
-          aria-label={`Back to ${appName} home`}
-          className="mb-2 flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
+          className="-ml-3 mb-1 inline-flex min-h-[44px] items-center gap-1.5 px-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          <BrandLogo className="h-10 w-10 rounded-[2px]" />
-          {/* BUG-097 — this was an <h1> nested in a link, so the page's only
-              level-1 heading was "FinRoot" and the real heading below it
-              (<h3> "Welcome") jumped two levels. The brand is a link home, not
-              the document's title. */}
-          <span className="text-2xl font-semibold tracking-tight">{appName}</span>
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Back to site
         </Link>
-        {/* BUG-094 — this was `text-[#1E293B]`, a hardcoded near-black tagline
-            sitting on a near-black background: 1.36:1, invisible in the default
-            theme and only ever legible in `light`. A themed token cannot make
-            that mistake. */}
-        <p className="mb-6 text-center text-sm font-semibold tracking-tight text-muted-foreground">
-          One App. Zero Friction. Your Complete Wealth Workspace.
-        </p>
+        {/* The full lockup, matching the navbar and sidebar. This page used the
+            bare mark plus `{appName}` as HTML text, so the brand appeared in a
+            third form — and in IBM Plex rather than the brand face.
+            BUG-097 note, still current: the brand must not be an <h1>; "Welcome"
+            below is the page's real heading. */}
+        {/* `lg` — the largest step, because here the lockup is the masthead:
+            it is the first thing above the card and the only brand on the page.
+            The sidebar sits a step below it at `md`, where the navigation
+            beneath has to stay the louder element.
+
+            The "One App. Zero Friction. Your Complete Wealth Workspace."
+            paragraph that used to sit under this was removed with it: the
+            lockup carries its own "FINANCE ROOTED IN YOU" and two stacked
+            taglines read as clutter. Worth knowing what went with it — that
+            line was the fix for BUG-094, where a hardcoded `text-[#1E293B]`
+            tagline sat on a near-black background at 1.36:1. If the positioning
+            copy is wanted back, bring it back on a token, never a literal. */}
+        <Link
+          to="/"
+          aria-label={`${appName} home`}
+          className="mb-2 flex items-center justify-center transition-opacity hover:opacity-80"
+        >
+          <BrandLockup size="lg" className="bg-primary" />
+        </Link>
+        {/* The PO-configured tagline rather than a hardcoded string: it is
+            already editable at /po/branding and this is what that field is for,
+            so the page cannot drift from the configured brand.
+
+            On a token, not a literal — see the BUG-094 note above. At `text-sm`
+            it is 14 px, comfortably over the 12 px floor in UI-003, which the
+            lockup's own 5.9 px tagline is not. */}
+        <p className="mb-6 text-center text-sm text-muted-foreground">{tagline}</p>
 
         <Card>
           <CardHeader>

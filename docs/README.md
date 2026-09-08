@@ -26,6 +26,13 @@
 | [runbooks/](./runbooks/) | Applying a migration, deploying, deleting/restoring a workspace, account erasure, rotating credentials |
 | [adr/](./adr/) | The decisions that shaped the system, with their costs — 8 records |
 
+## Gates to run
+
+| Document | When |
+|---|---|
+| [Deployment_Checklist.md](./Deployment_Checklist.md) | Before shipping |
+| [UI_Review_Checklist.md](./UI_Review_Checklist.md) | Before merging any UI change, and in full before a front-end release |
+
 Both were added in Stage 5.6. Start at the [root README](../README.md) if you are new to the repo.
 
 ## Reference

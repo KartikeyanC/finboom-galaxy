@@ -69,6 +69,11 @@ export default {
           DEFAULT: "hsl(var(--coral))",
           foreground: "hsl(var(--coral-foreground))",
         },
+        bucket: {
+          needs: "hsl(var(--bucket-needs))",
+          wants: "hsl(var(--bucket-wants))",
+          savings: "hsl(var(--bucket-savings))",
+        },
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import { useBranding } from "@/hooks/useBranding";
 import { NavLink } from "@/components/NavLink";
 import { Link, useLocation } from "react-router-dom";
@@ -210,15 +211,28 @@ export function AppSidebar() {
       aria-label="Main"
       className="border-r border-border/40"
     >
-      <SidebarHeader className={cn(collapsed ? "p-2" : "p-4")}> 
-        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}> 
-          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-            <BrandLogo className="w-8 h-8 rounded-[2px] shadow-sm" />
-          </div>
-          {!collapsed && (
-            <span className="font-display text-lg font-bold text-gradient-primary">
-              {appName}
-            </span>
+      {/*
+        Expanded: the full horizontal lockup — mark, FINROOT and the tagline.
+        Collapsed: the mark alone, because the rail is ~48 px wide and a 3.73:1
+        lockup has nowhere to go.
+
+        The lockup is a mask so it takes `bg-primary` and follows the theme; see
+        `BrandLockup` for why an <img> or the supplied SVG could not be used.
+
+        `md` (40 × 149) — its own step, deliberately one below the auth page's
+        `lg`. Sizes were tried by eye across several rounds: filling the rail's
+        full 224 px read too loud against the nav beneath it, and 48 px was
+        heavier than this header needs. The trailing margin in a 256 px rail is
+        the thing to watch if this is retuned again.
+      */}
+      <SidebarHeader className={cn(collapsed ? "p-2" : "p-4")}>
+        <div className={cn("flex items-center", collapsed && "justify-center")}>
+          {collapsed ? (
+            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+              <BrandLogo className="h-8 w-auto text-primary" />
+            </div>
+          ) : (
+            <BrandLockup size="md" className="bg-primary" />
           )}
         </div>
       </SidebarHeader>
