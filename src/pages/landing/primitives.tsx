@@ -5,6 +5,7 @@ import {
 } from "framer-motion";
 
 import { card } from "./tokens";
+import { ease, duration as DUR, spring } from "@/animations";
 
 /**
  * Landing page motion primitives — split out of Landing.tsx in Stage 4.13.
@@ -23,7 +24,7 @@ import { card } from "./tokens";
 /* ── Section reveal variants ────────────────────────────────────── */
 const reveal: Variants = {
   hidden: { opacity: 0, y: 28 },
-  show: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.7, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] } }),
+  show: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: DUR.slow, delay: i * 0.07, ease: ease.standard } }),
 };
 
 /* ── small utilities ────────────────────────────────────────────── */
@@ -40,7 +41,7 @@ export function CountUp({ value, className }: { value: string; className?: strin
     const target = parseFloat(numStr);
     const decimals = numStr.includes(".") ? numStr.split(".")[1].length : 0;
     const controls = animate(0, target, {
-      duration: 1.4, ease: [0.22, 1, 0.36, 1],
+      duration: DUR.count, ease: ease.standard,
       onUpdate: (v) => setDisplay(`${m[1]}${decimals > 0 ? v.toFixed(decimals) : Math.round(v).toLocaleString("en-IN")}${m[3]}`),
     });
     return () => controls.stop();
@@ -52,8 +53,8 @@ export function Magnetic({ children, className, strength = 0.3 }: { children: Re
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const mx = useMotionValue(0); const my = useMotionValue(0);
-  const x = useSpring(mx, { stiffness: 200, damping: 14 });
-  const y = useSpring(my, { stiffness: 200, damping: 14 });
+  const x = useSpring(mx, spring.magnetic);
+  const y = useSpring(my, spring.magnetic);
   return (
     <motion.div
       ref={ref} style={{ x, y }} className={className}

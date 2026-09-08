@@ -31,6 +31,8 @@ export function GlobalFX() {
       @keyframes fr-blobB { 0%,100%{ transform: translate3d(0,0,0) scale(1);} 50%{ transform: translate3d(-9%,7%,0) scale(1.22);} }
       @keyframes fr-blobC { 0%,100%{ transform: translate3d(0,0,0) scale(1);} 50%{ transform: translate3d(8%,9%,0) scale(0.9);} }
       @keyframes fr-shimmer { to { background-position: 200% center; } }
+      @keyframes fr-marquee { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
+      .fr-marquee { animation: fr-marquee 36s linear infinite; will-change: transform; }
       .fr-shimmer {
         background: linear-gradient(100deg,#f3fbf7 20%,#19B886 38%,#C9A84C 50%,#19B886 62%,#f3fbf7 80%);
         background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
@@ -38,6 +40,7 @@ export function GlobalFX() {
       }
       @media (prefers-reduced-motion: reduce) {
         .fr-shimmer { animation: none; }
+        .fr-marquee { animation: none !important; }
         [class*="fr-blob"] { animation: none !important; }
       }
     `}</style>

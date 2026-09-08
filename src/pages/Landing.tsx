@@ -169,10 +169,11 @@ const Landing = () => {
       </section>
 
       {/* ═══ MARQUEE ═══ */}
-      <div className="relative overflow-hidden border-y border-white/10 py-4">
+      <div data-motion="marquee" className="group relative overflow-hidden border-y border-white/10 py-4">
         <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-10 bg-gradient-to-r from-[#06070a] to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-10 bg-gradient-to-l from-[#06070a] to-transparent" />
-        <motion.div className="flex w-max" animate={reduce ? undefined : { x: ["0%", "-50%"] }} transition={reduce ? undefined : { duration: 36, ease: "linear", repeat: Infinity }}>
+        {/* CSS-driven so hovering the strip pauses it (animation-play-state). */}
+        <div className={`flex w-max ${reduce ? "" : "fr-marquee group-hover:[animation-play-state:paused]"}`}>
           {/* BUG-053: text-[11px] was 1px under the 12px floor — only the k===0 copy below is
               real (readable) content, k===1 is the aria-hidden loop duplicate, but both render
               from the same className so the fix covers the visible copy either way */}
@@ -186,7 +187,7 @@ const Landing = () => {
               )}
             </div>
           ))}
-        </motion.div>
+        </div>
       </div>
 
       {/* ═══ PRODUCT — bento ═══ */}

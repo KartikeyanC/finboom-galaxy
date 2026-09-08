@@ -76,6 +76,8 @@ const PoSecurity = lazy(() => import("./pages/po/PoSecurity.tsx"));
 
 import { PoShell } from "./components/po/PoShell";
 import { BrandDocumentTitle } from "./components/brand/BrandDocumentTitle";
+import { PageTransition } from "@/components/motion/PageTransition";
+import { MotionDebug } from "@/components/motion/MotionDebug";
 
 /**
  * Shown while a route's chunk is in flight. Deliberately a plain centred
@@ -131,6 +133,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrandDocumentTitle />
+        <MotionDebug />
         <PwaInstallPrompt />
         <ErrorBoundary>
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -144,23 +147,23 @@ const App = () => (
                     page that hangs on the fallback forever. */}
                 <Suspense fallback={<RouteFallback />}>
                 <Routes>
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/" element={<PageTransition><Landing /></PageTransition>} />
+                  <Route path="/auth" element={<PageTransition><Auth /></PageTransition>} />
                   {/* Stage 5.1 — public and unauthenticated by design: someone
                       deciding whether to sign up must be able to read both. */}
-                  <Route path="/privacy" element={<PrivacyPolicy />} />
-                  <Route path="/terms" element={<TermsOfService />} />
+                  <Route path="/privacy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
+                  <Route path="/terms" element={<PageTransition><TermsOfService /></PageTransition>} />
                   {/* Stage 5.7 — public on purpose: somebody who cannot sign in is
                       exactly the person who needs the support address and the
                       status page. */}
-                  <Route path="/support" element={<Support />} />
-                  <Route path="/status" element={<StatusPage />} />
+                  <Route path="/support" element={<PageTransition><Support /></PageTransition>} />
+                  <Route path="/status" element={<PageTransition><StatusPage /></PageTransition>} />
                   {/* Stage 3.8. Outside ProtectedRoute on purpose: the page
                       handles the signed-out case itself by stashing the token
                       and sending the visitor to sign in. */}
-                  <Route path="/invite/:token" element={<AcceptInvite />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/po/login" element={<PoLogin />} />
+                  <Route path="/invite/:token" element={<PageTransition><AcceptInvite /></PageTransition>} />
+                  <Route path="/reset-password" element={<PageTransition><ResetPassword /></PageTransition>} />
+                  <Route path="/po/login" element={<PageTransition><PoLogin /></PageTransition>} />
                   <Route
                     path="/po/*"
                     element={
@@ -226,7 +229,7 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
-                  <Route path="*" element={<NotFound />} />
+                  <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
                 </Routes>
                 </Suspense>
               </AccessProvider>

@@ -1,4 +1,5 @@
 import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { ease } from "@/animations";
 
 /**
  * The hero <h1> — split out of Landing.tsx in Stage 4.13.
@@ -16,7 +17,7 @@ const LINE: Variants = {
 };
 const WORD: Variants = {
   hidden: { y: "110%", opacity: 0 },
-  show: { y: "0%", opacity: 1, transition: { duration: 0.85, ease: [0.22, 1, 0.36, 1] } },
+  show: { y: "0%", opacity: 1, transition: { duration: 0.85, ease: ease.standard } },
 };
 const HEADLINE_CLASS =
   "text-[2.7rem] sm:text-6xl lg:text-[4.4rem] font-semibold leading-[1.02] tracking-tight text-white";
