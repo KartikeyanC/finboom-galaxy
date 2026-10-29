@@ -16,11 +16,13 @@ export default {
     extend: {
       fontFamily: {
         // Both are self-hosted variable fonts — see src/fonts.css.
-        display: ["Space Grotesk", "system-ui", "sans-serif"],
+        // NineFlow design system: one family, Inter, for everything.
+        sans: ['"Inter Variable"', "Inter", "system-ui", "sans-serif"],
+        display: ['"Inter Variable"', "Inter", "system-ui", "sans-serif"],
         // Was Inter, which nothing ever rendered: `font-body` has zero usages
         // and the body element gets --font-body from index.css instead. Aliased
         // to the real body face so it stays honest if someone does reach for it.
-        body: ["IBM Plex Sans", "system-ui", "sans-serif"],
+        body: ['"Inter Variable"', "Inter", "system-ui", "sans-serif"],
       },
       // Green text gets its own contrast-checked shade (--primary-text in
       // index.css); bg-primary / border-primary stay on the brand green.
@@ -52,6 +54,8 @@ export default {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
+        // NineFlow's third text level: placeholders, hints, captions (4.5:1+).
+        faint: "hsl(var(--faint))",
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
@@ -119,7 +123,21 @@ export default {
         lift: "var(--shadow-lift)",
         modal: "var(--shadow-modal)",
       },
+      transitionTimingFunction: {
+        // NineFlow's motion curve.
+        spring: "cubic-bezier(0.2, 0.7, 0.2, 1)",
+      },
       keyframes: {
+        // NineFlow: pages enter mostly visible, never from a blank frame.
+        "view-in": {
+          from: { opacity: "0.55", transform: "translateY(6px)" },
+          to: { opacity: "1", transform: "none" },
+        },
+        pop: {
+          "0%": { transform: "scale(0.6)" },
+          "60%": { transform: "scale(1.2)" },
+          "100%": { transform: "scale(1)" },
+        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -155,6 +173,8 @@ export default {
         },
       },
       animation: {
+        "view-in": "view-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards",
+        pop: "pop 260ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",

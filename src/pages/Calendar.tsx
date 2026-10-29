@@ -25,8 +25,8 @@ function keyToDate(key: string): Date {
 
 const Calendar = () => {
   const now = useMemo(() => new Date(), []);
-  const { theme } = useTheme();
-  const isLight = theme === "light";
+  const { isDark } = useTheme();
+  const isLight = !isDark;
 
   const [{ year, month }, setMonth] = useState({
     year: now.getFullYear(),

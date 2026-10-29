@@ -13,7 +13,7 @@ const TabsList = React.forwardRef<
     ref={ref}
     className={cn(
       // height hugs the triggers (no fixed h-12 that left a big gap above/below the active pill); thin even track
-      "inline-flex items-center justify-center rounded-full bg-muted p-1 text-muted-foreground",
+      "inline-flex items-center justify-center rounded-full bg-foreground/5 dark:bg-foreground/10 p-1 text-foreground/70",
       className,
     )}
     {...props}
@@ -29,7 +29,7 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       // transparent border on every state so the box size never changes between active/inactive (prevents misalignment)
-      "inline-flex items-center justify-center whitespace-nowrap rounded-full border border-transparent px-4 py-1.5 text-sm font-medium leading-none ring-offset-background transition-all",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-full border border-transparent px-4 py-1.5 text-sm font-semibold leading-none ring-offset-background transition-all",
       // inactive
       "text-muted-foreground hover:text-foreground hover:bg-primary/8",
       // BUG-094 — the active pill used to be a translucent green tint

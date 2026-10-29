@@ -8,14 +8,16 @@ import {
   Check,
   Users,
   ArrowRight,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme, type ThemeMode } from "@/contexts/ThemeContext";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DEVICE_LOCAL_HINT } from "@/lib/deviceLocal";
 import DeleteAccountCard from "@/components/settings/DeleteAccountCard";
 import SampleDataCard from "@/components/settings/SampleDataCard";
@@ -33,7 +35,7 @@ const DASHBOARD_LAYOUTS: { id: DashboardLayout; label: string; description: stri
 ];
 
 export default function SettingsPage() {
-  const { theme, setTheme, presets } = useTheme();
+  const { mode, setMode, palette, setPalette, palettes } = useTheme();
   const dashboardLayout = useDashboardLayout();
   const [layout, setLayout] = useState<"comfortable" | "compact">("comfortable");
   const [cats, setCats] = useState<Record<string, boolean>>({
@@ -50,69 +52,58 @@ export default function SettingsPage() {
         </h1>
       </header>
 
-      {/* Interface Personalization */}
-      <div className="glass-card p-6 space-y-5">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h2 className="font-display font-semibold text-foreground flex items-center gap-2">
-              <Palette className="w-4 h-4 text-primary" /> Interface Personalization
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Pick a global theme — all surfaces, inputs, calendars and ledgers update instantly.
-            </p>
-            <p className="text-xs text-muted-foreground/80 mt-1">{DEVICE_LOCAL_HINT}.</p>
-          </div>
-          <Badge variant="secondary" className="text-xs">
-            Active: {presets.find((p) => p.id === theme)?.label}
-          </Badge>
+      {/* Appearance: NineFlow's model, a mode plus a colour theme */}
+      <div className="glass-card p-5 space-y-5">
+        <div>
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            <Palette className="w-4 h-4 text-primary" /> Appearance
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Light or dark, and a colour theme. The FinRoot logo stays green in every theme.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{DEVICE_LOCAL_HINT}.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-          {presets.map((p) => {
-            const active = theme === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  setTheme(p.id);
-                  toast.success(`${p.label} theme applied`);
-                }}
-                aria-pressed={active}
-                className={cn(
-                  "group relative text-left rounded-xl border p-3 transition-all overflow-hidden",
-                  "hover:border-primary/40 hover:shadow-sm",
-                  active
-                    ? "border-primary ring-2 ring-primary/40 shadow-md"
-                    : "border-border/50 bg-card/40",
-                )}
-              >
-                {active && (
-                  <span className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow">
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                )}
-                <div
-                  className="h-16 w-full rounded-lg border border-border/60 flex overflow-hidden mb-3"
-                  aria-hidden
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold text-muted-foreground">Mode</Label>
+          <Tabs value={mode} onValueChange={(v) => setMode(v as ThemeMode)}>
+            <TabsList>
+              <TabsTrigger value="light" className="gap-1.5"><Sun className="h-4 w-4" /> Light</TabsTrigger>
+              <TabsTrigger value="dark" className="gap-1.5"><Moon className="h-4 w-4" /> Dark</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold text-muted-foreground">Colour theme</Label>
+          <div className="flex flex-wrap gap-2">
+            {palettes.map((p) => {
+              const active = palette === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPalette(p.id)}
+                  aria-pressed={active}
+                  className={cn(
+                    "inline-flex items-center gap-2.5 h-10 rounded-full border pl-1.5 pr-4 text-sm font-semibold transition",
+                    active ? "border-primary bg-accent text-primary" : "border-border bg-card text-foreground hover:bg-background",
+                  )}
                 >
-                  {p.swatch.map((c, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 h-full"
-                      style={{ background: c }}
-                    />
-                  ))}
-                </div>
-                <div className="text-sm font-semibold text-foreground leading-tight">
+                  <span
+                    className="h-7 w-7 rounded-full border border-border flex items-center justify-center"
+                    style={{ background: p.swatch[0] }}
+                    aria-hidden
+                  >
+                    <span className="h-4 w-4 rounded-full flex items-center justify-center" style={{ background: p.swatch[1] }}>
+                      {active && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                    </span>
+                  </span>
                   {p.label}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                  {p.description}
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

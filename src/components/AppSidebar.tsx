@@ -83,9 +83,40 @@ const toolItems = [
   { title: "Settings", url: "/app/settings", icon: Settings, menuId: "settings" },
 ];
 
-type NavEntry = (typeof mainItems)[number];
+export type NavEntry = (typeof mainItems)[number];
 
 const NOT_LOCKED: MenuLock = { kind: "none" };
+
+/**
+ * The navigation the signed-in member may see, with plan locks, in the
+ * sidebar's three groups. Shared with the phone tab bar (MobileNav) so both
+ * apply the same Stage 5.5 rules below.
+ */
+export function useNavSections() {
+  const { canAccess } = useAccess();
+  const { lockOf } = useMenuLocks();
+  /**
+   * Stage 5.5 — a feature the plan does not include is shown, locked, instead
+   * of vanishing. Hiding it means nobody ever discovers what the paid plan is
+   * for; the row is muted and carries a padlock, and its route renders the
+   * upgrade page rather than bouncing.
+   *
+   * A menu the OWNER switched off stays hidden: that is their decision about
+   * this workspace, and advertising it back at the person they hid it from
+   * would be both confusing and unsellable.
+   *
+   * `billing` is excluded on purpose — selling the page where you pay us, as
+   * a paid feature, is absurd. (It is plan-gated today; see the 5.5 note.)
+   */
+  const withLocks = (items: typeof mainItems) =>
+    items
+      .map((i) => ({ item: i, lock: canAccess(i.menuId) ? NOT_LOCKED : lockOf(i.menuId) }))
+      .filter(
+        ({ item, lock }) =>
+          lock.kind === "none" || (lock.kind === "plan" && item.menuId !== "billing"),
+      );
+  return { main: withLocks(mainItems), wealth: withLocks(wealthItems), tools: withLocks(toolItems) };
+}
 
 /**
  * One sidebar row, available or plan-locked.
@@ -114,13 +145,12 @@ function NavItem({
           to={item.url}
           end
           className={cn(
-            "hover:bg-accent/60 rounded-lg transition-all duration-200",
-            locked && "text-muted-foreground/70",
+            "transition-colors duration-200",
+            locked && "text-faint",
             collapsed && "justify-center",
           )}
-          activeClassName="bg-primary/10 text-primary font-medium border border-primary/20"
         >
-          <item.icon className="h-4 w-4 flex-shrink-0" />
+          <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
           {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
           {locked && (
             <>
@@ -144,8 +174,6 @@ export function AppSidebar() {
   const { appName } = useBranding();
   const location = useLocation();
   const currentPath = location.pathname;
-  const { canAccess } = useAccess();
-  const { lockOf } = useMenuLocks();
   const { user } = useAuth();
   const { data: sub } = useSubscription();
   const { canPrompt, isStandalone, isIOS, promptInstall } = usePwaInstall();
@@ -171,30 +199,7 @@ export function AppSidebar() {
     .slice(0, 2)
     .toUpperCase();
   const planLabel = sub?.plan_name ? `${sub.plan_name} plan` : "Free plan";
-  /**
-   * Stage 5.5 — a feature the plan does not include is shown, locked, instead
-   * of vanishing. Hiding it means nobody ever discovers what the paid plan is
-   * for; the row is muted and carries a padlock, and its route renders the
-   * upgrade page rather than bouncing.
-   *
-   * A menu the OWNER switched off stays hidden: that is their decision about
-   * this workspace, and advertising it back at the person they hid it from
-   * would be both confusing and unsellable.
-   *
-   * `billing` is excluded on purpose — selling the page where you pay us, as
-   * a paid feature, is absurd. (It is plan-gated today; see the 5.5 note.)
-   */
-  const withLocks = (items: typeof mainItems) =>
-    items
-      .map((i) => ({ item: i, lock: canAccess(i.menuId) ? NOT_LOCKED : lockOf(i.menuId) }))
-      .filter(
-        ({ item, lock }) =>
-          lock.kind === "none" || (lock.kind === "plan" && item.menuId !== "billing"),
-      );
-
-  const visibleMain = withLocks(mainItems);
-  const visibleTools = withLocks(toolItems);
-  const visibleWealth = withLocks(wealthItems);
+  const { main: visibleMain, wealth: visibleWealth, tools: visibleTools } = useNavSections();
 
   const isActive = (path: string) => currentPath === path;
 
@@ -207,9 +212,9 @@ export function AppSidebar() {
        its own does not distinguish them. */
     <Sidebar
       collapsible="icon"
+      variant="floating"
       role="navigation"
       aria-label="Main"
-      className="border-r border-border/40"
     >
       {/*
         Expanded: the full horizontal lockup — mark, FINROOT and the tagline.
@@ -240,7 +245,7 @@ export function AppSidebar() {
       <SidebarContent>
         {visibleMain.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-3">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.12em] text-faint font-semibold px-3.5">
             Overview
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -261,7 +266,7 @@ export function AppSidebar() {
 
         {visibleWealth.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-3">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.12em] text-faint font-semibold px-3.5">
             Wealth
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -282,7 +287,7 @@ export function AppSidebar() {
 
         {visibleTools.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-3">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.12em] text-faint font-semibold px-3.5">
             Tools
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -310,7 +315,7 @@ export function AppSidebar() {
             aria-label="Install app"
             title={`Install ${appName} as an app`}
             className={cn(
-              "mb-2 flex items-center rounded-lg border border-primary/30 bg-primary/10 text-sm font-medium text-primary transition-colors hover:bg-primary/20",
+              "mb-2 flex items-center rounded-full border border-border bg-card text-sm font-semibold text-foreground transition-colors hover:bg-background",
               collapsed ? "justify-center p-2" : "gap-2 px-3 py-2",
             )}
           >
@@ -323,16 +328,16 @@ export function AppSidebar() {
           aria-label="Open profile"
           title={`${displayName} · ${planLabel}`}
           className={cn(
-            "flex items-center gap-3 rounded-lg transition-colors hover:bg-accent/60",
+            "flex items-center gap-3 rounded-full transition-colors hover:bg-background",
             collapsed ? "justify-center p-1.5" : "p-1.5",
           )}
         >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/60 to-chart-2/60 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold text-foreground">{initials || "U"}</span>
+          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-bold text-primary">{initials || "U"}</span>
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-foreground truncate">{displayName}</span>
+              <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
               <span className="text-xs text-muted-foreground truncate capitalize">{planLabel}</span>
             </div>
           )}

@@ -61,8 +61,7 @@ export function greenShade(i: number, n: number, dark = false): string {
   return `hsl(${hue}, ${sat}%, ${light}%)`;
 }
 
-/** True when the active theme uses a dark canvas (everything except "light"). */
+/** True in dark mode, whichever colour palette is active. */
 export function useChartDark(): boolean {
-  const { theme } = useTheme();
-  return theme !== "light";
+  return useTheme().isDark;
 }

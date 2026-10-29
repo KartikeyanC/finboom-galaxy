@@ -12,6 +12,8 @@ LCP page.
 
 | File | Family | Axis | Subset | Size |
 |---|---|---|---|---|
+| `inter-latin-wght-normal.woff2` | Inter Variable (the app face, preloaded) | `wght 100–900` | latin | 48 kB |
+| `inter-latin-ext-wght-normal.woff2` | Inter Variable | `wght 100–900` | latin-ext | 85 kB |
 | `space-grotesk-latin.woff2` | Space Grotesk | `wght 300–700` | latin | 22 kB |
 | `space-grotesk-latin-ext.woff2` | Space Grotesk | `wght 300–700` | latin-ext | 19 kB |
 | `ibm-plex-sans-latin.woff2` | IBM Plex Sans | `wght 100–700` | latin | 45 kB |

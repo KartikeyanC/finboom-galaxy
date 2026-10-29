@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { CosmicBackground } from "@/components/brand/CosmicBackground";
-import { cn } from "@/lib/utils";
 import { Bell, LogOut, Search, Eye, Lock, Sun, Moon, Plus, WifiOff } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -18,6 +16,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useNotifications } from "@/hooks/useNotifications";
 import GlobalSearch from "@/components/GlobalSearch";
 import QuickAddSheet from "@/components/QuickAddSheet";
+import { MobileNav } from "@/components/MobileNav";
 import {
   Select,
   SelectContent,
@@ -92,11 +91,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: sub } = useSubscription();
   const subExpired = sub?.status === "expired";
   const { unread } = useNotifications();
-  const { theme, setTheme } = useTheme();
-  const isLight = theme === "light";
-  const cosmic = theme === "obsidian";
+  const { isDark, setMode } = useTheme();
+  const isLight = !isDark;
   return (
-    <SidebarProvider>
+    // NineFlow: labels from 1024px wide, icons only below that.
+    <SidebarProvider defaultOpen={typeof window === "undefined" || window.innerWidth >= 1024}>
       {/*
         Stage 4.8 / BUG-052 — skip link. The sidebar is ~20 links, so a keyboard
         or screen-reader user had to tab through the entire navigation on every
@@ -104,29 +103,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         is the point: it appears exactly when someone is tabbing.
       */}
       <SkipLink />
-      {cosmic && <CosmicBackground />}
-      <div className={cn("min-h-screen flex w-full", cosmic ? "fr-cosmic bg-transparent" : "bg-background")}>
+      <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Bar */}
-          <header className="h-16 flex items-center justify-between border-b border-border/30 bg-background/60 backdrop-blur-xl sticky top-0 z-50 px-4 sm:px-6">
+          <header className="h-16 flex items-center justify-between bg-background/85 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-6">
             <div className="flex items-center gap-3">
-              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+              <SidebarTrigger className="hidden md:inline-flex rounded-full text-muted-foreground hover:text-foreground" />
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
-                className="hidden sm:flex items-center gap-2 bg-secondary/50 hover:bg-secondary/80 rounded-lg px-3 py-2 w-64 transition-colors group"
+                className="hidden sm:flex items-center gap-2.5 h-10 rounded-full border border-border bg-card hover:bg-background px-3.5 w-64 transition-colors group"
               >
-                <Search className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                <span className="text-sm text-muted-foreground group-hover:text-foreground/70 transition-colors flex-1 text-left">
+                <Search className="w-4 h-4 text-faint group-hover:text-foreground transition-colors" />
+                <span className="text-sm text-faint group-hover:text-foreground transition-colors flex-1 text-left">
                   Search anything...
                 </span>
                 {/* BUG-094 — `/60` on top of an already-marginal token put this
                     at 2.24:1, the worst reading in the app. It is a keyboard
                     hint, so dimming it was deliberate; but a hint nobody can
                     read is not a subtle hint, it is a missing one. */}
-                <kbd className="hidden lg:inline-flex h-5 items-center gap-0.5 rounded border border-border/60 bg-muted px-1.5 text-xs text-muted-foreground">
+                <kbd className="hidden lg:inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-border bg-background px-1.5 text-[10px] font-semibold text-muted-foreground">
                   Ctrl K
                 </kbd>
               </button>
@@ -136,10 +134,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 type="button"
                 onClick={() => setQuickAddOpen(true)}
                 title="Quick add transaction (press N)"
-                className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-sm shadow-primary/20 hover:bg-primary/90 transition-all duration-150 active:scale-95"
+                className="hidden md:flex items-center gap-2 h-10 px-4 rounded-full bg-gradient-to-r from-brand-a to-brand-b text-brand-foreground text-sm font-semibold hover:opacity-90 transition active:scale-[0.98]"
               >
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add</span>
+                <span>Add</span>
               </button>
             </div>
             <div className="flex items-center gap-3">
@@ -171,22 +169,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   Restricted view
                 </Badge>
               )}
-              <span className="text-xs text-muted-foreground hidden sm:block font-display">
+              <span className="text-xs font-semibold text-muted-foreground hidden sm:block tabular-nums">
                 {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
               </span>
               <button
                 type="button"
-                onClick={() => setTheme(isLight ? "obsidian" : "light")}
+                onClick={() => setMode(isLight ? "dark" : "light")}
                 aria-label="Toggle light/dark theme"
                 title={isLight ? "Switch to dark" : "Switch to light"}
-                className="w-9 h-9 rounded-lg bg-secondary/50 flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-card transition-colors text-muted-foreground hover:text-foreground"
               >
                 {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
               </button>
               <Link
                 to="/app/notifications"
                 aria-label="Notifications"
-                className="relative w-9 h-9 rounded-lg bg-secondary/50 flex items-center justify-center hover:bg-secondary transition-colors"
+                className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-card transition-colors"
               >
                 <Bell className="w-4 h-4 text-muted-foreground" />
                 {unread > 0 && (
@@ -308,13 +306,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
 
-          <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto">
+          <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto pb-24 md:pb-0">
             {children}
           </main>
         </div>
       </div>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       <QuickAddSheet open={quickAddOpen} onOpenChange={setQuickAddOpen} />
+      <MobileNav onQuickAdd={() => setQuickAddOpen(true)} onSearch={() => setSearchOpen(true)} />
     </SidebarProvider>
   );
 }

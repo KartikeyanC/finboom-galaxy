@@ -50,8 +50,8 @@ const EMPTY_COPY: Record<TrackerStatus, { title: string; body: string }> = {
 };
 
 export default function Trackers() {
-  const { theme } = useTheme();
-  const isLight = theme === "light";
+  const { isDark } = useTheme();
+  const isLight = !isDark;
 
   const [params, setParams] = useSearchParams();
   const activeId = params.get("id");

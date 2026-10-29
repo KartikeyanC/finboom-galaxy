@@ -1,104 +1,104 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
-export type ThemeId = "obsidian" | "light" | "cyber" | "mint" | "copper";
+/**
+ * NineFlow's theme model (design-system/finroot-nineflow-tokens.css): a light/dark
+ * **mode** and a separate colour **palette**. Mode is the `dark` class on <html>;
+ * the palette is `data-theme` (absent for the default FinRoot green).
+ */
+export type ThemeMode = "light" | "dark";
+export type PaletteId = "default" | "ocean" | "forest" | "berry" | "graphite";
 
-export type ThemePreset = {
-  id: ThemeId;
+export type PalettePreset = {
+  id: PaletteId;
   label: string;
-  description: string;
-  /** Swatch colors for the preview chip (background, surface, primary, accent). */
-  swatch: [string, string, string, string];
+  /** [page, accent] in light mode, for the picker swatch. */
+  swatch: [string, string];
 };
 
-export const THEME_PRESETS: ThemePreset[] = [
-  {
-    id: "light",
-    label: "Crisp Light",
-    description: "Clean white surfaces, sharp borders.",
-    swatch: ["#FFFFFF", "#F8FAFC", "#15A06B", "#0F172A"],
-  },
-  {
-    id: "obsidian",
-    label: "Premium Dark Obsidian",
-    description: "Slate canvas with vibrant accents.",
-    swatch: ["#0F172A", "#1A2233", "#22C5A0", "#F8FAFC"],
-  },
-  {
-    id: "cyber",
-    label: "Electric Cyber Blue",
-    description: "Deep tech dark with neon blue accents.",
-    swatch: ["#06121F", "#0C1E2E", "#0A9BDF", "#7FD8FF"],
-  },
-  {
-    id: "mint",
-    label: "Mint Wealth",
-    description: "Rich emerald highlights on deep dark.",
-    swatch: ["#0A1410", "#10221B", "#10B981", "#6EE7B7"],
-  },
-  {
-    id: "copper",
-    label: "Sunset Copper",
-    description: "Warm amber/orange on modern dark.",
-    swatch: ["#150E08", "#241710", "#F97316", "#FDBA74"],
-  },
+export const PALETTES: PalettePreset[] = [
+  { id: "default", label: "FinRoot", swatch: ["#FAF7F0", "#0D7A5F"] },
+  { id: "ocean", label: "Ocean", swatch: ["#F3F7FC", "#2563EB"] },
+  { id: "forest", label: "Forest", swatch: ["#F4F8F3", "#16805A"] },
+  { id: "berry", label: "Berry", swatch: ["#FCF5F8", "#BE2469"] },
+  { id: "graphite", label: "Graphite", swatch: ["#F4F4F5", "#6348DC"] },
 ];
 
+/**
+ * One device-local key (registered in lib/deviceLocal.ts), stored as "mode/palette".
+ * Values written before the NineFlow redesign were a single preset id; they map to
+ * the nearest mode and palette so nobody's choice is lost.
+ */
 const STORAGE_KEY = "finroot.theme";
-const DEFAULT_THEME: ThemeId = "obsidian";
+const LEGACY: Record<string, [ThemeMode, PaletteId]> = {
+  obsidian: ["dark", "default"],
+  light: ["light", "default"],
+  cyber: ["dark", "ocean"],
+  mint: ["dark", "forest"],
+  copper: ["dark", "default"],
+};
+
+export function parseStoredTheme(raw: string | null): [ThemeMode, PaletteId] {
+  if (!raw) return ["light", "default"];
+  if (LEGACY[raw]) return LEGACY[raw];
+  const [mode, palette] = raw.split("/");
+  return [
+    mode === "dark" ? "dark" : "light",
+    PALETTES.some((p) => p.id === palette) ? (palette as PaletteId) : "default",
+  ];
+}
 
 type ThemeContextValue = {
-  theme: ThemeId;
-  setTheme: (t: ThemeId) => void;
-  presets: ThemePreset[];
+  mode: ThemeMode;
+  setMode: (m: ThemeMode) => void;
+  isDark: boolean;
+  palette: PaletteId;
+  setPalette: (p: PaletteId) => void;
+  palettes: PalettePreset[];
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function applyTheme(theme: ThemeId) {
+function applyTheme(mode: ThemeMode, palette: PaletteId) {
   const root = document.documentElement;
-  if (theme === "obsidian") {
-    root.removeAttribute("data-theme");
-  } else {
-    root.setAttribute("data-theme", theme);
-  }
+  root.classList.toggle("dark", mode === "dark");
+  if (palette === "default") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", palette);
   // Help native UI (scrollbars, form controls) match the surface
-  root.style.colorScheme = theme === "light" ? "light" : "dark";
+  root.style.colorScheme = mode;
 }
 
-function readStoredTheme(): ThemeId {
+function readStored(): [ThemeMode, PaletteId] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) as ThemeId | null;
-    if (raw && THEME_PRESETS.some((p) => p.id === raw)) return raw;
+    return parseStoredTheme(localStorage.getItem(STORAGE_KEY));
   } catch {
-    /* ignore */
+    return ["light", "default"];
   }
-  return DEFAULT_THEME;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>(() => {
-    const initial = readStoredTheme();
+  const [[mode, palette], setState] = useState<[ThemeMode, PaletteId]>(() => {
+    const initial = readStored();
     // Apply synchronously so the first paint already matches the saved theme.
-    if (typeof document !== "undefined") applyTheme(initial);
+    if (typeof document !== "undefined") applyTheme(...initial);
     return initial;
   });
 
-  // Re-apply whenever the theme changes (also covers HMR / future updates).
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
-  const setTheme = useCallback((t: ThemeId) => {
-    setThemeState(t);
+    applyTheme(mode, palette);
     try {
-      localStorage.setItem(STORAGE_KEY, t);
+      localStorage.setItem(STORAGE_KEY, `${mode}/${palette}`);
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [mode, palette]);
+
+  const setMode = useCallback((m: ThemeMode) => setState(([, p]) => [m, p]), []);
+  const setPalette = useCallback((p: PaletteId) => setState(([m]) => [m, p]), []);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, presets: THEME_PRESETS }}>
+    <ThemeContext.Provider
+      value={{ mode, setMode, isDark: mode === "dark", palette, setPalette, palettes: PALETTES }}
+    >
       {children}
     </ThemeContext.Provider>
   );

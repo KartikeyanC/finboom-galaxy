@@ -58,8 +58,8 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
   const { data, isLoading } = useTransactions(type, period);
   const del = useDeleteTransaction();
   const custom = useCustomCategories();
-  const { theme } = useTheme();
-  const isLight = theme === "light";
+  const { isDark } = useTheme();
+  const isLight = !isDark;
   const trackerNames = useTrackerNameMap();
 
   const [dialogOpen, setDialogOpen] = useState(false);

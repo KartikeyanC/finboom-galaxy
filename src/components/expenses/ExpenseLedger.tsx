@@ -135,8 +135,8 @@ export default function ExpenseLedger() {
   const period = useLedgerPeriod();
   const { data, isLoading } = useTransactions("expense", period);
   const del = useDeleteTransaction();
-  const { theme } = useTheme();
-  const isLight = theme === "light";
+  const { isDark } = useTheme();
+  const isLight = !isDark;
   // Built once for the whole ledger and threaded down. One hook per row would
   // mean one subscription per row.
   const trackerNames = useTrackerNameMap();
