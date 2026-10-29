@@ -85,6 +85,18 @@
 
     --radius: 0.75rem;
 
+    /* NineFlow-look restyle (design-system/RESTYLE-SPEC.md). The brand gradient
+       is the only gradient in the app: primary buttons and the active tab.
+       White text clears 4.66:1 on brand-a. */
+    --brand-a: 165 81% 29%;
+    --brand-b: 164 81% 20%;
+    --brand-foreground: 0 0% 100%;
+    /* Colour inside shadow-soft / -lift / -modal; always used at low alpha. */
+    --shadow-color: 0 0% 0%;
+    --shadow-soft: 0 1px 2px hsl(var(--shadow-color) / 0.04), 0 4px 16px hsl(var(--shadow-color) / 0.05);
+    --shadow-lift: 0 2px 4px hsl(var(--shadow-color) / 0.05), 0 12px 28px hsl(var(--shadow-color) / 0.10);
+    --shadow-modal: 0 24px 64px hsl(var(--shadow-color) / 0.22);
+
     /* 'Fira Sans' used to sit between these two, but it only ever acted as a
        fallback behind IBM Plex Sans — which is now self-hosted and always
        available — so it was five weights of download that nothing rendered. */
@@ -104,15 +116,15 @@
   /* ============ THEME: Crisp Light ============ */
   [data-theme="light"] {
     /* Soft off-white canvas so white cards lift off the page. */
-    --background: 210 40% 97%;
-    --foreground: 222 47% 11%;
+    --background: 100 16% 96%;
+    --foreground: 147 21% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 147 21% 8%;
     --card-elevated: 0 0% 100%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 147 21% 8%;
 
     /* BUG-094 — was 34%, which is 3.78:1 on white. The brand green has to
        clear AA in BOTH directions in this theme, because the same token is the
@@ -129,14 +141,14 @@
     --primary-foreground: 0 0% 100%;
     --primary-text: 165 81% 25%; /* 4.9:1 on --muted; #0D7A5F itself is 4.46 */
 
-    --secondary: 214 32% 93%;
-    --secondary-foreground: 222 47% 18%;
+    --secondary: 120 13% 94%;
+    --secondary-foreground: 147 21% 12%;
 
-    --muted: 214 32% 93%;
-    --muted-foreground: 215 16% 42%;
+    --muted: 120 13% 94%;
+    --muted-foreground: 145 7% 36%;
 
-    --accent: 160 50% 92%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 154 40% 92%;
+    --accent-foreground: 147 21% 8%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
@@ -162,18 +174,21 @@
     --bucket-wants: 26 90% 37%;
     --bucket-savings: 163 94% 24%;
 
-    --border: 215 20% 89%;
-    --input: 215 20% 85%;
+    --border: 120 10% 90%;
+    --input: 127 11% 85%;
     --ring: 165 81% 26.5%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 30% 25%;
+    --sidebar-foreground: 147 12% 24%;
     --sidebar-primary: 165 81% 26.5%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 94%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 220 13% 88%;
+    --sidebar-accent: 154 40% 92%;
+    --sidebar-accent-foreground: 147 21% 8%;
+    --sidebar-border: 120 10% 90%;
     --sidebar-ring: 165 81% 26.5%;
+
+    /* Warm-ink shadows on light surfaces. */
+    --shadow-color: 147 21% 8%;
   }
 
   /* ============ THEME: Electric Cyber Blue (#0A9BDF) ============ */
@@ -222,6 +237,10 @@
     --sidebar-accent-foreground: 200 30% 94%;
     --sidebar-border: 205 50% 16%;
     --sidebar-ring: 199 92% 46%;
+
+    --brand-a: 199 92% 48%;
+    --brand-b: 199 93% 39%;
+    --brand-foreground: 210 60% 7%;
   }
 
   /* ============ THEME: Mint Wealth (#10B981) ============ */
@@ -318,6 +337,10 @@
     --sidebar-accent-foreground: 30 25% 94%;
     --sidebar-border: 24 28% 16%;
     --sidebar-ring: 25 95% 53%;
+
+    --brand-a: 27 94% 58%;
+    --brand-b: 25 90% 48%;
+    --brand-foreground: 24 35% 6%;
   }
 }
 
@@ -333,12 +356,13 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
+    letter-spacing: -0.025em;
   }
 }
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-card shadow-soft;
   }
 
   .glow-primary {
@@ -388,15 +412,7 @@
 /* ===== Light theme polish: lift white cards off the soft canvas ===== */
 [data-theme="light"] .glass-card {
   background-color: hsl(var(--card));
-  border-color: hsl(215 24% 90%);
-  box-shadow:
-    0 1px 2px hsl(222 47% 11% / 0.04),
-    0 8px 24px hsl(222 47% 11% / 0.06);
-}
-[data-theme="light"] .glass-card:hover {
-  box-shadow:
-    0 1px 2px hsl(222 47% 11% / 0.05),
-    0 12px 30px hsl(222 47% 11% / 0.09);
+  border-color: hsl(var(--border));
 }
 [data-theme="light"] .glow-primary {
   box-shadow: 0 6px 16px hsl(var(--primary) / 0.28);
@@ -404,7 +420,7 @@
 /* Soft, readable elevation for the raw bordered cards used across pages. */
 [data-theme="light"] .rounded-2xl.border,
 [data-theme="light"] .rounded-xl.border {
-  box-shadow: 0 1px 2px hsl(222 47% 11% / 0.03), 0 6px 18px hsl(222 47% 11% / 0.05);
+  box-shadow: var(--shadow-soft);
 }
 
 /* ===== Dark Obsidian: green active sidebar button ===== */

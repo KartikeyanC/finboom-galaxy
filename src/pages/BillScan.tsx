@@ -337,7 +337,7 @@ export default function BillScanPage() {
                 <Button
                   onClick={runScan}
                   disabled={isScanning}
-                  className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+                  className="w-full h-10"
                 >
                   {isScanning ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -545,7 +545,7 @@ export default function BillScanPage() {
           <Button
             disabled={!scanned || !rows.length || !approval || createTxn.isPending}
             onClick={handleApprove}
-            className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+            className="w-full h-11"
           >
             {createTxn.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />

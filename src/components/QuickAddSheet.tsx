@@ -263,7 +263,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
           {/* Save button */}
           <Button
             className={cn(
-              "w-full h-12 text-base font-semibold rounded-xl transition-all duration-200",
+              "w-full h-12 text-base font-semibold bg-none text-white transition-all duration-200",
               saved
                 ? "bg-emerald-500 hover:bg-emerald-500"
                 : type === "expense"

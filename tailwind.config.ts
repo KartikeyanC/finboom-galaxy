@@ -77,6 +77,11 @@ export default {
           DEFAULT: "hsl(var(--coral))",
           foreground: "hsl(var(--coral-foreground))",
         },
+        brand: {
+          a: "hsl(var(--brand-a))",
+          b: "hsl(var(--brand-b))",
+          foreground: "hsl(var(--brand-foreground))",
+        },
         bucket: {
           needs: "hsl(var(--bucket-needs))",
           wants: "hsl(var(--bucket-wants))",
@@ -105,6 +110,14 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // NineFlow-look shape scale (design-system/RESTYLE-SPEC.md).
+        card: "20px",
+        sheet: "24px",
+      },
+      boxShadow: {
+        soft: "var(--shadow-soft)",
+        lift: "var(--shadow-lift)",
+        modal: "var(--shadow-modal)",
       },
       keyframes: {
         "accordion-down": {

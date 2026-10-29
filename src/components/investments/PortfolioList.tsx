@@ -333,7 +333,8 @@ function PortfolioRows({
                         </Button>
                         <Button
                           size="sm"
-                          className="h-7 px-2 text-xs bg-rose-500 hover:bg-rose-500/90 text-white"
+                          variant="destructive"
+                          className="h-7 px-2 text-xs"
                           onClick={() => {
                             onDelete(r.id);
                             setConfirmId(null);
