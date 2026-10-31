@@ -65,6 +65,8 @@ export const EXPORT_TABLES: ExportTable[] = [
   { table: "net_worth_snapshots", scope: "tenant", what: "Net-worth history" },
   { table: "trips", scope: "tenant", what: "Trips and their budgets" },
   { table: "trackers", scope: "tenant", what: "Projects and life events your transactions are grouped under" },
+  { table: "ingest_routes", scope: "tenant", what: "Inbound e-mail addresses and bank-data consents that add transactions automatically (only a hash of each secret is stored, never the secret itself)" },
+  { table: "transaction_ingest_events", scope: "tenant", what: "Each automatically received payment and whether it was added or recognised as a duplicate" },
 ];
 
 /**
@@ -79,7 +81,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   price_cache: "Market prices keyed by security symbol. Shared, and contains nobody's identity.",
   platform_admins: "Which staff accounts are platform administrators.",
   storage_purge_queue: "Operational queue for deleting files after a workspace is purged.",
-  processed_webhooks: "Paddle webhook event ids, kept only to reject a replayed delivery. Carries no user or tenant identity.",
+  processed_webhooks: "Webhook delivery ids (Paddle, Account Aggregator, and SHA-256 hashes of inbound e-mail message ids), kept only to reject a replayed delivery. Carries no user or tenant identity.",
 };
 
 export type BundleManifest = {

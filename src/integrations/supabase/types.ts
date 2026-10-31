@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.15"
   }
   graphql_public: {
     Tables: {
@@ -533,6 +533,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "income_streams_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ingest_routes: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          revoked_at: string | null
+          route_key: string
+          secret_hash: string | null
+          source: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          revoked_at?: string | null
+          route_key: string
+          secret_hash?: string | null
+          source: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          revoked_at?: string | null
+          route_key?: string
+          secret_hash?: string | null
+          source?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingest_routes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1599,18 +1643,74 @@ export type Database = {
           },
         ]
       }
+      transaction_ingest_events: {
+        Row: {
+          id: string
+          outcome: string
+          raw_payload_hash: string
+          reason: string | null
+          received_at: string
+          source: string
+          tenant_id: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          outcome: string
+          raw_payload_hash: string
+          reason?: string | null
+          received_at?: string
+          source: string
+          tenant_id: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          outcome?: string
+          raw_payload_hash?: string
+          reason?: string | null
+          received_at?: string
+          source?: string
+          tenant_id?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_ingest_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_ingest_events_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string | null
+          account_last4: string | null
           amount: number
           category: string
           created_at: string
           currency: string
           description: string | null
+          external_ref: string | null
           id: string
           import_hash: string | null
+          ingested_at: string | null
           occurred_at: string
           payment_mode: string | null
+          raw_payload_hash: string | null
+          source: string
           source_recurring_id: string | null
           tenant_id: string
           tracker_id: string | null
@@ -1621,15 +1721,20 @@ export type Database = {
         }
         Insert: {
           account_id?: string | null
+          account_last4?: string | null
           amount: number
           category: string
           created_at?: string
           currency?: string
           description?: string | null
+          external_ref?: string | null
           id?: string
           import_hash?: string | null
+          ingested_at?: string | null
           occurred_at?: string
           payment_mode?: string | null
+          raw_payload_hash?: string | null
+          source?: string
           source_recurring_id?: string | null
           tenant_id?: string
           tracker_id?: string | null
@@ -1640,15 +1745,20 @@ export type Database = {
         }
         Update: {
           account_id?: string | null
+          account_last4?: string | null
           amount?: number
           category?: string
           created_at?: string
           currency?: string
           description?: string | null
+          external_ref?: string | null
           id?: string
           import_hash?: string | null
+          ingested_at?: string | null
           occurred_at?: string
           payment_mode?: string | null
+          raw_payload_hash?: string | null
+          source?: string
           source_recurring_id?: string | null
           tenant_id?: string
           tracker_id?: string | null
@@ -1795,6 +1905,14 @@ export type Database = {
         Args: { p_error?: string; p_id: string }
         Returns: undefined
       }
+      create_ingest_route: {
+        Args: { p_source: string; p_tenant_id: string }
+        Returns: {
+          route_id: string
+          route_key: string
+          secret: string
+        }[]
+      }
       create_invitation: {
         Args: {
           p_email: string
@@ -1855,6 +1973,27 @@ export type Database = {
       has_menu: {
         Args: { p_menu: string; p_tenant_id: string }
         Returns: boolean
+      }
+      ingest_transaction: {
+        Args: {
+          p_account_last4?: string
+          p_amount: number
+          p_category?: string
+          p_currency?: string
+          p_description?: string
+          p_external_ref?: string
+          p_occurred_at: string
+          p_payment_mode?: string
+          p_raw_payload_hash: string
+          p_source: string
+          p_tenant_id: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: {
+          outcome: string
+          transaction_id: string
+        }[]
       }
       invite_member: {
         Args: {
@@ -2129,6 +2268,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      revoke_ingest_route: { Args: { p_route_id: string }; Returns: undefined }
       revoke_invitation: {
         Args: { p_invitation_id: string }
         Returns: undefined
@@ -2185,12 +2325,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2214,11 +2354,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2239,11 +2379,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2264,11 +2404,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2281,11 +2421,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

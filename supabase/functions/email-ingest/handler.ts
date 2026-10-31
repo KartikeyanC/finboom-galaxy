@@ -269,7 +269,9 @@ export async function handleEmailIngest(req: Request, deps: EmailIngestDeps): Pr
   }
 
   const messageId = typeof body.message_id === "string" ? body.message_id.trim().slice(0, 200) : null;
-  const eventKey = messageId ? `email:${routeKey}:${messageId}` : null;
+  // Hashed: processed_webhooks is declared free of personal data
+  // (src/lib/dataExport.ts), and a raw Message-ID plus route key is not.
+  const eventKey = messageId ? `email:${await sha256Hex(`${routeKey}\n${messageId}`)}` : null;
   if (eventKey && (await deps.wasProcessed(eventKey))) {
     return json({ received: true, duplicate: true });
   }
