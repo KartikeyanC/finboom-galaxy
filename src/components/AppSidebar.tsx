@@ -210,9 +210,12 @@ export function AppSidebar() {
        It IS the app's main navigation, so it should say so. The label matters
        because a page can have several navigation landmarks and "navigation" on
        its own does not distinguish them. */
+    // Docked to the left edge, full height, as before the NineFlow restyle:
+    // the floating card clipped the Tools group below "Workspace" on a normal
+    // laptop screen. Colours and pill rows stay the new design's.
     <Sidebar
       collapsible="icon"
-      variant="floating"
+      className="border-r border-sidebar-border"
       role="navigation"
       aria-label="Main"
     >
