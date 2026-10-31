@@ -16,3 +16,13 @@ verify_jwt = false
 
 [functions.payments-webhook]
 verify_jwt = false
+
+# Stage 7 — called by the AA vendor, which has no Supabase session. The HMAC
+# signature (AA_WEBHOOK_SECRET) is the gate; see aa-webhook/handler.ts.
+[functions.aa-webhook]
+verify_jwt = false
+
+# Stage 7 — called by an inbound-email parser. Each call carries its route's
+# secret as a Bearer token; see email-ingest/handler.ts.
+[functions.email-ingest]
+verify_jwt = false
