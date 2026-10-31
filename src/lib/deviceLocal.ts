@@ -86,7 +86,15 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
     store: "local",
     label: "App-lock PIN",
     reason:
-      "A per-device secret, stored as a SHA-256 hash. It must never leave the device — a synced PIN would defeat the point of locking this device.",
+      "This device's cached copy of the account PIN, as a salted PBKDF2 record. The account PIN itself is on the server (bcrypt, never readable by clients — migration 20261101120000); this copy is the offline fallback and is refreshed whenever the PIN is typed correctly. Syncing it would be pointless: the server already holds the authoritative one.",
+  },
+  {
+    key: "finroot.pinsrv.",
+    prefix: true,
+    store: "local",
+    label: "Account has a PIN (cached)",
+    reason:
+      "The last answer from app_pin_status(), cached so the lock gate can decide on first paint without waiting for the network (no flash of the dashboard or of a wrong \"Add a PIN\" offer). It is a cache of server state, re-checked on every load, not a setting.",
   },
   {
     key: "finroot.pinlen.",
@@ -125,7 +133,7 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
     store: "local",
     label: "Lock after",
     reason:
-      "How long this device may sit unattended before it locks — a judgement about the room it is in, not about the account. It belongs with the PIN it governs, which never leaves the device either.",
+      "How long this device may sit unattended before it locks — a judgement about the room it is in, not about the account. It stays per device even though the PIN itself is now per account.",
   },
   {
     key: "finroot.lock.hiddenAt.",

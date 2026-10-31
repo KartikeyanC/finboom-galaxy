@@ -59,6 +59,13 @@ describe("schema coverage", () => {
     expect(stale, `EXPORT_TABLES references missing table(s): ${stale.join(", ")}`).toEqual([]);
   });
 
+  it("never exports the account PIN hash (app_pins), whether or not types.ts has it yet", () => {
+    // 20261101120000 adds app_pins; until types.ts is regenerated it is absent
+    // from `tableNames`, and the decision still has to be on record.
+    expect(EXPORT_TABLES.map((t) => t.table)).not.toContain("app_pins");
+    expect(NOT_PERSONAL.app_pins).toMatch(/hash/i);
+  });
+
   it("gives every impersonal table a non-empty reason", () => {
     for (const [table, reason] of Object.entries(NOT_PERSONAL)) {
       expect(reason.trim().length, table).toBeGreaterThan(10);

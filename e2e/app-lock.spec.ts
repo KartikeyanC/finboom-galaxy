@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { EMAIL, PASSWORD, PIN, PIN_SETUP_COPY, signInAndUnlock } from "./auth";
+import { EMAIL, PASSWORD, PIN, PIN_SETUP_COPY, resetAccountPin, signInAndUnlock } from "./auth";
 
 /**
  * Stage 5.4 — the PIN stopped being a wall.
@@ -11,6 +11,10 @@ import { EMAIL, PASSWORD, PIN, PIN_SETUP_COPY, signInAndUnlock } from "./auth";
 
 test.describe("app lock", () => {
   test.skip(!EMAIL || !PASSWORD, "set E2E_EMAIL / E2E_PASSWORD in .env.e2e to run");
+  // The PIN is per ACCOUNT since 20261101120000: start (and leave) every test
+  // with none on the server, so a fresh context really is a new device.
+  test.beforeEach(async () => resetAccountPin());
+  test.afterEach(async () => resetAccountPin());
 
   test("the PIN is offered, and 'Not now' is a real answer", async ({ page }) => {
     test.setTimeout(120_000);

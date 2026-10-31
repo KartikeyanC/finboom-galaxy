@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { clearPin, setLockChoice, setPin } from "@/lib/appLock";
+import { setLockChoice, setPin } from "@/lib/appLock";
+import { removeAccountPin, uploadAccountPin } from "@/lib/accountPin";
 
 /**
  * Stage 5.4 — the PIN is now OFFERED, not imposed.
@@ -15,13 +16,14 @@ import { clearPin, setLockChoice, setPin } from "@/lib/appLock";
  * It used to be a wall: a new account could not reach the app without creating
  * one, and the only way past a forgotten PIN was signing out. Two modes now:
  *
- *  * `offer` — first run. "Not now" is a real answer, recorded per device, and
- *    the lock can be switched on later in Settings.
+ *  * `offer` — first run on an account with no PIN yet. "Not now" is a real
+ *    answer, recorded per device, and the lock can be switched on later in
+ *    Settings. The PIN chosen here is the ACCOUNT's: every device asks for it.
  *  * `reset` — the user proved their identity with their password after
  *    forgetting the PIN, and is choosing a new one (or turning the lock off).
  *
  * The copy says what the lock is for and, just as importantly, what it is not:
- * it is a curtain over this device's screen, not the thing protecting the data.
+ * it is a curtain over the screen, not the thing protecting the data.
  */
 export function PinSetup({
   mode = "offer",
@@ -49,18 +51,28 @@ export function PinSetup({
     if (pin.length !== len) return toast.error(`PIN must be ${len} digits`);
     if (pin !== confirm) return toast.error("PINs do not match");
     setBusy(true);
-    await setPin(uid, pin);
+    await setPin(uid, pin); // this device, synchronously enough to close the gate
     setLockChoice(uid, true);
     setBusy(false);
     toast.success(mode === "reset" ? "New PIN set" : "App lock on");
     onDone();
+    // The account copy follows in the background. Awaiting it before onDone()
+    // let the unlock land after the person had locked again (see
+    // uploadAccountPin).
+    void uploadAccountPin(uid, pin).then(({ synced }) => {
+      if (!synced) {
+        toast.warning("Saved on this device — couldn't reach the server, so your other devices don't have it yet.");
+      }
+    });
   };
 
   const decline = () => {
-    // In `reset` mode a PIN may still exist in storage (the user only forgot
-    // it). Turning the lock off must remove it too, or switching the lock back
-    // on later would silently expect the PIN they could not remember.
-    clearPin(uid);
+    // In `reset` mode a PIN may still exist (the user only forgot it).
+    // Turning the lock off must remove it too, or switching the lock back on
+    // later would silently expect the PIN they could not remember. Only in
+    // `reset` mode, though: an `offer` means the account has no PIN, and
+    // "Not now" on this device must not touch the account.
+    if (mode === "reset") void removeAccountPin(uid);
     setLockChoice(uid, false);
     toast.success("App lock off — you can turn it on in Settings");
     onDone();
@@ -74,12 +86,12 @@ export function PinSetup({
             <Lock className="h-6 w-6" />
           </div>
           <h1 className="font-display text-xl font-semibold">
-            {mode === "reset" ? "Choose a new PIN" : "Add a PIN to this device?"}
+            {mode === "reset" ? "Choose a new PIN" : "Add a PIN to your account?"}
           </h1>
           <p className="text-sm text-muted-foreground">
             {mode === "reset"
               ? "Your password checked out. Pick a new PIN, or carry on without one."
-              : "A short PIN covers your figures when you step away from this device. Optional — you can turn it on later."}
+              : "A short PIN covers your figures when you step away. It works on every device you sign in on. Optional — you can turn it on later."}
           </p>
         </div>
 
@@ -163,13 +175,14 @@ export function PinSetup({
             on whether the digits also open their phone and their bank card,
             and this is the only moment we can say so. */}
         <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border/40 pt-4">
-          The PIN is stored on this device only, as a slow one-way hash, on top of your sign-in. It
-          hides the screen from someone using your unlocked device — it does not encrypt anything,
-          and it cannot stop someone who has your password. <strong>Pick digits you do not use
-          anywhere else</strong>: a short PIN is guessable by anyone who can take a copy of this
-          device's storage, and the damage of that is much smaller if it is not also your phone or
-          card PIN. If you forget it, unlock with your password and set a new one; nobody can look
-          it up for you.
+          One PIN for your account: it is stored with your account as a one-way hash (and on each
+          device you unlock, as a slow one-way hash), on top of your sign-in. Five wrong tries pause
+          PIN entry for 15 minutes. It hides the screen from someone using your unlocked device — it
+          does not encrypt anything, and it cannot stop someone who has your password. <strong>Pick
+          digits you do not use anywhere else</strong>: a short PIN is guessable by anyone who can
+          take a copy of a device's storage, and the damage of that is much smaller if it is not
+          also your phone or card PIN. If you forget it, unlock with your password and set a new
+          one; nobody can look it up for you.
         </p>
 
         <button

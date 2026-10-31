@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { EMAIL, PASSWORD, LOCK_SCREEN_COPY } from "./auth";
+import { EMAIL, PASSWORD, LOCK_SCREEN_COPY, PIN_OFFER_COPY, resetAccountPin } from "./auth";
 
 /**
  * The LOCK suite from docs/REMAINING_TESTS.md §1, executed.
@@ -81,6 +81,10 @@ async function acceptOffer(page: Page, pin: string) {
 
 test.describe("LOCK — app-lock PIN", () => {
   test.skip(!EMAIL || !PASSWORD, "set E2E_EMAIL / E2E_PASSWORD in .env.e2e to run");
+  // The PIN is per ACCOUNT since 20261101120000: start (and leave) every test
+  // with none on the server, so a fresh context really is a new device.
+  test.beforeEach(async () => resetAccountPin());
+  test.afterEach(async () => resetAccountPin());
 
   /**
    * LOCK-001 · LOCK-003 (6-digit) · LOCK-009 · LOCK-005 · LOCK-004 · LOCK-007
@@ -91,7 +95,7 @@ test.describe("LOCK — app-lock PIN", () => {
     await signIn(page);
 
     // ---- LOCK-001 (rewritten for 5.4): offered, not forced, and not skippable
-    await expect(page.getByRole("heading", { name: /add a pin to this device/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: PIN_OFFER_COPY })).toBeVisible({
       timeout: 30_000,
     });
     await expect(page.getByRole("button", { name: /^not now$/i })).toBeVisible();
@@ -106,7 +110,7 @@ test.describe("LOCK — app-lock PIN", () => {
     // a route gate, so a deeper URL does not get round it. Declining is an
     // answer; navigating past it is not.
     await page.goto("/app/transactions");
-    await expect(page.getByRole("heading", { name: /add a pin to this device/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: PIN_OFFER_COPY })).toBeVisible({
       timeout: 30_000,
     });
 
@@ -181,7 +185,7 @@ test.describe("LOCK — app-lock PIN", () => {
     test.setTimeout(180_000);
 
     await signIn(page);
-    await expect(page.getByRole("heading", { name: /add a pin to this device/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: PIN_OFFER_COPY })).toBeVisible({
       timeout: 30_000,
     });
     await acceptOffer(page, PIN4);
@@ -213,7 +217,7 @@ test.describe("LOCK — app-lock PIN", () => {
 
     // ---- LOCK-003, half two: a 4-digit PIN, and the length is remembered
     await signIn(page);
-    await expect(page.getByRole("heading", { name: /add a pin to this device/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: PIN_OFFER_COPY })).toBeVisible({
       timeout: 30_000,
     });
     await acceptOffer(page, PIN4);
@@ -228,7 +232,7 @@ test.describe("LOCK — app-lock PIN", () => {
     await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
     await signIn(page);
     await expect(page.locator("main")).not.toBeEmpty({ timeout: 30_000 });
-    await expect(page.locator("body")).not.toContainText(/add a pin to this device/i);
+    await expect(page.locator("body")).not.toContainText(PIN_OFFER_COPY);
     expect(await page.evaluate((u) => localStorage.getItem(`finroot.pinlen.${u}`), uid)).toBe("4");
 
     // ---- LOCK-008: past 12 hours the PIN is not enough

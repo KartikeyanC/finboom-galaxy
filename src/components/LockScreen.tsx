@@ -7,15 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   pinLength,
-  verifyPin,
   markUnlocked,
   markSignOutIntent,
   setPasswordAuthNow,
-  clearPin,
   setLockChoice,
 } from "@/lib/appLock";
+import { checkAccountPin, lockoutMessage, removeAccountPin } from "@/lib/accountPin";
 
 /**
  * `pin` — the everyday case.
@@ -66,7 +66,7 @@ export function LockScreen({ mode, onUnlocked }: { mode: "pin" | "password"; onU
 
         {current === "pin" ? (
           <>
-            <PinForm uid={uid} onUnlocked={onUnlocked} />
+            <PinForm uid={uid} onUnlocked={onUnlocked} onUsePassword={() => setCurrent("password")} />
             <button
               type="button"
               onClick={() => setCurrent("recover")}
@@ -82,6 +82,7 @@ export function LockScreen({ mode, onUnlocked }: { mode: "pin" | "password"; onU
             recovering={current === "recover"}
             onUnlocked={onUnlocked}
             onBack={mode === "pin" ? () => setCurrent("pin") : undefined}
+            unlockOnly={current === "password" && mode === "pin"}
           />
         )}
 
@@ -97,31 +98,70 @@ export function LockScreen({ mode, onUnlocked }: { mode: "pin" | "password"; onU
   );
 }
 
-function PinForm({ uid, onUnlocked }: { uid: string; onUnlocked: () => void }) {
+function PinForm({
+  uid,
+  onUnlocked,
+  onUsePassword,
+}: {
+  uid: string;
+  onUnlocked: () => void;
+  onUsePassword: () => void;
+}) {
   const len = pinLength(uid);
   const [val, setVal] = useState("");
-  const [err, setErr] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
+  const [checking, setChecking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  // Lift the pause when it runs out, so nobody has to reload to try again.
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const t = setTimeout(() => {
+      setLockedUntil(null);
+      setErr(null);
+    }, Math.max(0, lockedUntil.getTime() - Date.now()) + 500);
+    return () => clearTimeout(t);
+  }, [lockedUntil]);
+
   const handle = async (raw: string) => {
+    if (checking) return;
     const v = raw.replace(/\D/g, "").slice(0, len);
     setVal(v);
-    setErr(false);
+    setErr(null);
     if (v.length === len) {
-      if (await verifyPin(uid, v)) {
+      // One PIN per account: the server checks it and owns the attempt limit;
+      // this device's copy is used only when the server cannot be reached.
+      setChecking(true);
+      const result = await checkAccountPin(uid, v);
+      setChecking(false);
+      if (result.ok) {
         markUnlocked(uid);
         onUnlocked();
-      } else {
-        setErr(true);
-        setVal("");
-        inputRef.current?.focus();
+        return;
       }
+      setVal("");
+      if (result.reason === "locked") {
+        setLockedUntil(result.lockedUntil);
+        setErr(lockoutMessage(result.lockedUntil));
+        return;
+      }
+      setErr(
+        result.reason === "unavailable"
+          ? "Can't check your PIN right now — check your connection, or use your password."
+          : result.attemptsLeft !== null && result.attemptsLeft <= 2
+            ? `Incorrect PIN. ${result.attemptsLeft} ${result.attemptsLeft === 1 ? "try" : "tries"} left before a 15-minute pause.`
+            : "Incorrect PIN. Try again.",
+      );
+      inputRef.current?.focus();
     }
   };
+
+  const locked = lockedUntil !== null && lockedUntil.getTime() > Date.now();
 
   return (
     <div className="space-y-3">
@@ -133,6 +173,7 @@ function PinForm({ uid, onUnlocked }: { uid: string; onUnlocked: () => void }) {
           inputMode="numeric"
           autoComplete="off"
           value={val}
+          disabled={locked}
           onChange={(e) => handle(e.target.value)}
           className="absolute inset-0 w-full h-full opacity-0 cursor-default"
           aria-label="PIN"
@@ -151,7 +192,16 @@ function PinForm({ uid, onUnlocked }: { uid: string; onUnlocked: () => void }) {
           ))}
         </div>
       </div>
-      {err && <p className="text-xs text-destructive">Incorrect PIN. Try again.</p>}
+      {err && (
+        <p className="text-xs text-destructive" role="alert">
+          {err}
+        </p>
+      )}
+      {locked && (
+        <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={onUsePassword}>
+          <KeyRound className="w-3.5 h-3.5" /> Use your password
+        </Button>
+      )}
     </div>
   );
 }
@@ -162,12 +212,15 @@ function PasswordForm({
   recovering,
   onUnlocked,
   onBack,
+  unlockOnly = false,
 }: {
   email: string;
   uid: string;
   recovering: boolean;
   onUnlocked: () => void;
   onBack?: () => void;
+  /** Reached from the PIN lockout rather than the 12-hour rule. */
+  unlockOnly?: boolean;
 }) {
   const [pwd, setPwd] = useState("");
   const [busy, setBusy] = useState(false);
@@ -193,9 +246,15 @@ function PasswordForm({
     // PIN under the old mandatory rules it is only INFERRED from the PIN
     // existing — clear the PIN and the app forgets they ever wanted the lock,
     // and greets them with "Add a PIN?" instead of "Choose a new PIN".
+    //
+    // One PIN per account: the reset clears the account copy too, so the new
+    // PIN chosen next is the one every device asks for.
     if (recovering) {
       setLockChoice(uid, true);
-      clearPin(uid);
+      const { synced } = await removeAccountPin(uid);
+      if (!synced) {
+        toast.warning("Couldn't reach the server — your other devices may still ask for the old PIN until you set a new one.");
+      }
     }
     markUnlocked(uid);
     onUnlocked();
@@ -207,7 +266,9 @@ function PasswordForm({
         <KeyRound className="w-3.5 h-3.5 mt-0.5 shrink-0" />
         {recovering
           ? "Enter your password and pick a new PIN — nobody can look the old one up."
-          : "It's been over 12 hours — re-enter your password"}
+          : unlockOnly
+            ? "Enter your account password to unlock"
+            : "It's been over 12 hours — re-enter your password"}
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="lock-pwd">Password</Label>

@@ -24,6 +24,11 @@ vi.mock("@/hooks/useAuth", () => ({
 // Stage 6.1's onboarding gate sits ahead of the lock gate this file tests —
 // mocked "already completed" so LOCK-012 keeps testing the lock and not a
 // live Supabase fetch through an unmounted QueryClientProvider.
+// The account-PIN status check (20261101120000) is not what this file tests;
+// "already synced" keeps it off the network. ProtectedRoute.accountPin.test.tsx
+// covers the gate's wait for it.
+vi.mock("@/hooks/useAccountPinSync", () => ({ useAccountPinSync: () => true }));
+
 vi.mock("@/hooks/useOnboardingWizard", () => ({
   useOnboardingWizard: () => ({
     completed: true,

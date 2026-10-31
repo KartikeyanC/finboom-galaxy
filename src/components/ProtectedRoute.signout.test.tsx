@@ -24,6 +24,11 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: mockUser, loading: false, signOut: mockSignOut }),
 }));
 
+// The account-PIN status check (20261101120000) is not what this file tests;
+// "already synced" keeps it off the network. ProtectedRoute.accountPin.test.tsx
+// covers the gate's wait for it.
+vi.mock("@/hooks/useAccountPinSync", () => ({ useAccountPinSync: () => true }));
+
 vi.mock("@/hooks/useOnboardingWizard", () => ({
   useOnboardingWizard: () => ({
     completed: true,

@@ -12,6 +12,7 @@ import {
   shouldLockOnReturn,
 } from "@/lib/appLock";
 import { useLockSettings } from "@/hooks/useLockSettings";
+import { useAccountPinSync } from "@/hooks/useAccountPinSync";
 import { LockScreen } from "@/components/LockScreen";
 import { PinSetup } from "@/components/PinSetup";
 import { OnboardingWizard } from "@/components/onboarding-wizard/OnboardingWizard";
@@ -26,6 +27,9 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   // Read synchronously (see useLockSettings) so neither the "create PIN"
   // screen nor the dashboard flashes for a paint before an effect has run.
   const lock = useLockSettings(user?.id);
+  // One PIN per account: the first status check of this load decides whether
+  // the account already has a PIN, which this device may not know yet.
+  const pinSynced = useAccountPinSync(user?.id);
 
   // Re-read on any lock change, not just on sign-in: setting a PIN in Settings
   // marks this tab unlocked, and without this the gate would keep its stale
@@ -120,6 +124,17 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   // Never asked, or asked for the lock without a PIN behind it yet (a new
   // account, or one that just reset a forgotten PIN). PinSetup can be declined.
   if (lock.choice === "unset" || (lock.choice === "on" && !lock.hasPin)) {
+    // …but not before asking the server whether the ACCOUNT already has one —
+    // otherwise a new browser offers "Add a PIN" to someone who has a PIN, for
+    // the second it takes the status to arrive. useAccountPinSync gives up
+    // after a few seconds and falls back to this device's own state.
+    if (!pinSynced) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+          <div className="text-foreground font-medium">Loading…</div>
+        </div>
+      );
+    }
     return (
       <PinSetup
         mode={lock.choice === "unset" ? "offer" : "reset"}

@@ -38,7 +38,9 @@ export function migrateStorageKeys(): void {
 
 /**
  * App-lock PIN — a convenience gate on top of the real Supabase session.
- * The PIN hash is stored per-device (localStorage); the "unlocked" flag is
+ * One PIN per ACCOUNT (bcrypt on the server, see lib/accountPin.ts and
+ * migration 20261101120000); this file holds the per-device cache of it — a
+ * PBKDF2 record used as an offline fallback — in localStorage. The "unlocked" flag is
  * per-tab (sessionStorage) so a new tab / reopened browser re-prompts, while
  * navigation within the same tab stays unlocked. A fresh password login also
  * unlocks (handled in useAuth on the SIGNED_IN event).
@@ -80,7 +82,7 @@ const toHex = (buf: ArrayBuffer): string =>
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-const fromHex = (hex: string): Uint8Array =>
+const fromHex = (hex: string): Uint8Array<ArrayBuffer> =>
   new Uint8Array((hex.match(/../g) ?? []).map((b) => parseInt(b, 16)));
 
 async function derivePin(pin: string, saltHex: string, iterations: number): Promise<string> {
@@ -129,11 +131,62 @@ function parsePinRecord(raw: string): PinRecord | null {
   }
 }
 
+/**
+ * Is there a PIN for this user — on this device OR on the account?
+ *
+ * Since the account PIN (migration 20261101120000) the server is the source of
+ * truth, and `SRV_KEY` caches its last known answer so this stays synchronous
+ * (the route gate reads it on first paint; see useLockSettings). A device that
+ * has never seen the PIN typed has the server flag but no local record.
+ */
 export function pinIsSet(uid: string): boolean {
+  return localPinIsSet(uid) || serverPinKnown(uid);
+}
+
+/** Only the local v2/v1 record — what an offline `verifyPin` can check. */
+export function localPinIsSet(uid: string): boolean {
   try {
     return !!localStorage.getItem(PIN_KEY(uid));
   } catch {
     return false;
+  }
+}
+
+// Cache of "the ACCOUNT has a PIN" (app_pin_status().is_set), per device.
+const SRV_KEY = (uid: string) => `finroot.pinsrv.${uid}`;
+
+/** The last status check said the account has a PIN. */
+export function serverPinKnown(uid: string): boolean {
+  try {
+    return localStorage.getItem(SRV_KEY(uid)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Record what the server said. `length` refreshes the box count. Does not
+ * notify — callers batch it with whatever else they change.
+ */
+export function setServerPinCache(uid: string, isSet: boolean, length?: number | null): void {
+  try {
+    if (isSet) {
+      localStorage.setItem(SRV_KEY(uid), "1");
+      if (length === 4 || length === 6) localStorage.setItem(LEN_KEY(uid), String(length));
+    } else {
+      localStorage.removeItem(SRV_KEY(uid));
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Forget the explicit on/off so the gate re-offers the lock ("unset"). */
+export function clearLockChoice(uid: string): void {
+  try {
+    localStorage.removeItem(PREF_KEY(uid));
+  } catch {
+    /* ignore */
   }
 }
 
@@ -166,10 +219,15 @@ export async function setPin(uid: string, pin: string): Promise<void> {
   notifyLockSettingsChanged();
 }
 
+/**
+ * Device side only. The account copy is cleared by `removeAccountPin` in
+ * `lib/accountPin.ts`, which calls this too.
+ */
 export function clearPin(uid: string): void {
   try {
     localStorage.removeItem(PIN_KEY(uid));
     localStorage.removeItem(LEN_KEY(uid));
+    localStorage.removeItem(SRV_KEY(uid));
   } catch {
     /* ignore */
   }
@@ -374,8 +432,9 @@ export function requestLock(): void {
 // no way back except signing out. Three things change:
 //
 //  * **Optional.** A new account is OFFERED the lock and can decline. The
-//    choice is per device and per user, because the PIN is: declining on a
-//    laptop says nothing about the phone.
+//    choice is per device and per user: declining on a laptop says nothing
+//    about the phone. (The PIN itself is per ACCOUNT since 20261101120000;
+//    a device with no choice recorded infers "on" when the account has one.)
 //  * **A grace period.** Hiding the tab starts a clock instead of locking;
 //    the lock applies on return only if the clock ran out. "Immediately" is
 //    still available and still locks on hide, so a task-switcher preview of a

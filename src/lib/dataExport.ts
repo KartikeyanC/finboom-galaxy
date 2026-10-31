@@ -81,6 +81,13 @@ export const NOT_PERSONAL: Record<string, string> = {
   price_cache: "Market prices keyed by security symbol. Shared, and contains nobody's identity.",
   platform_admins: "Which staff accounts are platform administrators.",
   storage_purge_queue: "Operational queue for deleting files after a workspace is purged.",
+  // Listed here even though it is tied to a user, because the decision it
+  // records is "not exported" and this is the list that holds those decisions.
+  // It may be absent from the generated types until 20261101120000 is applied
+  // and types.ts regenerated — the coverage test only checks that every table
+  // in types.ts is accounted for, so an entry ahead of the types is harmless.
+  app_pins:
+    "Linked to your account, but holds only a one-way bcrypt hash of your app-lock PIN, its length and a wrong-attempt counter — a credential check, not information about you. Deliberately not exported: a copy of the hash would only help someone guess the PIN offline, and RLS refuses every direct read of it, including your own.",
   processed_webhooks: "Webhook delivery ids (Paddle, Account Aggregator, and SHA-256 hashes of inbound e-mail message ids), kept only to reject a replayed delivery. Carries no user or tenant identity.",
 };
 
@@ -170,7 +177,7 @@ export async function buildExportBundle({
         "This file contains everything stored about you in this workspace, exactly as it is held.",
         "It was read with your own permissions, so it cannot contain another workspace's data.",
         "Uploaded documents are listed, not embedded — download them from the Insurance page.",
-        "Your screen-lock PIN is not here: it never leaves your browser, and only a hash of it is stored on the device.",
+        "Your screen-lock PIN is not here: it is stored with your account only as a one-way hash, which is not exported.",
         "Invitation tokens are stored hashed and are deliberately not exported.",
       ],
     },

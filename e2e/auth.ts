@@ -1,4 +1,6 @@
 import type { Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 /**
  * The sign-in + PIN-gate dance, in one place.
@@ -15,11 +17,61 @@ export const PIN = process.env.E2E_PIN || "3210";
 export const hasCreds = !!(EMAIL && PASSWORD);
 
 /** The PIN-setup screen: offered on a device with no PIN, or after a reset. */
-export const PIN_SETUP_COPY = /add a pin to this device|choose a new pin/i;
+/** The first-run offer. "this device" is the pre-account-PIN wording, kept so
+ *  the suites still run against a build from before 20261101120000. */
+export const PIN_OFFER_COPY = /add a pin to (?:this device|your account)/i;
+export const PIN_SETUP_COPY = /add a pin to (?:this device|your account)|choose a new pin/i;
 /** The lock screen, in its everyday PIN form. */
 export const LOCK_SCREEN_COPY = /enter your \d-digit pin/i;
 /** The password fallback, shown when the PIN is forgotten or storage is blocked. */
 export const PASSWORD_GATE_COPY = /re-enter your password/i;
+
+/** VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY from the env file the dev server uses. */
+function supabaseEnv(): { url: string; key: string } {
+  const vars: Record<string, string> = {};
+  try {
+    const raw = readFileSync(resolve(process.cwd(), ".env.development"), "utf8");
+    for (const line of raw.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*"?([^"]*)"?\s*$/);
+      if (m) vars[m[1]] = m[2];
+    }
+  } catch {
+    /* no file — fall through to process.env */
+  }
+  return {
+    url: process.env.VITE_SUPABASE_URL || vars.VITE_SUPABASE_URL || "",
+    key: process.env.VITE_SUPABASE_PUBLISHABLE_KEY || vars.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+  };
+}
+
+/**
+ * Since 20261101120000 the PIN belongs to the ACCOUNT, so a PIN one spec set is
+ * still there when the next spec signs the same demo account in from a fresh
+ * browser — "a new device is offered a PIN" stops being true. The lock suites
+ * call this before (and after) each test to start from an account with no PIN.
+ * Signs in over REST (no browser, no sign-in-intent marker) and calls
+ * clear_app_pin(). A project without the function (PGRST202 / 404) is fine:
+ * there is nothing on the server to clear.
+ */
+export async function resetAccountPin(): Promise<void> {
+  const { url, key } = supabaseEnv();
+  if (!hasCreds || !url || !key) return;
+  const tok = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: key, "content-type": "application/json" },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+  });
+  if (!tok.ok) throw new Error(`resetAccountPin: sign-in failed (${tok.status})`);
+  const { access_token } = (await tok.json()) as { access_token: string };
+  const res = await fetch(`${url}/rest/v1/rpc/clear_app_pin`, {
+    method: "POST",
+    headers: { apikey: key, authorization: `Bearer ${access_token}`, "content-type": "application/json" },
+    body: "{}",
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`resetAccountPin: clear_app_pin failed (${res.status})`);
+  }
+}
 
 type Gate = "pin-setup" | "lock" | "password" | "app" | "none";
 

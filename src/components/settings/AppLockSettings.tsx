@@ -10,14 +10,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLockSettings } from "@/hooks/useLockSettings";
 import {
   GRACE_OPTIONS,
-  clearPin,
   graceLabel,
   setGraceMinutes,
   setLockChoice,
-  setPin,
   type GraceMinutes,
 } from "@/lib/appLock";
-import { DEVICE_LOCAL_HINT } from "@/lib/deviceLocal";
+import { removeAccountPin, saveAccountPin } from "@/lib/accountPin";
 
 /**
  * Stage 5.4 — the app lock, now a setting rather than a fact of life.
@@ -56,19 +54,26 @@ export default function AppLockSettings() {
     if (pin.length !== len) return toast.error(`PIN must be ${len} digits`);
     if (pin !== confirm) return toast.error("PINs do not match");
     setBusy(true);
-    await setPin(uid, pin);
+    const { synced } = await saveAccountPin(uid, pin);
     setLockChoice(uid, true);
     setBusy(false);
     setEditing(false);
     setPinVal("");
     setConfirm("");
     toast.success(on ? "PIN updated" : "App lock on");
+    if (!synced) {
+      toast.warning("Saved on this device — couldn't reach the server, so your other devices don't have it yet.");
+    }
   };
 
   const turnOff = () => {
-    // The PIN goes with it. Keeping the hash around would mean switching the
-    // lock back on months later silently expects a PIN nobody remembers.
-    clearPin(uid);
+    // The PIN goes with it — from the account, not just this device. Keeping
+    // the hash around would mean switching the lock back on months later
+    // silently expects a PIN nobody remembers. Other devices whose lock was on
+    // will offer to set a new PIN on their next load.
+    void removeAccountPin(uid).then(({ synced }) => {
+      if (!synced) toast.warning("Couldn't reach the server — your other devices may still ask for the PIN.");
+    });
     setLockChoice(uid, false);
     setConfirmingOff(false);
     setEditing(false);
@@ -83,7 +88,9 @@ export default function AppLockSettings() {
             <Lock className="w-4 h-4 text-primary" /> App Lock (PIN)
           </h2>
           <p className="text-sm text-muted-foreground max-w-xl">
-            Covers your figures with a PIN when you leave this device. {DEVICE_LOCAL_HINT}.
+            Covers your figures with a PIN when you step away. One PIN for your account — it works
+            on every device you sign in on. Whether the lock is on, and how soon it locks, is saved
+            on this device only.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -121,8 +128,9 @@ export default function AppLockSettings() {
           <p className="text-sm text-foreground font-medium">Turn the app lock off?</p>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Anyone who opens this browser while you are signed in will see your accounts, balances
-            and transactions without being asked for anything. Your PIN is deleted; signing in
-            still needs your password. You can turn the lock back on here at any time.
+            and transactions without being asked for anything. Your PIN is deleted from your
+            account, so other devices stop asking for it too; signing in still needs your password.
+            You can turn the lock back on here at any time.
           </p>
           <div className="flex gap-2">
             <Button size="sm" variant="destructive" onClick={turnOff}>
@@ -217,10 +225,11 @@ export default function AppLockSettings() {
       {/* Deliberately last and always shown: the limits of the thing, next to
           the switch that controls it. */}
       <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border/40 pt-4">
-        Stored on this device as a one-way hash — never sent to the server, so it is not part of a
-        backup or an export and it does not follow you to another device. It hides the screen; it
-        does not encrypt your data and cannot stop someone who has your password. Forgotten it?
-        Choose “Forgot your PIN?” on the lock screen and unlock with your password.
+        Stored with your account as a one-way hash that the app can check but never read back, and
+        cached on each device you unlock so it still works offline. It is not part of an export.
+        Five wrong tries pause PIN entry for 15 minutes. It hides the screen; it does not encrypt
+        your data and cannot stop someone who has your password. Forgotten it? Choose “Forgot your
+        PIN?” on the lock screen and unlock with your password.
       </p>
     </div>
   );
