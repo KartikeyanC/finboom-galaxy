@@ -22,6 +22,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES } from "@/lib/finance
 import { useCustomCategories } from "@/lib/categories";
 import { useCreateTransaction } from "@/hooks/useTransactions";
 import TrackerField from "@/components/transactions/TrackerField";
+import { loadPrefs, pushRecent, savePrefs, type QuickAddPrefs } from "@/lib/quickAddPrefs";
 
 interface Props {
   open: boolean;
@@ -41,6 +42,8 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
   const [trackerId, setTrackerId] = useState("none");
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
+  const [amountError, setAmountError] = useState("");
+  const [prefs, setPrefs]       = useState<QuickAddPrefs>(loadPrefs);
 
   const amountRef = useRef<HTMLInputElement>(null);
 
@@ -56,9 +59,19 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
   ];
   const cats = type === "expense" ? expenseCategories : incomeCategories;
 
-  // Reset & focus when opened
+  const defaultFor = (t: "expense" | "income", p: QuickAddPrefs) =>
+    p.recent[t][0] ?? (t === "expense" ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0]);
+
+  // Reset & focus when opened. The last-used type, currency and category come
+  // back, so the common case is: type the amount, press Save.
   useEffect(() => {
     if (open) {
+      const p = loadPrefs();
+      setPrefs(p);
+      setType(p.type);
+      setCurrency(p.currency);
+      setCategory(defaultFor(p.type, p));
+      setAmountError("");
       setAmount("");
       setNote("");
       setDate(new Date().toISOString().slice(0, 10));
@@ -69,14 +82,18 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
     }
   }, [open]);
 
-  // Keep category in sync when type switches
-  useEffect(() => {
-    setCategory(type === "expense" ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0]);
-  }, [type]);
+  const switchType = (t: "expense" | "income") => {
+    setType(t);
+    setCategory(defaultFor(t, prefs));
+  };
 
-  const handleSave = async () => {
+  const handleSave = async (addAnother = false) => {
     const amt = parseFloat(amount);
-    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    if (!amt || amt <= 0) {
+      setAmountError("Enter an amount greater than 0");
+      amountRef.current?.focus();
+      return;
+    }
 
     setSaving(true);
     try {
@@ -89,8 +106,21 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
         tracker_id: trackerId !== "none" ? trackerId : null,
         occurred_at: new Date(date).toISOString(),
       });
+      const next: QuickAddPrefs = {
+        type,
+        currency,
+        recent: { ...prefs.recent, [type]: pushRecent(prefs.recent[type], category) },
+      };
+      setPrefs(next);
+      savePrefs(next);
+      if (addAnother) {
+        // The hook already toasted; keep the sheet open for the next entry.
+        setAmount("");
+        setNote("");
+        setTimeout(() => amountRef.current?.focus(), 0);
+        return;
+      }
       setSaved(true);
-      toast.success(`${type === "expense" ? "Expense" : "Income"} recorded`);
       setTimeout(() => {
         onOpenChange(false);
         setSaved(false);
@@ -131,7 +161,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
               <button
                 key={t}
                 type="button"
-                onClick={() => setType(t)}
+                onClick={() => switchType(t)}
                 className={cn(
                   "flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150",
                   type === t
@@ -172,8 +202,10 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
               step="0.01"
               placeholder="0"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => { setAmount(e.target.value); setAmountError(""); }}
               onKeyDown={handleKey}
+              aria-invalid={amountError ? true : undefined}
+              aria-describedby={amountError ? "qa-amount-error" : undefined}
               className={cn(
                 "pl-10 pr-24 h-16 text-3xl font-bold font-display tracking-tight rounded-xl border-2 transition-colors",
                 "focus-visible:ring-0",
@@ -201,6 +233,34 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
               </Select>
             </div>
           </div>
+
+          {amountError && (
+            <p id="qa-amount-error" role="alert" className="text-xs text-destructive -mt-2">
+              {amountError}
+            </p>
+          )}
+
+          {/* One-tap categories: the ones used most recently for this type. */}
+          {prefs.recent[type].length > 0 && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Recent categories">
+              {prefs.recent[type].filter((c) => cats.includes(c)).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategory(c)}
+                  aria-pressed={category === c}
+                  className={cn(
+                    "h-8 px-3 rounded-full border text-xs font-semibold transition-colors",
+                    category === c
+                      ? "border-primary bg-accent text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Category + Date row */}
           <div className="grid grid-cols-2 gap-2">
@@ -270,7 +330,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
                 ? "bg-rose-500 hover:bg-rose-600 shadow-md shadow-rose-500/20"
                 : "bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-500/20"
             )}
-            onClick={handleSave}
+            onClick={() => handleSave()}
             disabled={saving || saved}
           >
             {saved ? (
@@ -284,6 +344,15 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
             ) : (
               `Record ${type === "expense" ? "Expense" : "Income"}`
             )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full h-10 -mt-2 text-sm"
+            onClick={() => handleSave(true)}
+            disabled={saving || saved}
+          >
+            Save &amp; add another
           </Button>
         </div>
       </SheetContent>

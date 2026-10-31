@@ -165,6 +165,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial, d
     setSplitMode("paid_full");
     setSplitTotal("");
     setSplitFriend("");
+    setFieldErrors({});
   }, [open, initial, type, defaultDate]);
 
   // When user toggles type within the dialog, reset category to a sensible default.
@@ -172,6 +173,8 @@ export default function TransactionDialog({ open, onOpenChange, type, initial, d
     if (!open || initial) return;
     setCategory(activeType === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0]);
   }, [activeType, open, initial]);
+
+  const [fieldErrors, setFieldErrors] = useState<{ amount?: string; category?: string }>({});
 
   const submit = async () => {
     if (debtMode && activeType === "expense") {
@@ -198,9 +201,17 @@ export default function TransactionDialog({ open, onOpenChange, type, initial, d
       occurred_at: occurredSafe,
     });
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
+      const next: { amount?: string; category?: string } = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0];
+        if ((key === "amount" || key === "category") && !next[key]) next[key] = issue.message;
+      }
+      setFieldErrors(next);
+      if (next.amount) document.getElementById("amount")?.focus();
+      else toast.error(parsed.error.issues[0].message);
       return;
     }
+    setFieldErrors({});
     const payload = {
       type: activeType,
       amount: parsed.data.amount,
@@ -415,8 +426,14 @@ export default function TransactionDialog({ open, onOpenChange, type, initial, d
                 id="amount"
                 placeholder="0"
                 value={amount}
-                onValueChange={(n) => setAmount(n === undefined ? "" : String(n))}
+                aria-invalid={fieldErrors.amount ? true : undefined}
+                aria-describedby={fieldErrors.amount ? "amount-error" : undefined}
+                onValueChange={(n) => {
+                  setAmount(n === undefined ? "" : String(n));
+                  setFieldErrors((e) => ({ ...e, amount: undefined }));
+                }}
               />
+              {fieldErrors.amount && <p id="amount-error" role="alert" className="text-xs text-destructive">{fieldErrors.amount}</p>}
             </div>
             )}
             <div className="space-y-1.5">

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Pencil, Plus, Trash2, CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
@@ -22,16 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import TransactionDialog from "./TransactionDialog";
 import {
   useDeleteTransaction,
@@ -64,7 +55,57 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  // Deletes are deferred: the row hides at once, a toast offers Undo, and the
+  // real delete runs when the window closes (or the table unmounts).
+  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const delMutate = del.mutate;
+
+  const commitDelete = useCallback(
+    (id: string) => {
+      const timer = timers.current.get(id);
+      if (timer) clearTimeout(timer);
+      timers.current.delete(id);
+      delMutate(id, {
+        onSettled: () =>
+          setPendingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          }),
+      });
+    },
+    [delMutate],
+  );
+
+  const scheduleDelete = (id: string) => {
+    setPendingIds((prev) => new Set(prev).add(id));
+    timers.current.set(id, setTimeout(() => commitDelete(id), 6000));
+    toast("Transaction deleted", {
+      duration: 6000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          const timer = timers.current.get(id);
+          if (timer) clearTimeout(timer);
+          timers.current.delete(id);
+          setPendingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        },
+      },
+    });
+  };
+
+  // Leaving the page must not silently cancel a delete the user already made.
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      Array.from(pending.keys()).forEach((id) => commitDelete(id));
+    };
+  }, [commitDelete]);
 
   // Filters
   const [subtype, setSubtype] = useState<"all" | "active" | "passive">("all");
@@ -85,6 +126,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
   const filtered = useMemo(() => {
     if (!data) return [];
     return data.filter((t) => {
+      if (pendingIds.has(t.id)) return false;
       if (catFilter !== "all" && t.category !== catFilter) return false;
       if (type === "income" && subtype !== "all") {
         if (getIncomeSubtype(t.category, custom.store) !== subtype) return false;
@@ -98,7 +140,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
       }
       return true;
     });
-  }, [data, catFilter, subtype, type, dateMode, singleDate, range, custom.store]);
+  }, [data, pendingIds, catFilter, subtype, type, dateMode, singleDate, range, custom.store]);
 
   const dateLabel = (() => {
     if (dateMode === "single" && singleDate) return format(singleDate, "PP");
@@ -391,7 +433,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
                         size="icon"
                         aria-label={`Delete ${t.description ?? "transaction"}`}
                         className="h-8 w-8 text-coral hover:text-coral hover:bg-destructive/10"
-                        onClick={() => setDeleteId(t.id)}
+                        onClick={() => scheduleDelete(t.id)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -413,29 +455,6 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
         initial={editing}
       />
 
-      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (deleteId) {
-                  await del.mutateAsync(deleteId);
-                  setDeleteId(null);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

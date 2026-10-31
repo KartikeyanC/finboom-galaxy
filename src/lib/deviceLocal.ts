@@ -149,6 +149,13 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
       "How much history this device is willing to pull down (Stage 4.2). It is a performance choice about this browser and connection, not a fact about the workspace — a phone on mobile data and a desktop want different answers, and syncing it would impose the slow one on both.",
   },
   {
+    key: "finroot.quickAdd.v1",
+    store: "local",
+    label: "Quick Add shortcuts",
+    reason:
+      "The last type, currency and recent categories chosen in Quick Add. It is a typing convenience for this browser, not a fact about the workspace — a shared tablet and a personal phone have different habits, and syncing it would make one person's shortcuts appear on another's screen.",
+  },
+  {
     key: "finroot.landing.splashSeen",
     store: "session",
     label: "Landing splash already shown",

@@ -67,6 +67,8 @@ export default function AddIncomeDialog({ onAdd }: Props) {
   const custom = useCustomCategories();
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [errors, setErrors] = useState<Partial<Record<"name" | "category" | "amount" | "rate", string>>>({});
+  const clearError = (k: keyof typeof errors) => setErrors((e) => (e[k] ? { ...e, [k]: undefined } : e));
 
   useEffect(() => {
     if (!open) return;
@@ -74,6 +76,7 @@ export default function AddIncomeDialog({ onAdd }: Props) {
     setAmount(""); setCurrency("INR"); setRate(String(DEFAULT_FX.INR));
     setFrequency("monthly"); setIcon("Coins"); setNotes("");
     setOccurredAt(new Date().toISOString());
+    setErrors({});
   }, [open]);
 
   const handleCurrency = (v: string) => {
@@ -102,7 +105,7 @@ export default function AddIncomeDialog({ onAdd }: Props) {
     toast.success(`Added "${n}"`);
   };
 
-  const submit = () => {
+  const submit = async () => {
     const finalName = name.trim() || category;
     const parsed = schema.safeParse({
       name: finalName,
@@ -116,9 +119,23 @@ export default function AddIncomeDialog({ onAdd }: Props) {
       notes: notes || undefined,
     });
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
+      const next: typeof errors = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0] === "exchangeRateToINR" ? "rate" : issue.path[0];
+        if ((key === "name" || key === "category" || key === "amount" || key === "rate") && !next[key]) {
+          next[key] = issue.message;
+        }
+      }
+      setErrors(next);
+      if (Object.keys(next).length === 0) toast.error(parsed.error.issues[0].message);
+      else {
+        const first = (["name", "category", "amount", "rate"] as const).find((k) => next[k]);
+        const ids = { name: "inc-name", category: "inc-category", amount: "inc-amount", rate: "inc-rate" };
+        if (first) document.getElementById(ids[first])?.focus();
+      }
       return;
     }
+    setErrors({});
     const d = parsed.data;
     const safeISO = (() => {
       const dt = new Date(occurredAt);
@@ -134,7 +151,8 @@ export default function AddIncomeDialog({ onAdd }: Props) {
       frequency: d.frequency,
       notes: d.notes,
     });
-    createRecurring.mutate({
+    try {
+      await createRecurring.mutateAsync({
       type: "income",
       name: d.name,
       category: d.category,
@@ -146,7 +164,11 @@ export default function AddIncomeDialog({ onAdd }: Props) {
       next_due_date: safeISO.slice(0, 10),
       icon: d.icon,
       notes: d.notes ?? null,
-    });
+      });
+    } catch {
+      // The hook already surfaced the error; keep the dialog open for a retry.
+      return;
+    }
     toast.success(`${d.name} added`);
     setOpen(false);
   };
@@ -179,13 +201,14 @@ export default function AddIncomeDialog({ onAdd }: Props) {
             <div className="space-y-1.5">
               <Label>Category</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectTrigger id="inc-category" aria-invalid={errors.category ? true : undefined} aria-describedby={errors.category ? "inc-category-error" : undefined}><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {errors.category && <p id="inc-category-error" role="alert" className="text-xs text-destructive">{errors.category}</p>}
             </div>
           </div>
 
@@ -227,8 +250,11 @@ export default function AddIncomeDialog({ onAdd }: Props) {
               placeholder={`e.g. ${category} — source`}
               maxLength={60}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              aria-invalid={errors.name ? true : undefined}
+              aria-describedby={errors.name ? "inc-name-error" : undefined}
+              onChange={(e) => { setName(e.target.value); clearError("name"); }}
             />
+            {errors.name && <p id="inc-name-error" role="alert" className="text-xs text-destructive">{errors.name}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -238,8 +264,11 @@ export default function AddIncomeDialog({ onAdd }: Props) {
                 id="inc-amount"
                 placeholder="Enter amount"
                 value={amount}
-                onValueChange={(n) => setAmount(n === undefined ? "" : String(n))}
+                aria-invalid={errors.amount ? true : undefined}
+                aria-describedby={errors.amount ? "inc-amount-error" : undefined}
+                onValueChange={(n) => { setAmount(n === undefined ? "" : String(n)); clearError("amount"); }}
               />
+              {errors.amount && <p id="inc-amount-error" role="alert" className="text-xs text-destructive">{errors.amount}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>Currency</Label>
@@ -279,8 +308,11 @@ export default function AddIncomeDialog({ onAdd }: Props) {
               type="number" step="0.0001"
               value={rate}
               disabled={currency === "INR"}
-              onChange={(e) => setRate(e.target.value)}
+              aria-invalid={errors.rate ? true : undefined}
+              aria-describedby={errors.rate ? "inc-rate-error" : undefined}
+              onChange={(e) => { setRate(e.target.value); clearError("rate"); }}
             />
+            {errors.rate && <p id="inc-rate-error" role="alert" className="text-xs text-destructive">{errors.rate}</p>}
           </div>
 
           <div className="space-y-1.5">
