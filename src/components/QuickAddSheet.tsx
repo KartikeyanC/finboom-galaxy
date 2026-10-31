@@ -18,8 +18,12 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { HandCoins, Wallet, Check, Loader2 } from "lucide-react";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES } from "@/lib/finance";
+import { INCOME_CATEGORIES, CURRENCIES } from "@/lib/finance";
 import { useCustomCategories } from "@/lib/categories";
+import { EXPENSE_CATEGORY_GROUPS } from "@/lib/expenseSubcategories";
+import CategoryPickerDrawer from "@/components/transactions/CategoryPickerDrawer";
+import CustomCategoryPopover from "@/components/transactions/CustomCategoryPopover";
+import { composeDescription } from "@/components/transactions/transactionFormState";
 import { useCreateTransaction } from "@/hooks/useTransactions";
 import TrackerField from "@/components/transactions/TrackerField";
 import { loadPrefs, pushRecent, savePrefs, type QuickAddPrefs } from "@/lib/quickAddPrefs";
@@ -35,7 +39,8 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
 
   const [type, setType]         = useState<"expense" | "income">("expense");
   const [amount, setAmount]     = useState("");
-  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0] as string);
+  const [category, setCategory] = useState(EXPENSE_CATEGORY_GROUPS[0].name as string);
+  const [subcategory, setSubcategory] = useState<string | null>(null);
   const [note, setNote]         = useState("");
   const [date, setDate]         = useState(() => new Date().toISOString().slice(0, 10));
   const [currency, setCurrency] = useState("INR");
@@ -47,9 +52,10 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
 
   const amountRef = useRef<HTMLInputElement>(null);
 
-  // All categories (predefined + custom)
-  const expenseCategories = [
-    ...EXPENSE_CATEGORIES,
+  // Expense heads are the same grouped list the full form uses (so a quick
+  // entry and a full one file under the same names); income stays flat.
+  const expenseHeads = [
+    ...EXPENSE_CATEGORY_GROUPS.map((g) => g.name),
     ...customCats.expense,
   ];
   const incomeCategories = [
@@ -57,10 +63,26 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
     ...customCats.income.active,
     ...customCats.income.passive,
   ];
-  const cats = type === "expense" ? expenseCategories : incomeCategories;
+  const cats = type === "expense" ? expenseHeads : incomeCategories;
 
-  const defaultFor = (t: "expense" | "income", p: QuickAddPrefs) =>
-    p.recent[t][0] ?? (t === "expense" ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0]);
+  // Recent entries are "Head" or "Head|Sub" for expenses, the plain name for income.
+  const splitRecent = (entry: string) => {
+    const [head, sub] = entry.split("|");
+    return { head, sub: sub || null };
+  };
+  const defaultFor = (t: "expense" | "income", p: QuickAddPrefs) => {
+    const first = p.recent[t][0];
+    if (t === "income") return { head: first ?? INCOME_CATEGORIES[0], sub: null as string | null };
+    const r = first ? splitRecent(first) : null;
+    return r && expenseHeads.includes(r.head)
+      ? r
+      : { head: EXPENSE_CATEGORY_GROUPS[0].name, sub: null as string | null };
+  };
+  const applyDefault = (t: "expense" | "income", p: QuickAddPrefs) => {
+    const d = defaultFor(t, p);
+    setCategory(d.head);
+    setSubcategory(d.sub);
+  };
 
   // Reset & focus when opened. The last-used type, currency and category come
   // back, so the common case is: type the amount, press Save.
@@ -70,7 +92,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
       setPrefs(p);
       setType(p.type);
       setCurrency(p.currency);
-      setCategory(defaultFor(p.type, p));
+      applyDefault(p.type, p);
       setAmountError("");
       setAmount("");
       setNote("");
@@ -84,7 +106,7 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
 
   const switchType = (t: "expense" | "income") => {
     setType(t);
-    setCategory(defaultFor(t, prefs));
+    applyDefault(t, prefs);
   };
 
   const handleSave = async (addAnother = false) => {
@@ -102,14 +124,15 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
         amount: amt,
         currency,
         category,
-        description: note.trim() || null,
+        description: composeDescription(type, subcategory, note.trim()) || null,
         tracker_id: trackerId !== "none" ? trackerId : null,
         occurred_at: new Date(date).toISOString(),
       });
+      const recentKey = type === "expense" && subcategory ? `${category}|${subcategory}` : category;
       const next: QuickAddPrefs = {
         type,
         currency,
-        recent: { ...prefs.recent, [type]: pushRecent(prefs.recent[type], category) },
+        recent: { ...prefs.recent, [type]: pushRecent(prefs.recent[type], recentKey) },
       };
       setPrefs(next);
       savePrefs(next);
@@ -243,31 +266,46 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
           {/* One-tap categories: the ones used most recently for this type. */}
           {prefs.recent[type].length > 0 && (
             <div className="flex flex-wrap gap-2" role="group" aria-label="Recent categories">
-              {prefs.recent[type].filter((c) => cats.includes(c)).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(c)}
-                  aria-pressed={category === c}
-                  className={cn(
-                    "h-8 px-3 rounded-full border text-xs font-semibold transition-colors",
-                    category === c
-                      ? "border-primary bg-accent text-primary"
-                      : "border-border text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {c}
-                </button>
-              ))}
+              {prefs.recent[type]
+                .map((entry) => (type === "expense" ? splitRecent(entry) : { head: entry, sub: null }))
+                .filter((r) => cats.includes(r.head))
+                .map((r) => {
+                  const selected = category === r.head && (subcategory ?? null) === r.sub;
+                  return (
+                    <button
+                      key={`${r.head}|${r.sub ?? ""}`}
+                      type="button"
+                      onClick={() => { setCategory(r.head); setSubcategory(r.sub); }}
+                      aria-pressed={selected}
+                      className={cn(
+                        "h-8 px-3 rounded-full border text-xs font-semibold transition-colors",
+                        selected
+                          ? "border-primary bg-accent text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {r.sub ?? r.head}
+                    </button>
+                  );
+                })}
             </div>
           )}
 
-          {/* Category + Date row */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label htmlFor="qa-category" className="text-xs text-muted-foreground">
-                Category
-              </Label>
+          {/* Category (with sub-category for expenses) */}
+          <div className="space-y-1">
+            <Label htmlFor="qa-category" className="text-xs text-muted-foreground">
+              Category
+            </Label>
+            {type === "expense" ? (
+              <CategoryPickerDrawer
+                value={subcategory}
+                category={category}
+                onSelect={(head, sub) => {
+                  setCategory(head);
+                  setSubcategory(sub || null);
+                }}
+              />
+            ) : (
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger id="qa-category" className="h-9 text-sm">
                   <SelectValue />
@@ -278,19 +316,29 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="qa-date" className="text-xs text-muted-foreground">
-                Date
-              </Label>
-              <Input
-                id="qa-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="h-9 text-sm"
-              />
-            </div>
+            )}
+            {/* Same popover as the full form: writes the shared tenant setting,
+                so the new category shows up on the phone too. */}
+            <CustomCategoryPopover
+              activeType={type}
+              onCreated={(n) => {
+                setCategory(n);
+                setSubcategory(null);
+              }}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="qa-date" className="text-xs text-muted-foreground">
+              Date
+            </Label>
+            <Input
+              id="qa-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="h-9 text-sm"
+            />
           </div>
 
           {/* Tracker — BELOW the Category+Date pair, not a third cell inside
