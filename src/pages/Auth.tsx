@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { SkipLink } from "@/components/SkipLink";
 import { useBranding } from "@/hooks/useBranding";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+import { isOAuthProviderEnabled } from "@/lib/oauthProviders";
+import { desktopHost, onGoogleReturn, parseGoogleReturn } from "@/lib/desktopHost";
+import { takeOAuthReturnError } from "@/lib/oauthReturn";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +82,10 @@ const AuthPage = () => {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Set when the server rejects the credentials: turns the password field red
+  // and says so next to it. Cleared as soon as either field is edited.
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
@@ -95,6 +101,20 @@ const AuthPage = () => {
 
   useEffect(() => {
     setProfiles(loadProfiles());
+  }, []);
+
+  // Coming back from a refused Google sign-in: say why, rather than showing a
+  // bare sign-in page as though nothing had happened. Once only.
+  useEffect(() => {
+    const failed = takeOAuthReturnError();
+    if (!failed) return;
+    // The provider's own wording is for whoever is debugging, not for a visitor
+    // (errorMessages.test.ts): console always, the toast in dev builds only.
+    console.warn("[auth] Google sign-in came back with an error:", failed.detail);
+    toast.error(failed.copy, {
+      description: import.meta.env.DEV ? failed.detail : undefined,
+      duration: 10_000,
+    });
   }, []);
 
   const redirectTo =
@@ -169,6 +189,7 @@ const AuthPage = () => {
       return;
     }
     setBusy(true);
+    setSignInError(null);
     markSignInIntent(); // BUG-090 — see `markSignInIntent`
     const { error } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
@@ -183,6 +204,18 @@ const AuthPage = () => {
           toast.error(`Too many failed attempts. Try again in ${formatRetryAfter(result.retryAfterMs!)}.`);
           return;
         }
+        // The server does not say whether the email or the password was wrong
+        // (anti-enumeration, BUG-098), and neither does this form — except when
+        // the email came from a saved profile on this device, where it is
+        // already known to be a real account and only the password can be off.
+        setSignInError(
+          activeProfile
+            ? "Incorrect password. Please try again."
+            : "The email or password is incorrect. Please try again.",
+        );
+        passwordRef.current?.focus();
+        passwordRef.current?.select();
+        return;
       }
       notifyError(error);
       return;
@@ -196,22 +229,73 @@ const AuthPage = () => {
     navigate(redirectTo, { replace: true });
   };
 
+  // Inside the Windows app the host relays Google's answer into this page;
+  // the session is set here, so `useAuth` (and the sign-in intent marker)
+  // see it exactly as they would on the website. See desktopHost.ts.
+  useEffect(
+    () =>
+      onGoogleReturn(async (fragment) => {
+        const r = parseGoogleReturn(fragment);
+        if (r.error || !r.accessToken || !r.refreshToken) {
+          clearSignInIntent();
+          setBusy(false);
+          toast.error(r.error ?? "Google sign-in did not finish. Please try again.");
+          return;
+        }
+        setBusy(true);
+        const { error } = await supabase.auth.setSession({
+          access_token: r.accessToken,
+          refresh_token: r.refreshToken,
+        });
+        setBusy(false);
+        if (error) {
+          clearSignInIntent();
+          notifyError(error);
+        }
+      }),
+    [],
+  );
+
   const handleGoogle = async () => {
     setBusy(true);
     // The marker is in sessionStorage, so it survives the round trip to Google
     // and back into this same tab — which is the whole journey it has to cover.
     markSignInIntent();
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/app`,
-    });
-    if (result.error) {
+    // This used to go through Lovable's OAuth broker (`@/integrations/lovable`),
+    // which sends the browser to `/~oauth/initiate` — a path only Lovable's
+    // hosting serves. Anywhere else (local dev, Vercel/Netlify) that was the
+    // app's own 404 page, and even on Lovable it signed people into Lovable's
+    // backend rather than this project's. Supabase's own OAuth is the path that
+    // works wherever the app is hosted.
+    const enabled = await isOAuthProviderEnabled("google");
+    if (enabled === false) {
       clearSignInIntent();
       setBusy(false);
-      toast.error("Google sign-in failed");
+      toast.error("Google sign-in isn't available yet. Please sign in with your email and password.");
       return;
     }
-    if (result.redirected) return;
-    navigate(redirectTo, { replace: true });
+    // Inside the Windows app, Google opens in the person's own browser and
+    // sends them back to the app's loopback address; see desktopHost.ts.
+    const desktop = desktopHost();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: desktop
+        ? { redirectTo: desktop.redirectTo, skipBrowserRedirect: true }
+        : { redirectTo: `${window.location.origin}/app` },
+    });
+    if (error) {
+      clearSignInIntent();
+      setBusy(false);
+      notifyError(error);
+      return;
+    }
+    if (desktop && data?.url) {
+      desktop.openInBrowser(data.url);
+      // The person may close the browser instead; leave the button usable.
+      setBusy(false);
+    }
+    // On success the browser leaves for Google; `useAuth` picks up the session
+    // when it comes back to /app.
   };
 
   const handlePasswordReset = async () => {
@@ -371,7 +455,7 @@ const AuthPage = () => {
                         type="email"
                         autoComplete="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => { setEmail(e.target.value); setSignInError(null); }}
                         required
                       />
                     </div>
@@ -379,7 +463,21 @@ const AuthPage = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
-                    <PasswordInput id="signin-password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus={!!activeProfile} />
+                    <PasswordInput
+                      id="signin-password"
+                      ref={passwordRef}
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setSignInError(null); }}
+                      required
+                      autoFocus={!!activeProfile}
+                      aria-invalid={signInError ? true : undefined}
+                      aria-describedby={signInError ? "signin-password-error" : undefined}
+                      className={signInError ? "border-destructive focus-visible:ring-destructive" : undefined}
+                    />
+                    {signInError && (
+                      <p id="signin-password-error" role="alert" className="text-sm text-red-400">{signInError}</p>
+                    )}
                   </div>
                   <div className="flex items-center justify-end">
                     <button

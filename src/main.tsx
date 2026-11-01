@@ -1,6 +1,11 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { stashOAuthReturnError } from "./lib/oauthReturn";
+
+// Before React renders: a failed Google sign-in returns to /app with the reason
+// in the URL, and ProtectedRoute's redirect to /auth would otherwise drop it.
+stashOAuthReturnError();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
