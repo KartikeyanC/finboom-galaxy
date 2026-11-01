@@ -10,7 +10,7 @@ import {
   useCustomSubcategories,
   type ExpenseCategoryGroup,
 } from "@/lib/expenseSubcategories";
-import { useCustomCategories } from "@/lib/categories";
+import { useCustomCategories, useHiddenCategories } from "@/lib/categories";
 
 interface Props {
   /** Selected subcategory (drives the display label). */
@@ -27,6 +27,7 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
   const [newSub, setNewSub] = useState("");
   const { add: addCustomSub, remove: removeCustomSub, forGroup, store } = useCustomSubcategories();
   const customCats = useCustomCategories();
+  const { hidden } = useHiddenCategories();
 
   // Custom head categories created via "Create New Expense Category", surfaced
   // here so they're selectable as MAIN categories (deduped against built-ins).
@@ -38,12 +39,15 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
     [customCats.store.expense],
   );
 
+  // Settings → Categories visibility: hidden heads leave the picker, except
+  // the one this entry already uses (editing an old row must still show it).
   const allGroups: ExpenseCategoryGroup[] = useMemo(
-    () => [
-      ...EXPENSE_CATEGORY_GROUPS,
-      ...customHeads.map((n) => ({ name: n, icon: Tag, subs: [] as string[] })),
-    ],
-    [customHeads],
+    () =>
+      [
+        ...EXPENSE_CATEGORY_GROUPS,
+        ...customHeads.map((n) => ({ name: n, icon: Tag, subs: [] as string[] })),
+      ].filter((g) => !hidden.expense.includes(g.name) || g.name === category),
+    [customHeads, hidden.expense, category],
   );
 
   const [activeGroup, setActiveGroup] = useState<ExpenseCategoryGroup>(() => {

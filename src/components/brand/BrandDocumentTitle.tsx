@@ -9,7 +9,7 @@ export function BrandDocumentTitle() {
   const { appName, logoUrl } = useBranding();
 
   useEffect(() => {
-    document.title = `${appName} — Wealth OS for Modern Households`;
+    document.title = `${appName} — Money, gently managed`;
   }, [appName]);
 
   useEffect(() => {

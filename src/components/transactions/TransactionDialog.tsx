@@ -31,6 +31,8 @@ import {
   ACTIVE_INCOME,
   PASSIVE_INCOME,
   useCustomCategories,
+  useHiddenCategories,
+  visibleCategories,
 } from "@/lib/categories";
 import {
   useCreateTransaction,
@@ -84,6 +86,7 @@ export default function TransactionDialog({ open, onOpenChange, type, initial, d
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
   const custom = useCustomCategories();
+  const { hidden: hiddenCats } = useHiddenCategories();
   const debts = useDebts();
   const reminders = useReminders();
   const networth = useNetWorth();
@@ -371,9 +374,9 @@ export default function TransactionDialog({ open, onOpenChange, type, initial, d
 
   const busy = create.isPending || update.isPending;
 
-  const activeIncome = [...ACTIVE_INCOME, ...custom.store.income.active];
-  const passiveIncome = [...PASSIVE_INCOME, ...custom.store.income.passive];
-  const expenseList = [...EXPENSE_CATEGORIES, ...custom.store.expense];
+  const activeIncome = visibleCategories([...ACTIVE_INCOME, ...custom.store.income.active], hiddenCats.income, category);
+  const passiveIncome = visibleCategories([...PASSIVE_INCOME, ...custom.store.income.passive], hiddenCats.income, category);
+  const expenseList = visibleCategories([...EXPENSE_CATEGORIES, ...custom.store.expense], hiddenCats.expense, category);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { HandCoins, Wallet, Check, Loader2 } from "lucide-react";
 import { INCOME_CATEGORIES, CURRENCIES } from "@/lib/finance";
-import { useCustomCategories } from "@/lib/categories";
+import { useCustomCategories, useHiddenCategories, visibleCategories } from "@/lib/categories";
 import { EXPENSE_CATEGORY_GROUPS } from "@/lib/expenseSubcategories";
 import CategoryPickerDrawer from "@/components/transactions/CategoryPickerDrawer";
 import CustomCategoryPopover from "@/components/transactions/CustomCategoryPopover";
@@ -36,6 +36,7 @@ interface Props {
 export default function QuickAddSheet({ open, onOpenChange }: Props) {
   const createTxn = useCreateTransaction();
   const { store: customCats } = useCustomCategories();
+  const { hidden: hiddenCats } = useHiddenCategories();
 
   const [type, setType]         = useState<"expense" | "income">("expense");
   const [amount, setAmount]     = useState("");
@@ -54,15 +55,15 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
 
   // Expense heads are the same grouped list the full form uses (so a quick
   // entry and a full one file under the same names); income stays flat.
-  const expenseHeads = [
-    ...EXPENSE_CATEGORY_GROUPS.map((g) => g.name),
-    ...customCats.expense,
-  ];
-  const incomeCategories = [
-    ...INCOME_CATEGORIES,
-    ...customCats.income.active,
-    ...customCats.income.passive,
-  ];
+  const expenseHeads = visibleCategories(
+    [...EXPENSE_CATEGORY_GROUPS.map((g) => g.name), ...customCats.expense],
+    hiddenCats.expense,
+  );
+  const incomeCategories = visibleCategories(
+    [...INCOME_CATEGORIES, ...customCats.income.active, ...customCats.income.passive],
+    hiddenCats.income,
+    category,
+  );
   const cats = type === "expense" ? expenseHeads : incomeCategories;
 
   // Recent entries are "Head" or "Head|Sub" for expenses, the plain name for income.
@@ -72,11 +73,15 @@ export default function QuickAddSheet({ open, onOpenChange }: Props) {
   };
   const defaultFor = (t: "expense" | "income", p: QuickAddPrefs) => {
     const first = p.recent[t][0];
-    if (t === "income") return { head: first ?? INCOME_CATEGORIES[0], sub: null as string | null };
+    if (t === "income") {
+      const visible = visibleCategories(INCOME_CATEGORIES, hiddenCats.income);
+      const head = first && !hiddenCats.income.includes(first) ? first : visible[0] ?? INCOME_CATEGORIES[0];
+      return { head, sub: null as string | null };
+    }
     const r = first ? splitRecent(first) : null;
     return r && expenseHeads.includes(r.head)
       ? r
-      : { head: EXPENSE_CATEGORY_GROUPS[0].name, sub: null as string | null };
+      : { head: expenseHeads[0] ?? EXPENSE_CATEGORY_GROUPS[0].name, sub: null as string | null };
   };
   const applyDefault = (t: "expense" | "income", p: QuickAddPrefs) => {
     const d = defaultFor(t, p);

@@ -78,6 +78,7 @@ const PoSecurity = lazy(() => import("./pages/po/PoSecurity.tsx"));
 
 import { PoShell } from "./components/po/PoShell";
 import { BrandDocumentTitle } from "./components/brand/BrandDocumentTitle";
+import { LayoutDensityRoot } from "./lib/layoutDensity";
 import { PageTransition } from "@/components/motion/PageTransition";
 import { MotionDebug } from "@/components/motion/MotionDebug";
 
@@ -135,6 +136,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrandDocumentTitle />
+        <LayoutDensityRoot />
         <MotionDebug />
         <PwaInstallPrompt />
         <ErrorBoundary>

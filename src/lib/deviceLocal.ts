@@ -164,6 +164,13 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
       "The last type, currency and recent categories chosen in Quick Add. It is a typing convenience for this browser, not a fact about the workspace — a shared tablet and a personal phone have different habits, and syncing it would make one person's shortcuts appear on another's screen.",
   },
   {
+    key: "finroot.layout.density",
+    store: "local",
+    label: "Layout density",
+    reason:
+      "Comfortable or compact spacing is a choice about the screen in front of you — a 13-inch laptop wants compact, a phone or a big monitor may not. Syncing it would squeeze one device to suit another.",
+  },
+  {
     key: "finroot.landing.splashSeen",
     store: "session",
     label: "Landing splash already shown",

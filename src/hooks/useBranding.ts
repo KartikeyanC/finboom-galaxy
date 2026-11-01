@@ -14,7 +14,7 @@ export const BRANDING_KEY = "landing_branding";
 
 export const DEFAULT_BRANDING: BrandingContent = {
   appName: "FinRoot",
-  tagline: "The calm, intelligent wealth OS for modern households.",
+  tagline: "Money, gently managed — for the people you do it all for.",
   logoUrl: null,
 };
 

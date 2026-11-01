@@ -1,7 +1,7 @@
 {
-  "name": "FinRoot — Wealth OS",
+  "name": "FinRoot",
   "short_name": "FinRoot",
-  "description": "The calm, intelligent wealth OS for households — income, expenses, investments, budgets and goals in one place.",
+  "description": "Money, gently managed — income, expenses, savings and goals for the people you do it all for, in one calm place.",
   "id": "/",
   "start_url": "/app?source=pwa",
   "scope": "/",

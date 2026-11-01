@@ -24,6 +24,9 @@ export type CustomCategories = {
 
 export type CustomSubcategories = Record<string, string[]>;
 
+/** Category names left out of the pickers (Settings → Categories visibility). */
+export type HiddenCategories = { income: string[]; expense: string[] };
+
 export type BudgetPlannerState = {
   income: number;
   needs: number;
@@ -38,6 +41,7 @@ export type TenantSettingsMap = {
   base_currency: string;
   onboarding: OnboardingState;
   tracker_views: SavedTrackerView[];
+  hidden_categories: HiddenCategories;
 };
 
 export type TenantSettingKey = keyof TenantSettingsMap;
@@ -84,6 +88,13 @@ export const TENANT_SETTINGS: {
   // the key's shape, not its spelling, which is the whole point of this file.
   tracker_views: {
     defaultValue: [],
+  },
+  // Categories the workspace does not use, left out of the pickers. Per
+  // workspace, like custom_categories: a household that never earns "Rental"
+  // wants it gone for every member. Pickers only — reports and totals still
+  // count every row, or hiding a category would make money disappear.
+  hidden_categories: {
+    defaultValue: { income: [], expense: [] },
   },
 };
 

@@ -1,5 +1,5 @@
 import { useTenantSetting } from "@/hooks/useTenantSetting";
-import type { CustomCategories } from "@/lib/tenantSettings";
+import type { CustomCategories, HiddenCategories } from "@/lib/tenantSettings";
 
 export const ACTIVE_INCOME = ["Salary", "Freelance", "Business"] as const;
 export const PASSIVE_INCOME = [
@@ -128,5 +128,33 @@ export function useCustomCategories() {
       }),
     removeExpense: (name: string) =>
       persist({ ...store, expense: store.expense.filter((x) => x !== name) }),
+  };
+}
+// ---- Categories visibility (tenant_settings `hidden_categories`) ----
+//
+// Hidden names drop out of the category PICKERS only. Totals, charts and the
+// ledger still show every row: hiding is decluttering, never deletion, and a
+// category with real spending must not quietly vanish from a report.
+
+/** `list` without the hidden names — but `keep` (the current pick) always stays. */
+export function visibleCategories(list: readonly string[], hidden: readonly string[], keep?: string | null) {
+  if (hidden.length === 0) return [...list];
+  const h = new Set(hidden);
+  return list.filter((c) => !h.has(c) || c === keep);
+}
+
+export function useHiddenCategories() {
+  const { value, setValue } = useTenantSetting("hidden_categories");
+  const hidden: HiddenCategories = {
+    income: Array.isArray(value?.income) ? value.income : [],
+    expense: Array.isArray(value?.expense) ? value.expense : [],
+  };
+  return {
+    hidden,
+    isHidden: (type: "income" | "expense", name: string) => hidden[type].includes(name),
+    setHidden: (type: "income" | "expense", name: string, hide: boolean) => {
+      const rest = hidden[type].filter((n) => n !== name);
+      setValue({ ...hidden, [type]: hide ? [...rest, name] : rest });
+    },
   };
 }

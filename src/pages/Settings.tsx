@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Settings as SettingsIcon,
   Layout,
@@ -10,6 +9,7 @@ import {
   ArrowRight,
   Sun,
   Moon,
+  Rows3,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
@@ -28,6 +28,15 @@ import {
   setDashboardLayout,
   type DashboardLayout,
 } from "@/lib/dashboardLayout";
+import { useLayoutDensity, setLayoutDensity, type LayoutDensity } from "@/lib/layoutDensity";
+import { INCOME_CATEGORIES } from "@/lib/finance";
+import { EXPENSE_CATEGORY_GROUPS } from "@/lib/expenseSubcategories";
+import { useCustomCategories, useHiddenCategories } from "@/lib/categories";
+
+const DENSITIES: { id: LayoutDensity; label: string; description: string; icon: typeof Layout }[] = [
+  { id: "comfortable", label: "Comfortable", description: "Roomy spacing — easy on the eyes.", icon: Layout },
+  { id: "compact", label: "Compact", description: "Tighter cards, more on one screen.", icon: Rows3 },
+];
 
 const DASHBOARD_LAYOUTS: { id: DashboardLayout; label: string; description: string; icon: typeof LayoutDashboard }[] = [
   { id: "wealth", label: "Wealth", description: "New layout — net worth, health score & cash flow.", icon: Sparkles },
@@ -37,11 +46,21 @@ const DASHBOARD_LAYOUTS: { id: DashboardLayout; label: string; description: stri
 export default function SettingsPage() {
   const { mode, setMode, palette, setPalette, palettes } = useTheme();
   const dashboardLayout = useDashboardLayout();
-  const [layout, setLayout] = useState<"comfortable" | "compact">("comfortable");
-  const [cats, setCats] = useState<Record<string, boolean>>({
-    Salary: true, Freelance: true, Rental: false,
-    "Food & Dining": true, Transport: true, Entertainment: false,
-  });
+  const density = useLayoutDensity();
+  const { store: customCats } = useCustomCategories();
+  const { isHidden, setHidden } = useHiddenCategories();
+  const categoryLists: { type: "expense" | "income"; title: string; names: string[] }[] = [
+    {
+      type: "expense",
+      title: "Expense",
+      names: [...new Set([...EXPENSE_CATEGORY_GROUPS.map((g) => g.name), ...customCats.expense])],
+    },
+    {
+      type: "income",
+      title: "Income",
+      names: [...new Set([...INCOME_CATEGORIES, ...customCats.income.active, ...customCats.income.passive])],
+    },
+  ];
 
   return (
     <div className="px-6 sm:px-8 py-8 space-y-6 max-w-[1100px] mx-auto">
@@ -156,35 +175,67 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-1 gap-4">
-        <div className="glass-card p-6 space-y-4">
+      <div className="glass-card p-6 space-y-4">
+        <div>
           <h2 className="font-display font-semibold text-foreground">Layout density</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {(["comfortable", "compact"] as const).map((l) => (
+          <p className="text-sm text-muted-foreground mt-1">
+            How much breathing room the app pages have. Text stays the same size.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{DEVICE_LOCAL_HINT}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Layout density">
+          {DENSITIES.map((d) => {
+            const Icon = d.icon;
+            const active = density === d.id;
+            return (
               <button
-                key={l}
-                onClick={() => setLayout(l)}
+                key={d.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => {
+                  setLayoutDensity(d.id);
+                  toast.success(`${d.label} spacing on`);
+                }}
                 className={cn(
-                  "h-20 rounded-lg border flex flex-col items-center justify-center gap-1 transition-all capitalize",
-                  layout === l ? "border-primary bg-primary/10 text-primary" : "border-border/40 hover:bg-accent/30"
+                  "min-h-20 rounded-lg border p-3 flex flex-col items-center justify-center gap-1 text-center transition-all",
+                  active ? "border-primary bg-primary/10 text-primary" : "border-border/40 hover:bg-accent/30",
                 )}
               >
-                <Layout className="w-5 h-5" />
-                <span className="text-sm font-medium">{l}</span>
+                <Icon className="w-5 h-5" />
+                <span className="text-sm font-medium">{d.label}</span>
+                <span className="text-xs text-muted-foreground leading-snug">{d.description}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
 
       <div className="glass-card p-6 space-y-3">
         <h2 className="font-display font-semibold text-foreground">Categories visibility</h2>
-        <p className="text-sm text-muted-foreground">Hide categories you don't use; they'll disappear from pickers and charts.</p>
-        <div className="divide-y divide-border/30 mt-2">
-          {Object.entries(cats).map(([name, on]) => (
-            <div key={name} className="flex items-center justify-between py-3">
-              <Label className="font-normal">{name}</Label>
-              <Switch checked={on} onCheckedChange={(v) => setCats((p) => ({ ...p, [name]: v }))} />
+        <p className="text-sm text-muted-foreground">
+          Switch off the categories your household never uses, and they leave the category pickers for everyone in
+          this workspace. Past entries and your totals still count them — nothing is deleted.
+        </p>
+        <div className="grid md:grid-cols-2 gap-6 mt-2">
+          {categoryLists.map((list) => (
+            <div key={list.type}>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{list.title}</div>
+              <div className="divide-y divide-border/30">
+                {list.names.map((name) => {
+                  const id = `cat-${list.type}-${name}`;
+                  return (
+                    <div key={name} className="flex items-center justify-between py-3">
+                      <Label htmlFor={id} className="font-normal">{name}</Label>
+                      <Switch
+                        id={id}
+                        checked={!isHidden(list.type, name)}
+                        onCheckedChange={(on) => setHidden(list.type, name, !on)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>

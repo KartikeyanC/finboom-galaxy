@@ -246,7 +246,7 @@ export default function PoBranding() {
             id="tagline"
             value={content.tagline}
             onChange={(e) => setContent((c) => ({ ...c, tagline: e.target.value }))}
-            placeholder="The calm, intelligent wealth OS for modern households."
+            placeholder="Money, gently managed — for the people you do it all for."
           />
         </div>
       </div>
