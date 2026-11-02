@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Upload,
   Loader2,
@@ -50,6 +51,9 @@ import {
   type BudgetRow,
 } from "@/lib/importParsers";
 import { useImportTransactions } from "@/hooks/useImportTransactions";
+import { useInvestments } from "@/lib/investmentsStore";
+import { holdingToRecord, rowsToHoldings } from "@/lib/importHoldings";
+import { useTenant } from "@/contexts/TenantContext";
 import { useCreateGoal } from "@/hooks/useGoals";
 import { useSetBudgetAllocation } from "@/hooks/useBudgets";
 import { useIncomeStreams } from "@/hooks/useIncomeStreams";
@@ -188,6 +192,10 @@ export function TransactionImporter() {
   const [budgetRows, setBudgetRows] = useState<BudgetRow[]>([]);
 
   const importTxns = useImportTransactions();
+  const { upsertMany: saveInvestments } = useInvestments();
+  const { currentTenantId } = useTenant();
+  const navigate = useNavigate();
+  const [savingHoldings, setSavingHoldings] = useState(false);
   const createGoal = useCreateGoal();
   const setBudget = useSetBudgetAllocation();
   const { add: addIncome } = useIncomeStreams();
@@ -277,23 +285,37 @@ export function TransactionImporter() {
   };
 
   // ── Asset import ─────────────────────────────────────────────────────────
+  // Broker rows become holdings in Investments — one per stock or fund, with
+  // its quantity and average price — not income/expense transactions (which
+  // booked every buy as income). Re-importing updates the same holdings.
+  const holdingsPreview = useMemo(() => rowsToHoldings(assetRows), [assetRows]);
+
   const syncAssets = async () => {
     if (!assetRows.length) return;
-    // One idempotent batch: re-running the same file skips rows already stored
-    // rather than appending a second copy of everything.
-    const payload = assetRows.map((r) => ({
-      type: r.action === "Inflow" ? "income" : "expense",
-      amount: r.quantity * r.price * r.rate,
-      currency: "INR",
-      category: r.asset || "Imported",
-      description: `${profile ?? "Import"} • ${r.asset} ${r.quantity} @ ${r.price} ${r.currency}`,
-      occurred_at: toIsoDate(r.date),
-    }));
+    if (!holdingsPreview.length) {
+      toast.warning("Nothing to add: every position in this file is sold out.");
+      return;
+    }
+    if (!currentTenantId) return;
+    setSavingHoldings(true);
     try {
-      await importTxns.mutateAsync(payload);
-      setAssetRows([]);
-    } catch (e) {
-      console.error(e);
+      const now = new Date().toISOString();
+      const records = holdingsPreview.map((h) =>
+        holdingToRecord(h, {
+          tenantId: currentTenantId,
+          broker: assetRows.find((r) => r.broker)?.broker ?? profile ?? undefined,
+          now,
+        }),
+      );
+      if (await saveInvestments(records)) {
+        setAssetRows([]);
+        toast.success(
+          `Added ${records.length} holding${records.length === 1 ? "" : "s"} to Investments`,
+          { action: { label: "View", onClick: () => navigate("/app/investments") } },
+        );
+      }
+    } finally {
+      setSavingHoldings(false);
     }
   };
 
@@ -404,7 +426,7 @@ export function TransactionImporter() {
   };
 
   const isSyncing =
-    importTxns.isPending || createGoal.isPending || setBudget.isPending;
+    importTxns.isPending || createGoal.isPending || setBudget.isPending || savingHoldings;
 
   const handleSync = () => {
     if (section === "assets") syncAssets();
@@ -722,7 +744,9 @@ export function TransactionImporter() {
             ) : (
               <CheckCircle2 className="w-4 h-4" />
             )}
-            Approve & Import {currentRowCount} Row{currentRowCount !== 1 ? "s" : ""}
+            {section === "assets"
+              ? `Add ${holdingsPreview.length} holding${holdingsPreview.length === 1 ? "" : "s"} to Investments`
+              : `Approve & Import ${currentRowCount} Row${currentRowCount !== 1 ? "s" : ""}`}
           </Button>
         </div>
       )}

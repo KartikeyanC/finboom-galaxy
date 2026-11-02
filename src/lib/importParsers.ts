@@ -32,6 +32,12 @@ export type ImportedRow = {
   currency: string;
   rate: number; // FX to INR
   broker?: string;
+  /** "NSE" / "BSE" when the export says — the ticker becomes "NSE:ITC". */
+  exchange?: string;
+  /** A fund's ISIN starts "INF", a share's "INE": how a fund is told apart. */
+  isin?: string;
+  /** Last / previous-close price or NAV, when the export carries one. */
+  ltp?: number;
 };
 
 export type ExpenseRow = {
@@ -77,7 +83,10 @@ export type BudgetRow = {
 // spaces), from generic exports and the brokers' own: a Zerodha tradebook
 // ("Symbol, Trade Date, Trade Type, Quantity, Price") and holdings export
 // ("Symbol, Quantity Available, Average Price"), Groww, Upstox, INDmoney.
-const HEADER_MAP: Record<string, keyof Omit<ImportedRow, "id" | "currency" | "rate">> = {
+const HEADER_MAP: Record<
+  string,
+  keyof Omit<ImportedRow, "id" | "currency" | "rate" | "broker">
+> = {
   date: "date",
   "booking date": "date",
   "trade date": "date",
@@ -117,7 +126,16 @@ const HEADER_MAP: Record<string, keyof Omit<ImportedRow, "id" | "currency" | "ra
   "trade price": "price",
   "buy price": "price",
   "avg cost": "price",
-  nav: "price",
+  exchange: "exchange",
+  isin: "isin",
+  ltp: "ltp",
+  "last price": "ltp",
+  "current price": "ltp",
+  "closing price": "ltp",
+  "close price": "ltp",
+  "previous closing price": "ltp",
+  nav: "ltp",
+  "current nav": "ltp",
 };
 
 /** Header names that mark a row as the asset table's header. */
@@ -168,6 +186,9 @@ export const toRow = (raw: Record<string, unknown>, fallbackCcy = "INR"): Import
   // header — a "Total" line, a page footer, a disclaimer — is not a row.
   if (!asset || (quantity === 0 && price === 0)) return null;
   const currency = detectCurrency(priceStr) !== "INR" ? detectCurrency(priceStr) : fallbackCcy;
+  const exchange = String(norm.exchange ?? "").trim().toUpperCase();
+  const isin = String(norm.isin ?? "").trim().toUpperCase();
+  const ltp = Number(String(norm.ltp ?? "").replace(/[^\d.-]/g, "")) || 0;
   return {
     id: crypto.randomUUID(),
     date: normaliseDate(norm.date) || String(norm.date ?? "").trim(),
@@ -177,6 +198,9 @@ export const toRow = (raw: Record<string, unknown>, fallbackCcy = "INR"): Import
     price,
     currency,
     rate: FX[currency] ?? 1,
+    ...(exchange ? { exchange } : {}),
+    ...(isin ? { isin } : {}),
+    ...(ltp > 0 ? { ltp } : {}),
   };
 };
 

@@ -255,6 +255,23 @@ export function useInvestments() {
     [currentTenantId, invalidate],
   );
 
+  /** Several records in one call (an import). True when they were saved. */
+  const upsertMany = useCallback(
+    async (recs: InvestmentRecord[]): Promise<boolean> => {
+      if (!currentTenantId || recs.length === 0) return false;
+      const { error } = await supabase
+        .from("investments")
+        .upsert(recs.map((r) => recordToRow(r, currentTenantId)));
+      if (error) {
+        notifyError(error);
+        return false;
+      }
+      invalidate();
+      return true;
+    },
+    [currentTenantId, invalidate],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       const { error } = await supabase
@@ -291,5 +308,5 @@ export function useInvestments() {
     }
   }, [currentTenantId, isLoading, data, invalidate]);
 
-  return { records, upsert, remove };
+  return { records, upsert, upsertMany, remove };
 }
