@@ -49,7 +49,7 @@ export const GOAL_CATEGORIES = [
   "Other",
 ] as const;
 
-const CURRENCY_SYMBOL: Record<string, string> = {
+export const CURRENCY_SYMBOL: Record<string, string> = {
   INR: "₹",
   USD: "$",
   EUR: "€",

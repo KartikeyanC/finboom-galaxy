@@ -91,6 +91,12 @@ interface Props<T> {
    * reads as data loss rather than as a filter.
    */
   defaultPreset?: DatePreset;
+  /**
+   * Only the date / category controls — no "Viewing Past Records" banner and
+   * no count/value ribbon. For a list whose own header already says how many
+   * there are and what they are worth (the holdings list).
+   */
+  quiet?: boolean;
 }
 
 export default function MatrixFilter<T>({
@@ -102,6 +108,7 @@ export default function MatrixFilter<T>({
   currencyTag = "INR",
   children,
   defaultPreset = "today",
+  quiet = false,
 }: Props<T>) {
   const [preset, setPreset] = useState<DatePreset>(defaultPreset);
   const [custom, setCustom] = useState<DateRange | undefined>();
@@ -437,7 +444,7 @@ export default function MatrixFilter<T>({
       </div>
 
       {/* Historical view banner */}
-      {isHistorical && (
+      {isHistorical && !quiet && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2 text-xs">
           <span className="flex items-center gap-2 text-primary font-medium">
             <History className="w-3.5 h-3.5" />
@@ -460,6 +467,7 @@ export default function MatrixFilter<T>({
       )}
 
       {/* Cumulative ribbon */}
+      {!quiet && (
       <div className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/30 px-3.5 py-2 text-xs">
         <div className="flex items-center gap-4 flex-wrap">
           <span className="text-muted-foreground">
@@ -490,6 +498,7 @@ export default function MatrixFilter<T>({
           </span>
         )}
       </div>
+      )}
 
       {/* Filtered children */}
       {filtered.length === 0 && isActive ? (

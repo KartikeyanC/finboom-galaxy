@@ -285,6 +285,25 @@ export function useInvestments() {
     [currentTenantId, invalidate],
   );
 
+  /** Several records in one call (bulk delete). True when they were removed. */
+  const removeMany = useCallback(
+    async (ids: string[]): Promise<boolean> => {
+      if (!currentTenantId || ids.length === 0) return false;
+      const { error } = await supabase
+        .from("investments")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) {
+        notifyError(error);
+        return false;
+      }
+      invalidate();
+      return true;
+    },
+    [currentTenantId, invalidate],
+  );
+
   // One-time migration of legacy localStorage records into the DB.
   const migratedRef = useRef(false);
   useEffect(() => {
@@ -308,5 +327,5 @@ export function useInvestments() {
     }
   }, [currentTenantId, isLoading, data, invalidate]);
 
-  return { records, upsert, upsertMany, remove };
+  return { records, upsert, upsertMany, remove, removeMany };
 }

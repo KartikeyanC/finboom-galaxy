@@ -30,7 +30,7 @@ const Investments = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<InvestmentRecord | null>(null);
   const [allocMode, setAllocMode] = useState<"current" | "invested">("current");
-  const { records, upsert, remove } = useInvestments();
+  const { records, upsert, remove, removeMany } = useInvestments();
 
   const alloc = useMemo(() => {
     // "Account" ring — allocation by asset class at current value.
@@ -107,6 +107,12 @@ const Investments = () => {
     toast.success("Investment successfully removed.");
   };
 
+  const handleDeleteMany = async (ids: string[]) => {
+    if (await removeMany(ids)) {
+      toast.success(`${ids.length} holding${ids.length === 1 ? "" : "s"} deleted.`);
+    }
+  };
+
   const handleSave = (rec: InvestmentRecord) => {
     upsert(rec);
   };
@@ -172,6 +178,7 @@ const Investments = () => {
         records={records}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onDeleteMany={handleDeleteMany}
       />
 
       <AddInvestmentDialog
