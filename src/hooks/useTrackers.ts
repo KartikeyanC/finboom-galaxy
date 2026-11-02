@@ -227,6 +227,34 @@ export function useSoftDeleteTracker() {
 }
 
 /**
+ * Bulk soft delete — the SAME soft delete as `useSoftDeleteTracker`, stamped
+ * on every selected tracker in one call. Never a hard delete: each row keeps
+ * its id, so every `transactions.tracker_id` pointing at it stays intact.
+ *
+ * No per-row toast; it throws on failure so BulkDeleteBar reports the outcome.
+ */
+export function useSoftDeleteTrackers() {
+  const { currentTenantId } = useTenant();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase.from("trackers")
+        .update({ deleted_at: new Date().toISOString() })
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId)
+        .is("deleted_at", null);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      qc.invalidateQueries({ queryKey: ["tracker-spend"] });
+    },
+  });
+}
+
+/**
  * Stamp `reviewed_at` — the user has answered the "shall we look through your
  * older transactions?" question.
  *

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,15 @@ import {
 import { BUDGET_BUCKETS, formatMoney } from "@/lib/finance";
 import {
   useDeleteBudget,
+  useDeleteBudgets,
   useSetBudgetAllocation,
   type Budget,
 } from "@/hooks/useBudgets";
 import { useBudgetSpend } from "@/hooks/useBudgetSpend";
 import { isNonExpenseBucket, categoriesForBucket } from "@/lib/budgetBuckets";
 import { toast } from "sonner";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 
 // `spent` is deliberately absent: it is derived from transactions, never typed.
 const schema = z.object({
@@ -164,6 +167,9 @@ export default function BudgetManager() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Budget | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const delMany = useDeleteBudgets();
+  const visibleIds = useMemo(() => (data ?? []).map((b) => b.id), [data]);
+  const sel = useBulkSelection(visibleIds);
 
   return (
     <div className="glass-card p-5">
@@ -175,10 +181,22 @@ export default function BudgetManager() {
           <Plus className="w-4 h-4 mr-1" /> Add budget
         </Button>
       </div>
+      <BulkDeleteBar
+        sel={sel}
+        noun={["budget", "budgets"]}
+        className="mb-2"
+        description="This removes the allocation for each selected bucket and period. Your transactions are not touched."
+        onDelete={async (ids) => {
+          await delMany.mutateAsync(ids);
+        }}
+      />
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                {visibleIds.length > 0 && <SelectAllBox sel={sel} />}
+              </TableHead>
               <TableHead>Bucket</TableHead>
               <TableHead>Period</TableHead>
               <TableHead className="text-right">Allocated</TableHead>
@@ -189,13 +207,16 @@ export default function BudgetManager() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
             ) : !data || data.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No budgets yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No budgets yet.</TableCell></TableRow>
             ) : data.map((b) => {
               const remaining = b.remaining;
               return (
-                <TableRow key={b.id}>
+                <TableRow key={b.id} data-state={sel.isSelected(b.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <SelectBox sel={sel} id={b.id} name={`${b.bucket} ${b.period_start}`} />
+                  </TableCell>
                   <TableCell className="font-medium">{b.bucket}</TableCell>
                   <TableCell className="font-mono text-xs">{b.period_start}</TableCell>
                   <TableCell className="text-right font-display">{formatMoney(Number(b.allocated))}</TableCell>

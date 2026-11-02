@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Clock, Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { debtSummary, useDebts, type DebtRecord } from "@/lib/debtsStore";
 import { useReminders } from "@/lib/remindersStore";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection, type BulkSelection } from "@/components/bulk/useBulkSelection";
 
 function fmt(n: number, currency: string) {
   try {
@@ -40,7 +43,15 @@ function ProgressRing({ pct }: { pct: number }) {
   );
 }
 
-function DebtCard({ debt, onDelete }: { debt: DebtRecord; onDelete: () => void }) {
+function DebtCard({
+  debt,
+  sel,
+  onDelete,
+}: {
+  debt: DebtRecord;
+  sel: BulkSelection;
+  onDelete: () => void;
+}) {
   const s = debtSummary(debt);
   return (
     <motion.div
@@ -48,10 +59,15 @@ function DebtCard({ debt, onDelete }: { debt: DebtRecord; onDelete: () => void }
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98 }}
-      className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-3"
+      className={cn(
+        "rounded-xl border border-border/50 bg-muted/10 p-4 space-y-3",
+        sel.isSelected(debt.id) && "border-primary/40 bg-primary/[0.06]",
+      )}
+      data-state={sel.isSelected(debt.id) ? "selected" : undefined}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
+          <SelectBox sel={sel} id={debt.id} name={debt.lender} />
           <ProgressRing pct={s.pct} />
           <div className="min-w-0">
             <div className="font-medium text-foreground truncate">{debt.lender}</div>
@@ -126,6 +142,8 @@ function DebtCard({ debt, onDelete }: { debt: DebtRecord; onDelete: () => void }
 export default function DebtLedger() {
   const debts = useDebts();
   const reminders = useReminders();
+  const visibleIds = useMemo(() => debts.records.map((d) => d.id), [debts.records]);
+  const sel = useBulkSelection(visibleIds);
 
   if (debts.records.length === 0) return null;
 
@@ -135,6 +153,17 @@ export default function DebtLedger() {
       .filter((r) => r.source === "debt" && r.sourceId === debtId && r.status !== "completed")
       .forEach((r) => reminders.remove(r.id));
     debts.remove(debtId);
+  };
+
+  // Same cascade as one delete, in two batch calls: the ticked debts' open
+  // reminders first (so none is left pointing at a deleted debt), then the debts.
+  const handleDeleteMany = async (ids: string[]) => {
+    const picked = new Set(ids);
+    const reminderIds = reminders.records
+      .filter((r) => r.source === "debt" && !!r.sourceId && picked.has(r.sourceId) && r.status !== "completed")
+      .map((r) => r.id);
+    await reminders.removeMany(reminderIds);
+    await debts.removeMany(ids);
   };
 
   return (
@@ -148,10 +177,20 @@ export default function DebtLedger() {
           {debts.records.length} active {debts.records.length === 1 ? "plan" : "plans"}
         </span>
       </div>
+      <div className="flex items-center gap-2 px-4 text-xs text-muted-foreground">
+        <SelectAllBox sel={sel} />
+        <span>{sel.all ? "Clear all" : "Select all"}</span>
+      </div>
+      <BulkDeleteBar
+        sel={sel}
+        noun={["debt", "debts"]}
+        description="Their upcoming installment reminders go too; already-paid installments stay in your expense ledger."
+        onDelete={handleDeleteMany}
+      />
       <div className="space-y-3">
         <AnimatePresence initial={false}>
           {debts.records.map((d) => (
-            <DebtCard key={d.id} debt={d} onDelete={() => handleDelete(d.id)} />
+            <DebtCard key={d.id} debt={d} sel={sel} onDelete={() => handleDelete(d.id)} />
           ))}
         </AnimatePresence>
       </div>

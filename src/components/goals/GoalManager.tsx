@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Pencil, Plus, Trash2, PiggyBank } from "lucide-react";
 import { z } from "zod";
@@ -37,12 +37,15 @@ import {
   useContributeToGoal,
   useCreateGoal,
   useDeleteGoal,
+  useDeleteGoals,
   useGoals,
   useUpdateGoal,
   type Goal,
 } from "@/hooks/useGoals";
 import { CategoryChart, ChartViewToggle, useChartView, type ChartSlice } from "@/components/ui/category-chart";
 import { toast } from "sonner";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 
 const schema = z.object({
   title: z.string().trim().min(1, "Title required").max(120),
@@ -280,13 +283,23 @@ export default function GoalManager() {
   const [funding, setFunding] = useState<Goal | null>(null);
   const [view, setView] = useChartView();
   const goalSlices: ChartSlice[] = (data ?? []).map((g) => ({ name: g.title, value: Number(g.current_amount) }));
+  const delMany = useDeleteGoals();
+  // Only the list view shows rows to tick; the chart views select nothing.
+  const visibleIds = useMemo(
+    () => (view === "list" ? (data ?? []).map((g) => g.id) : []),
+    [view, data],
+  );
+  const sel = useBulkSelection(visibleIds);
 
   return (
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-sm font-semibold text-foreground uppercase tracking-wider">
-          Goals ({data?.length ?? 0})
-        </h2>
+        <div className="flex items-center gap-2">
+          {visibleIds.length > 0 && <SelectAllBox sel={sel} />}
+          <h2 className="font-display text-sm font-semibold text-foreground uppercase tracking-wider">
+            Goals ({data?.length ?? 0})
+          </h2>
+        </div>
         <div className="flex items-center gap-2">
           {data && data.length > 0 && <ChartViewToggle view={view} onChange={setView} />}
           <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
@@ -305,12 +318,22 @@ export default function GoalManager() {
         <CategoryChart data={goalSlices} view={view} centerLabel="Saved" emptyText="No funded goals to chart yet." />
       ) : (
         <div className="flex flex-col gap-4">
+          <BulkDeleteBar
+            sel={sel}
+            noun={["goal", "goals"]}
+            description="Their saved progress goes with them."
+            onDelete={async (ids) => {
+              await delMany.mutateAsync(ids);
+            }}
+          />
           {data.map((g, i) => {
             const pct = percentOf(Number(g.current_amount), Number(g.target_amount));
             return (
               <div key={g.id} className="space-y-2 p-3 rounded-lg bg-secondary/30">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex items-start gap-2.5">
+                    <SelectBox sel={sel} id={g.id} name={g.title} className="mt-0.5" />
+                    <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-foreground truncate">{g.title}</span>
                       <span className={cn(
@@ -325,6 +348,7 @@ export default function GoalManager() {
                     <span className="text-xs text-muted-foreground">
                       {g.category ?? "—"} {g.target_date ? `· by ${new Date(g.target_date).toLocaleDateString()}` : ""}
                     </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-emerald-500 hover:text-emerald-500"

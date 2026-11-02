@@ -38,16 +38,20 @@ import AccountPreviewCard from "./AccountPreviewCard";
 import BalanceHistorySheet from "./BalanceHistorySheet";
 import PurposeChips from "./PurposeChips";
 import TransferList from "./TransferList";
+import { BulkDeleteBar, SelectAllBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 
 
 export default function AccountsManager() {
   const [form, setForm] = useState<FormState>(emptyForm());
-  const { accounts: storedAccounts, setAll: setAllStored } = useAccounts();
+  const { accounts: storedAccounts, setAll: setAllStored, removeMany } = useAccounts();
   const { data: allTransactions = [] } = useTransactions();
   const accounts: SavedAccount[] = useMemo(
     () => storedAccounts.map(fromStored),
     [storedAccounts],
   );
+  const accountIds = useMemo(() => accounts.map((a) => a.id), [accounts]);
+  const sel = useBulkSelection(accountIds);
 
   /**
    * Live balance = openingBalance ± every transaction linked to the account.
@@ -193,6 +197,15 @@ export default function AccountsManager() {
   const remove = (id: string) => {
     setAccounts((a) => a.filter((x) => x.id !== id));
     if (editingAccountId === id) {
+      setEditingAccountId(null);
+      setForm(emptyForm());
+    }
+  };
+
+  /** Bulk delete — same effect as `remove`, one call for all of them. */
+  const removeSelected = async (ids: string[]) => {
+    await removeMany(ids);
+    if (editingAccountId && ids.includes(editingAccountId)) {
       setEditingAccountId(null);
       setForm(emptyForm());
     }
@@ -525,11 +538,14 @@ export default function AccountsManager() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <div>
+              <div className="flex items-start gap-3">
+                {accounts.length > 0 && <SelectAllBox sel={sel} className="mt-1.5" />}
+                <div>
                 <CardTitle className="text-lg">Your Accounts</CardTitle>
                 <CardDescription>
                   {accounts.length} active {accounts.length === 1 ? "account" : "accounts"}
                 </CardDescription>
+                </div>
               </div>
               <Button
                 size="icon"
@@ -541,8 +557,15 @@ export default function AccountsManager() {
                 {balancesHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <BulkDeleteBar
+                sel={sel}
+                noun={["account", "accounts"]}
+                description="Their transactions are kept — they just stop being linked to an account."
+                onDelete={removeSelected}
+              />
               <AccountList
+                sel={sel}
                 accounts={accounts}
                 liveBalances={liveBalances}
                 balancesHidden={balancesHidden}

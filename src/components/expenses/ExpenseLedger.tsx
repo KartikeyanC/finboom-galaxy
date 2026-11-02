@@ -43,8 +43,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import TransactionDialog from "@/components/transactions/TransactionDialog";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection, type BulkSelection } from "@/components/bulk/useBulkSelection";
 import {
   useDeleteTransaction,
+  useDeleteTransactions,
   useTransactions,
   type Transaction,
 } from "@/hooks/useTransactions";
@@ -281,18 +284,7 @@ export default function ExpenseLedger() {
                   return <CategoryChart data={slices} view={view} centerLabel="Spent" emptyText="No expenses to chart." />;
                 }
               }
-              const byDay = new Map<string, { date: Date; items: Transaction[] }>();
-              filtered.forEach((t) => {
-                const d = new Date(t.occurred_at);
-                const k = dayKey(d);
-                if (!byDay.has(k)) byDay.set(k, { date: d, items: [] });
-                byDay.get(k)!.items.push(t);
-              });
-              const days = Array.from(byDay.entries())
-                .map(([k, v]) => ({ key: k, date: v.date, items: v.items }))
-                .sort((a, b) => b.date.getTime() - a.date.getTime());
-
-              if (days.length === 0) {
+              if (filtered.length === 0) {
                 return (
                   <p className="text-center text-muted-foreground py-10 text-sm">
                     {data && data.length > 0
@@ -302,20 +294,13 @@ export default function ExpenseLedger() {
                 );
               }
               return (
-                <div className="space-y-6 mt-4">
-                  {days.map((day) => (
-                    <DayBlock
-                      key={day.key}
-                      dayKey={day.key}
-                      date={day.date}
-                      items={day.items}
-                      isLight={isLight}
-                      trackerNames={trackerNames}
-                      onEdit={(t) => { setEditing(t); setDialogOpen(true); }}
-                      onDelete={(id) => setDeleteId(id)}
-                    />
-                  ))}
-                </div>
+                <ExpenseDays
+                  filtered={filtered}
+                  isLight={isLight}
+                  trackerNames={trackerNames}
+                  onEdit={(t) => { setEditing(t); setDialogOpen(true); }}
+                  onDelete={(id) => setDeleteId(id)}
+                />
               );
             }}
           </MatrixFilter>
@@ -354,6 +339,75 @@ export default function ExpenseLedger() {
   );
 }
 
+/* ----------------------- Day list + bulk delete ----------------------- */
+
+/**
+ * The list view, kept as its own component so the selection can live next to
+ * the rows MatrixFilter actually shows: "Select all" ticks exactly the entries
+ * that survive the chips, the search and the matrix filter — never a hidden one.
+ */
+function ExpenseDays({
+  filtered,
+  isLight,
+  trackerNames,
+  onEdit,
+  onDelete,
+}: {
+  filtered: Transaction[];
+  isLight: boolean;
+  trackerNames: Map<string, string>;
+  onEdit: (t: Transaction) => void;
+  onDelete: (id: string) => void;
+}) {
+  const delMany = useDeleteTransactions();
+  const visibleIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
+  const sel = useBulkSelection(visibleIds);
+
+  const days = useMemo(() => {
+    const byDay = new Map<string, { date: Date; items: Transaction[] }>();
+    filtered.forEach((t) => {
+      const d = new Date(t.occurred_at);
+      const k = dayKey(d);
+      if (!byDay.has(k)) byDay.set(k, { date: d, items: [] });
+      byDay.get(k)!.items.push(t);
+    });
+    return Array.from(byDay.entries())
+      .map(([k, v]) => ({ key: k, date: v.date, items: v.items }))
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [filtered]);
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="flex items-center gap-2 px-3 text-xs text-muted-foreground">
+        <SelectAllBox sel={sel} />
+        <span>{sel.all ? "Clear all" : "Select all"}</span>
+      </div>
+      <BulkDeleteBar
+        sel={sel}
+        noun={["expense", "expenses"]}
+        onDelete={async (ids) => {
+          await delMany.mutateAsync(ids);
+        }}
+      />
+      <div className="space-y-6">
+        {days.map((day) => (
+          <DayBlock
+            key={day.key}
+            dayKey={day.key}
+            date={day.date}
+            items={day.items}
+            isLight={isLight}
+            trackerNames={trackerNames}
+            sel={sel}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ----------------------- Day block ----------------------- */
 
 function DayBlock({
@@ -362,6 +416,7 @@ function DayBlock({
   items,
   isLight,
   trackerNames,
+  sel,
   onEdit,
   onDelete,
 }: {
@@ -370,6 +425,7 @@ function DayBlock({
   items: Transaction[];
   isLight: boolean;
   trackerNames: Map<string, string>;
+  sel: BulkSelection;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
 }) {
@@ -448,7 +504,7 @@ function DayBlock({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.16 }}
             >
-              <Row t={t} isLight={isLight} trackerNames={trackerNames} onEdit={onEdit} onDelete={onDelete} />
+              <Row t={t} isLight={isLight} trackerNames={trackerNames} sel={sel} onEdit={onEdit} onDelete={onDelete} />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -466,12 +522,14 @@ function Row({
   t,
   isLight,
   trackerNames,
+  sel,
   onEdit,
   onDelete,
 }: {
   t: Transaction;
   isLight: boolean;
   trackerNames: Map<string, string>;
+  sel: BulkSelection;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
 }) {
@@ -493,10 +551,13 @@ function Row({
       className={cn(
         "group/row flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2 hover:bg-muted/20 transition-colors",
         isOwe && "border-l-2 border-amber-500/70 bg-amber-500/[0.04]",
+        sel.isSelected(t.id) && "bg-primary/[0.06]",
       )}
+      data-state={sel.isSelected(t.id) ? "selected" : undefined}
     >
       {/* Left cluster: time + category + description, tightly grouped */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
+        <SelectBox sel={sel} id={t.id} name={title} />
         <span
           className={cn("inline-flex items-center text-primary/70")}
           title={t.category}

@@ -240,6 +240,25 @@ export function useReminders() {
     [currentTenantId, invalidate],
   );
 
+  /**
+   * Bulk delete: one call for every id, one refetch. Throws on failure (no
+   * per-row toast) so the caller — BulkDeleteBar — reports the outcome.
+   */
+  const removeMany = useCallback(
+    async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("reminders")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) throw error;
+      invalidate();
+    },
+    [currentTenantId, invalidate],
+  );
+
   const complete = useCallback(
     async (id: string) => {
       const { error } = await supabase
@@ -276,5 +295,5 @@ export function useReminders() {
     }
   }, [currentTenantId, isLoading, data, invalidate]);
 
-  return { records, upsert, remove, complete };
+  return { records, upsert, remove, removeMany, complete };
 }

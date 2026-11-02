@@ -145,6 +145,25 @@ export function useSubscriptions() {
     [currentTenantId, invalidate],
   );
 
+  /**
+   * Bulk delete: one call for every id, one refetch. Throws on failure (no
+   * per-row toast) so the caller — BulkDeleteBar — reports the outcome.
+   */
+  const removeMany = useCallback(
+    async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("tracked_subscriptions")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) throw error;
+      invalidate();
+    },
+    [currentTenantId, invalidate],
+  );
+
   // One-time migration of legacy localStorage subscriptions into the DB.
   const migratedRef = useRef(false);
   useEffect(() => {
@@ -169,7 +188,7 @@ export function useSubscriptions() {
     }
   }, [currentTenantId, isLoading, data, invalidate]);
 
-  return { items, add, update, remove };
+  return { items, add, update, remove, removeMany };
 }
 
 export function monthlyEquivalent(s: SubscriptionRecord): number {

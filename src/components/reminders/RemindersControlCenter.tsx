@@ -15,6 +15,8 @@ import {
   type ReminderRecord,
 } from "@/lib/remindersStore";
 import { ReminderEditorDialog } from "./ReminderEditorDialog";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 import { useDebts } from "@/lib/debtsStore";
 import { useCreateTransaction } from "@/hooks/useTransactions";
 import { toast } from "sonner";
@@ -39,7 +41,7 @@ function formatAmount(amount?: number, currency?: string) {
 }
 
 export function RemindersControlCenter() {
-  const { records, upsert, remove, complete } = useReminders();
+  const { records, upsert, remove, removeMany, complete } = useReminders();
   const debts = useDebts();
   const createTxn = useCreateTransaction();
   const [open, setOpen] = useState(true);
@@ -72,6 +74,9 @@ export function RemindersControlCenter() {
       return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
   }, [records]);
+
+  const sortedIds = useMemo(() => sorted.map((r) => r.id), [sorted]);
+  const sel = useBulkSelection(sortedIds);
 
   const activeCount = records.filter((r) => r.status !== "completed").length;
 
@@ -109,13 +114,23 @@ export function RemindersControlCenter() {
             className="border-t border-border/40"
           >
             <div className="px-5 py-3 flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                Sorted chronologically. Items roll forward automatically when due dates pass.
-              </p>
+              <div className="flex items-center gap-3 min-w-0">
+                {sorted.length > 0 && <SelectAllBox sel={sel} className="shrink-0" />}
+                <p className="text-xs text-muted-foreground">
+                  Sorted chronologically. Items roll forward automatically when due dates pass.
+                </p>
+              </div>
               <Button size="sm" onClick={() => setCreating(true)} className="gap-1.5">
                 <Plus className="w-3.5 h-3.5" /> New reminder
               </Button>
             </div>
+
+            <BulkDeleteBar
+              sel={sel}
+              noun={["reminder", "reminders"]}
+              className="mx-5 mb-3"
+              onDelete={(ids) => removeMany(ids)}
+            />
 
             {sorted.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-muted-foreground">
@@ -139,39 +154,42 @@ export function RemindersControlCenter() {
                           isDone && "opacity-60",
                         )}
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={cn("font-medium text-foreground truncate", isDone && "line-through")}>
-                              {r.title}
-                            </span>
-                            <span className={cn(
-                              "text-[11px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wide",
-                              isDone
-                                ? "border-border text-muted-foreground bg-muted/40"
-                                : TONE_STYLES[bucket.tone],
-                            )}>
-                              {isDone ? "Completed" : bucket.label}
-                            </span>
+                        <div className="flex-1 min-w-0 flex items-start gap-3">
+                          <SelectBox sel={sel} id={r.id} name={r.title} className="mt-1 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={cn("font-medium text-foreground truncate", isDone && "line-through")}>
+                                {r.title}
+                              </span>
+                              <span className={cn(
+                                "text-[11px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wide",
+                                isDone
+                                  ? "border-border text-muted-foreground bg-muted/40"
+                                  : TONE_STYLES[bucket.tone],
+                              )}>
+                                {isDone ? "Completed" : bucket.label}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+                              <CalendarClock className="w-3 h-3" />
+                              {new Date(r.date).toLocaleDateString(undefined, {
+                                weekday: "short", day: "numeric", month: "short", year: "numeric",
+                              })}
+                              <span>·</span>
+                              <span>{CONTEXT_LABEL[r.context]}</span>
+                              {r.amount != null && (
+                                <>
+                                  <span>·</span>
+                                  <span className="font-medium text-foreground">
+                                    {formatAmount(r.amount, r.currency)}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1">
+                              {defaultMessage(r)}
+                            </p>
                           </div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-                            <CalendarClock className="w-3 h-3" />
-                            {new Date(r.date).toLocaleDateString(undefined, {
-                              weekday: "short", day: "numeric", month: "short", year: "numeric",
-                            })}
-                            <span>·</span>
-                            <span>{CONTEXT_LABEL[r.context]}</span>
-                            {r.amount != null && (
-                              <>
-                                <span>·</span>
-                                <span className="font-medium text-foreground">
-                                  {formatAmount(r.amount, r.currency)}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1">
-                            {defaultMessage(r)}
-                          </p>
                         </div>
 
                         <div className="flex items-center gap-1 self-end sm:self-center">

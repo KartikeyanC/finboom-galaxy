@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { SelectBox } from "@/components/bulk/BulkSelect";
+import type { BulkSelection } from "@/components/bulk/useBulkSelection";
 
 import { ICONS, colorStyle, type SavedAccount } from "./accountMeta";
 
@@ -21,6 +23,7 @@ export default function AccountList({
   onHistory,
   onEdit,
   onRemove,
+  sel,
 }: {
   accounts: SavedAccount[];
   liveBalances: Record<string, number>;
@@ -29,6 +32,8 @@ export default function AccountList({
   onHistory: (account: { id: string; name: string }) => void;
   onEdit: (account: SavedAccount) => void;
   onRemove: (id: string) => void;
+  /** Bulk-delete selection; when given, each row gets a tick box. */
+  sel?: BulkSelection;
 }) {
   return (
     <>
@@ -54,6 +59,9 @@ export default function AccountList({
                           className="absolute left-0 top-0 h-full w-1.5"
                           style={colorStyle(a.color)}
                         />
+                        {sel && (
+                          <SelectBox sel={sel} id={a.id} name={a.name} className="ml-2 shrink-0" />
+                        )}
                         <div
                           className="h-10 w-10 rounded-lg flex items-center justify-center text-white shrink-0 ml-2"
                           style={colorStyle(a.color)}
@@ -127,6 +135,7 @@ export default function AccountList({
                               variant="ghost"
                               className="h-7 w-7 text-destructive"
                               onClick={() => onRemove(a.id)}
+                              aria-label={`Delete ${a.name}`}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>

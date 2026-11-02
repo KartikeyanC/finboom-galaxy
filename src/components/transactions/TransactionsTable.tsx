@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2, CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
@@ -26,6 +28,7 @@ import {
 import TransactionDialog from "./TransactionDialog";
 import {
   useDeleteTransaction,
+  useDeleteTransactions,
   useTransactions,
   type Transaction,
   type TxnType,
@@ -48,6 +51,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
   const period = useLedgerPeriod();
   const { data, isLoading } = useTransactions(type, period);
   const del = useDeleteTransaction();
+  const delMany = useDeleteTransactions();
   const custom = useCustomCategories();
   const { isDark } = useTheme();
   const isLight = !isDark;
@@ -141,6 +145,11 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
       return true;
     });
   }, [data, pendingIds, catFilter, subtype, type, dateMode, singleDate, range, custom.store]);
+
+  // Bulk delete works on what the filters show: "Select all" after filtering
+  // to one category ticks that category, never rows hidden by the filter.
+  const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
+  const sel = useBulkSelection(filteredIds);
 
   const dateLabel = (() => {
     if (dateMode === "single" && singleDate) return format(singleDate, "PP");
@@ -332,9 +341,20 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
           virtual.enabled && "max-h-[70vh] overflow-y-auto",
         )}
       >
+        <BulkDeleteBar
+          sel={sel}
+          noun={["transaction", "transactions"]}
+          className="mb-2"
+          onDelete={async (ids) => {
+            await delMany.mutateAsync(ids);
+          }}
+        />
         <Table>
           <TableHeader className={cn(virtual.enabled && "sticky top-0 z-10 bg-card")}>
             <TableRow>
+              <TableHead className="w-10">
+                <SelectAllBox sel={sel} />
+              </TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Note</TableHead>
@@ -345,13 +365,13 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   {data && data.length > 0
                     ? "No transactions match the filters."
                     : `No ${title.toLowerCase()} yet. Click “Add” to create one.`}
@@ -359,7 +379,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
               </TableRow>
             ) : (
               <>
-              <VirtualSpacerRow height={virtual.paddingTop} colSpan={5} />
+              <VirtualSpacerRow height={virtual.paddingTop} colSpan={6} />
               {rendered.map(({ t, index }) => (
                 <TableRow
                   key={t.id}
@@ -367,14 +387,18 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
                   // guessed height drifts the scrollbar over thousands of rows.
                   ref={virtual.enabled ? virtual.measureRef : undefined}
                   data-index={index}
+                  data-state={sel.isSelected(t.id) ? "selected" : undefined}
                 >
+                  <TableCell className="w-10">
+                    <SelectBox sel={sel} id={t.id} name={t.description ?? t.category} />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">
                     {new Date(t.occurred_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
                     {/* Both chips share the Category cell rather than the
                         tracker getting a sixth column: a new column would mean
-                        coordinated edits to two colSpan={5} sites and both
+                        coordinated edits to two colSpan={6} sites and both
                         VirtualSpacerRow colSpans inside a VIRTUALISED table,
                         for a value that is empty on most rows. The virtualiser
                         measures row height rather than assuming it, so a
@@ -441,7 +465,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
                   </TableCell>
                 </TableRow>
               ))}
-              <VirtualSpacerRow height={virtual.paddingBottom} colSpan={5} />
+              <VirtualSpacerRow height={virtual.paddingBottom} colSpan={6} />
               </>
             )}
           </TableBody>

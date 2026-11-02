@@ -186,6 +186,27 @@ export function useUpdateTransaction() {
   });
 }
 
+/** Bulk delete: several transactions in one call, one refresh, no toast
+ *  (the bulk bar reports the result). */
+export function useDeleteTransactions() {
+  const { currentTenantId } = useTenant();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["transactions"] }),
+    onError: (e) => notifyError(e),
+  });
+}
+
 export function useDeleteTransaction() {
   const { currentTenantId } = useTenant();
   const qc = useQueryClient();

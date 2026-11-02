@@ -14,6 +14,7 @@ import {
   useMarkTrackerReviewed,
   useSetTrackerStatus,
   useSoftDeleteTracker,
+  useSoftDeleteTrackers,
   useUpdateTracker,
 } from "@/hooks/useTrackers";
 import { useAssignToTracker } from "@/hooks/useTrackerTransactions";
@@ -21,6 +22,8 @@ import TrackerCard from "@/components/trackers/TrackerCard";
 import TrackerDialog from "@/components/trackers/TrackerDialog";
 import TrackerWorkspace from "@/components/trackers/TrackerWorkspace";
 import HistoricalReviewDialog from "@/components/trackers/HistoricalReviewDialog";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 import { isHistoricalTracker, type Tracker, type TrackerStatus, type TrackerWithSpend } from "@/lib/trackers";
 
 /**
@@ -67,6 +70,7 @@ export default function Trackers() {
   const update = useUpdateTracker();
   const setStatus = useSetTrackerStatus();
   const softDelete = useSoftDeleteTracker();
+  const softDeleteMany = useSoftDeleteTrackers();
   const markReviewed = useMarkTrackerReviewed();
   const assign = useAssignToTracker();
 
@@ -123,6 +127,11 @@ export default function Trackers() {
       over: live.filter((t) => t.remaining !== null && t.remaining < 0).length,
     };
   }, [byStatus]);
+
+  // Bulk delete covers the tab on screen. It is the same SOFT delete as the
+  // single one (ADR-0010) — never a hard delete, transactions untouched.
+  const tabIds = useMemo(() => byStatus[tab].map((t) => t.id), [byStatus, tab]);
+  const sel = useBulkSelection(tabIds);
 
   const active = trackers.find((t) => t.id === activeId) ?? null;
 
@@ -246,11 +255,45 @@ export default function Trackers() {
       );
     }
 
+    // Only the visible tab carries boxes — the selection is that tab's.
+    const selectable = status === tab;
     return (
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {list.map((t) => (
-          <TrackerCard key={t.id} tracker={t} isLight={isLight} onOpen={openTracker} />
-        ))}
+      <div className="space-y-3">
+        {selectable && (
+          <div className="space-y-2">
+            <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <SelectAllBox sel={sel} />
+              Select all trackers
+            </label>
+            <BulkDeleteBar
+              sel={sel}
+              noun={["tracker", "trackers"]}
+              description="Your transactions are not changed — only the tracker label goes."
+              onDelete={async (ids) => {
+                await softDeleteMany.mutateAsync(ids);
+              }}
+            />
+          </div>
+        )}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {list.map((t) =>
+            selectable ? (
+              // TrackerCard is a whole-card button, so the box sits on its
+              // corner as a sibling — ticking it never opens the tracker.
+              <div key={t.id} className="relative">
+                <SelectBox
+                  sel={sel}
+                  id={t.id}
+                  name={t.name}
+                  className="absolute -left-1.5 -top-1.5 z-10 bg-background shadow-sm"
+                />
+                <TrackerCard tracker={t} isLight={isLight} onOpen={openTracker} />
+              </div>
+            ) : (
+              <TrackerCard key={t.id} tracker={t} isLight={isLight} onOpen={openTracker} />
+            ),
+          )}
+        </div>
       </div>
     );
   };

@@ -238,6 +238,29 @@ export function useIncomeStreams() {
     [patchCache, invalidate],
   );
 
+  /**
+   * Bulk delete in one call. Optimistic like `remove`, but throws on failure
+   * (after restoring the cache) so BulkDeleteBar can report it.
+   */
+  const removeMany = useCallback(
+    async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const gone = new Set(ids);
+      patchCache((prev) => prev.filter((s) => !gone.has(s.id)));
+      const { error } = await db
+        .from(TABLE)
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) {
+        invalidate();
+        throw error;
+      }
+    },
+    [currentTenantId, patchCache, invalidate],
+  );
+
   const resetAll = useCallback(async () => {
     if (!currentTenantId) return;
     patchCache(() => []);
@@ -272,5 +295,5 @@ export function useIncomeStreams() {
     }
   }, [currentTenantId, isLoading, data, invalidate]);
 
-  return { streams, visible, toggleVisible, reorder, move, add, remove, resetAll };
+  return { streams, visible, toggleVisible, reorder, move, add, remove, removeMany, resetAll };
 }

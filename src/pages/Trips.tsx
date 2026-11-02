@@ -19,6 +19,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 import { toast } from "sonner";
 import {
   useTrips,
@@ -36,7 +38,7 @@ import TripWorkspace from "./trips/TripWorkspace";
    Page root
    ============================================================ */
 export default function TripsPage() {
-  const { trips, upsert, remove, addExpense, removeExpense, archive } = useTrips();
+  const { trips, upsert, remove, removeMany, addExpense, removeExpense, archive } = useTrips();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
@@ -45,6 +47,16 @@ export default function TripsPage() {
     () => trips.find((t) => t.id === activeId) ?? null,
     [trips, activeId],
   );
+
+  const activeTrips = useMemo(() => trips.filter((t) => t.status === "active"), [trips]);
+  const archived = useMemo(() => trips.filter((t) => t.status === "archived"), [trips]);
+
+  // One selection across active and archived — both lists are on screen.
+  const shownIds = useMemo(
+    () => [...activeTrips, ...archived].map((t) => t.id),
+    [activeTrips, archived],
+  );
+  const sel = useBulkSelection(shownIds);
 
   if (active) {
     return (
@@ -58,9 +70,6 @@ export default function TripsPage() {
       />
     );
   }
-
-  const activeTrips = trips.filter((t) => t.status === "active");
-  const archived = trips.filter((t) => t.status === "archived");
 
   // BUG-068 — was max-w-[1200px], out of step with every other
   // record-list page's max-w-[1400px].
@@ -84,6 +93,21 @@ export default function TripsPage() {
         </Button>
       </header>
 
+      {shownIds.length > 0 && (
+        <div className="space-y-2">
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+            <SelectAllBox sel={sel} />
+            Select all trips
+          </label>
+          <BulkDeleteBar
+            sel={sel}
+            noun={["trip", "trips"]}
+            description="Each trip's expenses are deleted with it."
+            onDelete={(ids) => removeMany(ids)}
+          />
+        </div>
+      )}
+
       {activeTrips.length === 0 ? (
         <div className="glass-card p-10 text-center">
           <Plane className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
@@ -98,15 +122,24 @@ export default function TripsPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {activeTrips.map((t) => (
-            <TripCard
-              key={t.id}
-              trip={t}
-              onOpen={() => setActiveId(t.id)}
-              onConclude={() => setArchiveTarget(t.id)}
-              onDelete={() => {
-                if (confirm(`Delete "${t.name}"? This cannot be undone.`)) remove(t.id);
-              }}
-            />
+            // The box sits on the card's corner, outside TripCard, so ticking
+            // it never opens the trip.
+            <div key={t.id} className="relative">
+              <SelectBox
+                sel={sel}
+                id={t.id}
+                name={t.name}
+                className="absolute -left-1.5 -top-1.5 z-10 bg-background shadow-sm"
+              />
+              <TripCard
+                trip={t}
+                onOpen={() => setActiveId(t.id)}
+                onConclude={() => setArchiveTarget(t.id)}
+                onDelete={() => {
+                  if (confirm(`Delete "${t.name}"? This cannot be undone.`)) remove(t.id);
+                }}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -126,7 +159,8 @@ export default function TripsPage() {
                   className="glass-card p-4 opacity-90 hover:opacity-100 transition-opacity"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <SelectBox sel={sel} id={t.id} name={t.name} className="shrink-0" />
                       <Kind className={cn("w-4 h-4", KIND_META[t.kind].tint)} />
                       <span className="text-sm font-semibold truncate">{t.name}</span>
                     </div>

@@ -13,6 +13,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection, type BulkSelection } from "@/components/bulk/useBulkSelection";
 import {
   ASSET_GROUPS, LIABILITY_GROUPS, useNetWorth, type AssetGroup, type LiabilityGroup, type LedgerKind, type NetWorthEntry,
 } from "@/lib/netWorthStore";
@@ -156,8 +158,8 @@ function TrendChart({ data, currentAssets, currentLiabilities, currentNet }: { d
 }
 
 function LedgerGroup({
-  label, emoji, items, tone, onRemove,
-}: { label: string; emoji: string; items: NetWorthEntry[]; tone: "asset" | "liability"; onRemove: (id: string) => void }) {
+  label, emoji, items, tone, onRemove, sel,
+}: { label: string; emoji: string; items: NetWorthEntry[]; tone: "asset" | "liability"; onRemove: (id: string) => void; sel: BulkSelection }) {
   const [open, setOpen] = useState(true);
   const total = items.reduce((s, i) => s + Number(i.amount), 0);
   if (items.length === 0) return null;
@@ -178,6 +180,12 @@ function LedgerGroup({
         {items.map((i) => (
           <div key={i.id} className="group flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted/40">
             <span className="text-foreground truncate flex items-center gap-1.5">
+              {/* Synced rows can't be deleted here, so they get a spacer, not a box. */}
+              {i.id.startsWith(DERIVED) ? (
+                <span className="w-4 shrink-0" aria-hidden />
+              ) : (
+                <SelectBox sel={sel} id={i.id} name={i.name} className="shrink-0" />
+              )}
               {i.name}
               {i.id.startsWith(DERIVED) && (
                 <span className="text-[11px] uppercase tracking-wider rounded bg-primary/10 text-primary px-1 py-0.5">auto</span>
@@ -199,7 +207,7 @@ function LedgerGroup({
 }
 
 const NetWorth = () => {
-  const { items, add, remove, totals } = useNetWorth();
+  const { items, add, remove, removeMany, totals } = useNetWorth();
   const { accounts } = useAccounts();
   const { records: investments } = useInvestments();
   const liveBalances = useLiveAccountBalances();
@@ -244,6 +252,18 @@ const NetWorth = () => {
 
   const assetGroups = useMemo(() => ASSET_GROUPS.map((g) => ({ ...g, entries: assetItems.filter((i) => i.group === g.id) })), [assetItems]);
   const liabilityGroups = useMemo(() => LIABILITY_GROUPS.map((g) => ({ ...g, entries: items.filter((i) => i.kind === "liability" && i.group === g.id) })), [items]);
+
+  // One selection across both sides. Only manual rows that are on screen can be
+  // ticked — synced (derived) rows belong to Accounts / Investments.
+  const deletableIds = useMemo(
+    () =>
+      [...assetGroups, ...liabilityGroups]
+        .flatMap((g) => g.entries)
+        .filter((e) => !e.id.startsWith(DERIVED))
+        .map((e) => e.id),
+    [assetGroups, liabilityGroups],
+  );
+  const sel = useBulkSelection(deletableIds);
 
   const assetTotal = useMemo(() => assetItems.reduce((s, i) => s + Number(i.amount), 0), [assetItems]);
   const liabilityTotal = totals.liabilities;
@@ -404,6 +424,21 @@ const NetWorth = () => {
         </div>
       </div>
 
+      {deletableIds.length > 0 && (
+        <div className="space-y-2">
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+            <SelectAllBox sel={sel} />
+            Select all entries
+          </label>
+          <BulkDeleteBar
+            sel={sel}
+            noun={["entry", "entries"]}
+            description="Synced account and investment balances aren't affected."
+            onDelete={(ids) => removeMany(ids)}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.03] p-5">
           <div className="flex items-center justify-between mb-4">
@@ -415,7 +450,7 @@ const NetWorth = () => {
           </div>
           <div className="space-y-1">
             {assetGroups.map((g) => (
-              <LedgerGroup key={g.id} label={g.label} emoji={g.emoji} items={g.entries} tone="asset" onRemove={remove} />
+              <LedgerGroup key={g.id} label={g.label} emoji={g.emoji} items={g.entries} tone="asset" onRemove={remove} sel={sel} />
             ))}
             {assetTotal === 0 && <div className="text-sm text-muted-foreground text-center py-6">No assets yet.</div>}
           </div>
@@ -431,7 +466,7 @@ const NetWorth = () => {
           </div>
           <div className="space-y-1">
             {liabilityGroups.map((g) => (
-              <LedgerGroup key={g.id} label={g.label} emoji={g.emoji} items={g.entries} tone="liability" onRemove={remove} />
+              <LedgerGroup key={g.id} label={g.label} emoji={g.emoji} items={g.entries} tone="liability" onRemove={remove} sel={sel} />
             ))}
             {liabilityTotal === 0 && <div className="text-sm text-muted-foreground text-center py-6">No liabilities. Nice.</div>}
           </div>

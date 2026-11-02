@@ -18,6 +18,8 @@ import {
 import { formatMoney } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { resolveBrand } from "@/lib/subscriptionBrands";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection, type BulkSelection } from "@/components/bulk/useBulkSelection";
 
 function freqMeta(f: BillingFrequency) {
   if (f === "monthly") return { label: "Monthly", tone: "bg-sky-500/10 text-sky-500 border-sky-500/20" };
@@ -79,9 +81,10 @@ function AddDialog({ onAdd }: { onAdd: (s: Omit<SubscriptionRecord, "id" | "crea
 }
 
 function SubscriptionRow({
-  s, d, meta, urgent, overdue, cancelled, onToggle, onRemove,
+  s, d, meta, urgent, overdue, cancelled, sel, onToggle, onRemove,
 }: {
   s: SubscriptionRecord;
+  sel: BulkSelection;
   d: number;
   meta: { label: string; tone: string };
   urgent: boolean;
@@ -93,7 +96,15 @@ function SubscriptionRow({
   const brand = resolveBrand(s.name);
   const { Icon } = brand;
   return (
-    <div className={cn("group relative p-4 sm:p-5 flex flex-wrap items-center gap-4 transition-all hover:bg-muted/30", cancelled && "opacity-60")}>
+    <div
+      className={cn(
+        "group relative p-4 sm:p-5 flex flex-wrap items-center gap-4 transition-all hover:bg-muted/30",
+        cancelled && "opacity-60",
+        sel.isSelected(s.id) && "bg-primary/[0.06]",
+      )}
+      data-state={sel.isSelected(s.id) ? "selected" : undefined}
+    >
+      <SelectBox sel={sel} id={s.id} name={s.name} />
       <div className={cn("relative w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ring-1 transition-transform group-hover:scale-105", brand.gradient, brand.ring)}>
         <Icon className={cn("w-5 h-5", brand.iconClass)} strokeWidth={2.25} />
       </div>
@@ -118,7 +129,7 @@ function SubscriptionRow({
           <Switch checked={s.status === "active"} onCheckedChange={onToggle} />
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{s.status === "active" ? "Active" : "Cancel"}</span>
         </div>
-        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove}>
+        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label={`Delete ${s.name}`} onClick={onRemove}>
           <Trash2 className="w-3.5 h-3.5" />
         </Button>
       </div>
@@ -128,8 +139,10 @@ function SubscriptionRow({
 
 /** Embeddable subscriptions tracker (finance feature). Lives inside Expenses. */
 export default function SubscriptionsPanel() {
-  const { items, add, update, remove } = useSubscriptions();
+  const { items, add, update, remove, removeMany } = useSubscriptions();
   const sorted = useMemo(() => [...items].sort((a, b) => +new Date(a.renewalDate) - +new Date(b.renewalDate)), [items]);
+  const visibleIds = useMemo(() => sorted.map((s) => s.id), [sorted]);
+  const sel = useBulkSelection(visibleIds);
   const active = items.filter((i) => i.status === "active");
   const monthlyTotal = active.reduce((s, i) => s + monthlyEquivalent(i), 0);
   const annualTotal = active.reduce((s, i) => s + annualEquivalent(i), 0);
@@ -174,24 +187,32 @@ export default function SubscriptionsPanel() {
           <div className="mt-4 inline-block"><AddDialog onAdd={add} /></div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border/60 bg-card divide-y divide-border/60">
-          {sorted.map((s) => {
-            const d = daysUntil(s.renewalDate);
-            const meta = freqMeta(s.frequency);
-            return (
-              <SubscriptionRow
-                key={s.id}
-                s={s}
-                d={d}
-                meta={meta}
-                urgent={d >= 0 && d <= 7}
-                overdue={d < 0}
-                cancelled={s.status === "cancel"}
-                onToggle={(v) => update(s.id, { status: v ? "active" : "cancel" })}
-                onRemove={() => remove(s.id)}
-              />
-            );
-          })}
+        <div className="space-y-2">
+          <BulkDeleteBar sel={sel} noun={["subscription", "subscriptions"]} onDelete={removeMany} />
+          <div className="rounded-2xl border border-border/60 bg-card divide-y divide-border/60">
+            <div className="flex items-center gap-4 px-4 sm:px-5 py-2 text-xs text-muted-foreground">
+              <SelectAllBox sel={sel} />
+              <span>{sel.all ? "Clear all" : "Select all"}</span>
+            </div>
+            {sorted.map((s) => {
+              const d = daysUntil(s.renewalDate);
+              const meta = freqMeta(s.frequency);
+              return (
+                <SubscriptionRow
+                  key={s.id}
+                  s={s}
+                  d={d}
+                  meta={meta}
+                  urgent={d >= 0 && d <= 7}
+                  overdue={d < 0}
+                  cancelled={s.status === "cancel"}
+                  sel={sel}
+                  onToggle={(v) => update(s.id, { status: v ? "active" : "cancel" })}
+                  onRemove={() => remove(s.id)}
+                />
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

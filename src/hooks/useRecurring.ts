@@ -109,6 +109,29 @@ export function useDeleteRecurring() {
 }
 
 /**
+ * Bulk delete for the ticked cards: one call, one refetch, no per-row toast —
+ * BulkDeleteBar reports the outcome. Mirrors useDeleteTransactions.
+ */
+export function useDeleteRecurrings() {
+  const { currentTenantId } = useTenant();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("recurring_items")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recurring"] }),
+    onError: (e) => notifyError(e),
+  });
+}
+
+/**
  * Advance a YYYY-MM-DD date by one period.
  *
  * All arithmetic is done on the date parts in UTC so the result never depends

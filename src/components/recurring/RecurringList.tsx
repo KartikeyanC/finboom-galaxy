@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, BellOff, CheckCircle2, Trash2, Repeat, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,10 @@ import { cn } from "@/lib/utils";
 import { IconChip } from "@/components/ui/icon-chip";
 import { formatMoney } from "@/lib/finance";
 import {
-  useRecurring, useMarkRecurring, useDeleteRecurring, type RecurringType,
+  useRecurring, useMarkRecurring, useDeleteRecurring, useDeleteRecurrings, type RecurringType,
 } from "@/hooks/useRecurring";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 import {
   DEFAULT_REMINDER, isReminderDue, type ReminderSetting,
 } from "@/lib/recurringReminders";
@@ -175,10 +177,14 @@ export default function RecurringList({ type }: Props) {
   const { data: items = [], isLoading } = useRecurring(type);
   const mark = useMarkRecurring();
   const del = useDeleteRecurring();
+  const delMany = useDeleteRecurrings();
   const { settings: allReminders } = useRecurringReminders();
 
-  const active = items.filter((i) => i.is_active);
+  const active = useMemo(() => items.filter((i) => i.is_active), [items]);
   const isIncome = type === "income";
+  // Only the cards on screen (active items) can be ticked.
+  const visibleIds = useMemo(() => active.map((i) => i.id), [active]);
+  const sel = useBulkSelection(visibleIds);
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Loading recurring items…</div>;
@@ -194,142 +200,159 @@ export default function RecurringList({ type }: Props) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      <AnimatePresence initial={false}>
-        {active.map((item) => {
-          const due = dueInfo(item.next_due_date);
-          const reminder = allReminders[item.id] ?? DEFAULT_REMINDER;
-          const reminderDue = isReminderDue(item.next_due_date, reminder);
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+        <SelectAllBox sel={sel} />
+        <span>{sel.all ? "Clear all" : "Select all"}</span>
+      </div>
+      <BulkDeleteBar
+        sel={sel}
+        noun={["recurring item", "recurring items"]}
+        description="This stops their future occurrences. Past transactions stay in your log."
+        onDelete={async (ids) => {
+          await delMany.mutateAsync(ids);
+        }}
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <AnimatePresence initial={false}>
+          {active.map((item) => {
+            const due = dueInfo(item.next_due_date);
+            const reminder = allReminders[item.id] ?? DEFAULT_REMINDER;
+            const reminderDue = isReminderDue(item.next_due_date, reminder);
 
-          return (
-            <motion.div
-              key={item.id}
-              layout
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className={cn(
-                "group glass-card relative overflow-hidden p-4 flex flex-col gap-3 transition-all duration-300",
-                "hover:-translate-y-0.5 hover:border-white/15 hover:shadow-lg hover:shadow-black/20",
-                reminderDue && "ring-1 ring-amber-500/40",
-              )}
-            >
-              {/* Soft glass top sheen — calm accent (no hard status bar). */}
-              <div
+            return (
+              <motion.div
+                key={item.id}
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96 }}
                 className={cn(
-                  "pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent transition-opacity duration-300 opacity-70 group-hover:opacity-100",
-                  isIncome ? "via-emerald-400/45" : "via-white/20",
+                  "group glass-card relative overflow-hidden p-4 flex flex-col gap-3 transition-all duration-300",
+                  "hover:-translate-y-0.5 hover:border-white/15 hover:shadow-lg hover:shadow-black/20",
+                  reminderDue && "ring-1 ring-amber-500/40",
+                  sel.isSelected(item.id) && "ring-1 ring-primary/50",
                 )}
-              />
-
-              {/* Reminder-due ribbon */}
-              {reminderDue && (
-                <div className="absolute top-0 left-0 right-0 rounded-t-[inherit] bg-amber-500/10 border-b border-amber-500/20 px-3 py-1 flex items-center gap-1.5">
-                  <Bell className="h-3 w-3 text-amber-400" />
-                  <span className="text-xs font-medium text-amber-400">
-                    Reminder: due in {daysUntil(item.next_due_date)}d
-                    {reminder.note ? ` — ${reminder.note}` : ""}
-                  </span>
-                </div>
-              )}
-
-              <div className={cn("flex items-start justify-between gap-2", reminderDue && "mt-5")}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <IconChip name={item.icon ?? "Coins"} size="md" />
-                  <div className="min-w-0">
-                    <div className="font-semibold text-foreground truncate tracking-tight">{item.name}</div>
-                    <div className="text-xs text-muted-foreground truncate capitalize">
-                      {item.category} · {item.frequency}
-                    </div>
-                  </div>
-                </div>
-                <span
+                data-state={sel.isSelected(item.id) ? "selected" : undefined}
+              >
+                {/* Soft glass top sheen — calm accent (no hard status bar). */}
+                <div
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium shrink-0 whitespace-nowrap",
-                    due.cls,
+                    "pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent transition-opacity duration-300 opacity-70 group-hover:opacity-100",
+                    isIncome ? "via-emerald-400/45" : "via-white/20",
                   )}
-                >
-                  <span className="relative flex h-1.5 w-1.5">
-                    {due.pulse && (
-                      <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-60", due.dot)} />
-                    )}
-                    <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", due.dot)} />
-                  </span>
-                  {due.text}
-                </span>
-              </div>
-
-              <div className="flex items-baseline gap-2">
-                <span className={cn("font-display text-2xl font-bold tabular-nums", isIncome ? "text-emerald-400" : "text-rose-400")}>
-                  {formatMoney(item.amount, item.currency)}
-                </span>
-                {item.currency !== "INR" && (
-                  <span className="text-xs text-muted-foreground font-normal">
-                    ≈ {formatMoney(item.amount * Number(item.fx_rate), "INR")}
-                  </span>
-                )}
-              </div>
-
-              {item.notes && (
-                <p className="text-xs text-muted-foreground">{item.notes}</p>
-              )}
-
-              <div className="flex gap-1.5 items-center border-t border-border/40 pt-3 mt-auto">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className={cn(
-                    "group/btn relative flex-1 h-8 gap-1.5 rounded-lg text-xs font-semibold border overflow-hidden transition-colors",
-                    isIncome
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20 hover:text-emerald-300"
-                      : "bg-muted/40 text-foreground border-border hover:bg-muted",
-                  )}
-                  onClick={() => mark.mutate(item)}
-                  disabled={mark.isPending}
-                >
-                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full" />
-                  <CheckCircle2 className="relative w-3.5 h-3.5" />
-                  <span className="relative">{isIncome ? "Mark received" : "Mark paid"}</span>
-                </Button>
-
-                {/* Reminder toggle */}
-                <ReminderPopover
-                  itemId={item.id}
-                  nextDueDate={item.next_due_date}
-                  setting={reminder}
                 />
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-lg text-muted-foreground/60 hover:text-rose-400 hover:bg-rose-500/10"
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Remove {item.name}?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This stops future occurrences. Past transactions stay in your log.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => del.mutate(item.id)}>
-                        Remove
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+                {/* Reminder-due ribbon */}
+                {reminderDue && (
+                  <div className="absolute top-0 left-0 right-0 rounded-t-[inherit] bg-amber-500/10 border-b border-amber-500/20 px-3 py-1 flex items-center gap-1.5">
+                    <Bell className="h-3 w-3 text-amber-400" />
+                    <span className="text-xs font-medium text-amber-400">
+                      Reminder: due in {daysUntil(item.next_due_date)}d
+                      {reminder.note ? ` — ${reminder.note}` : ""}
+                    </span>
+                  </div>
+                )}
+
+                <div className={cn("flex items-start justify-between gap-2", reminderDue && "mt-5")}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <SelectBox sel={sel} id={item.id} name={item.name} />
+                    <IconChip name={item.icon ?? "Coins"} size="md" />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-foreground truncate tracking-tight">{item.name}</div>
+                      <div className="text-xs text-muted-foreground truncate capitalize">
+                        {item.category} · {item.frequency}
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium shrink-0 whitespace-nowrap",
+                      due.cls,
+                    )}
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
+                      {due.pulse && (
+                        <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-60", due.dot)} />
+                      )}
+                      <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", due.dot)} />
+                    </span>
+                    {due.text}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2">
+                  <span className={cn("font-display text-2xl font-bold tabular-nums", isIncome ? "text-emerald-400" : "text-rose-400")}>
+                    {formatMoney(item.amount, item.currency)}
+                  </span>
+                  {item.currency !== "INR" && (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      ≈ {formatMoney(item.amount * Number(item.fx_rate), "INR")}
+                    </span>
+                  )}
+                </div>
+
+                {item.notes && (
+                  <p className="text-xs text-muted-foreground">{item.notes}</p>
+                )}
+
+                <div className="flex gap-1.5 items-center border-t border-border/40 pt-3 mt-auto">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={cn(
+                      "group/btn relative flex-1 h-8 gap-1.5 rounded-lg text-xs font-semibold border overflow-hidden transition-colors",
+                      isIncome
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20 hover:text-emerald-300"
+                        : "bg-muted/40 text-foreground border-border hover:bg-muted",
+                    )}
+                    onClick={() => mark.mutate(item)}
+                    disabled={mark.isPending}
+                  >
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full" />
+                    <CheckCircle2 className="relative w-3.5 h-3.5" />
+                    <span className="relative">{isIncome ? "Mark received" : "Mark paid"}</span>
+                  </Button>
+
+                  {/* Reminder toggle */}
+                  <ReminderPopover
+                    itemId={item.id}
+                    nextDueDate={item.next_due_date}
+                    setting={reminder}
+                  />
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-lg text-muted-foreground/60 hover:text-rose-400 hover:bg-rose-500/10"
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove {item.name}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This stops future occurrences. Past transactions stay in your log.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => del.mutate(item.id)}>
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

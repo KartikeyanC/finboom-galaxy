@@ -143,6 +143,29 @@ export function useContributeToGoal() {
   });
 }
 
+/**
+ * Bulk delete: one call for every ticked goal, one invalidate, no per-row
+ * toast — BulkDeleteBar reports the result.
+ */
+export function useDeleteGoals() {
+  const { currentTenantId } = useTenant();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("goals")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
+    onError: (e) => notifyError(e),
+  });
+}
+
 export function useDeleteGoal() {
   const { currentTenantId } = useTenant();
   const qc = useQueryClient();

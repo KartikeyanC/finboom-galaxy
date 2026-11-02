@@ -78,6 +78,29 @@ export function useSetBudgetAllocation() {
   });
 }
 
+/**
+ * Bulk delete: removes the ticked allocations (one row per bucket + period)
+ * in one call. Transactions are untouched — spend is derived from them.
+ */
+export function useDeleteBudgets() {
+  const { currentTenantId } = useTenant();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("budgets")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["budgets"] }),
+    onError: (e) => notifyError(e),
+  });
+}
+
 export function useDeleteBudget() {
   const { currentTenantId } = useTenant();
   const qc = useQueryClient();

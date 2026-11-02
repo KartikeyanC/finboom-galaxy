@@ -167,6 +167,25 @@ export function useAccounts() {
     [currentTenantId, invalidate],
   );
 
+  /**
+   * Bulk delete in one call. Throws on failure (BulkDeleteBar reports it).
+   * Linked transactions survive: `transactions.account_id` is ON DELETE SET NULL.
+   */
+  const removeMany = useCallback(
+    async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("accounts")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) throw error;
+      invalidate();
+    },
+    [currentTenantId, invalidate],
+  );
+
   const setAll = useCallback(
     async (list: StoredAccount[]) => {
       if (!currentTenantId) return;
@@ -208,7 +227,7 @@ export function useAccounts() {
     }
   }, [currentTenantId, isLoading, data, setAll]);
 
-  return { accounts, upsert, remove, setAll };
+  return { accounts, upsert, remove, removeMany, setAll };
 }
 
 /** Virtual "cash on hand" account. Always present in trip allocation matrix. */

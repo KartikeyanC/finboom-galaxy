@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { GripVertical, ChevronUp, ChevronDown, X } from "lucide-react";
 import type { IncomeStream } from "@/lib/incomeSeed";
@@ -14,11 +14,13 @@ interface Props {
   onRemove: (id: string) => void;
   isFirst: boolean;
   isLast: boolean;
+  /** Bulk-delete tick box, rendered at the card's leading edge. */
+  select?: ReactNode;
 }
 
 const SYMBOL: Record<string, string> = { USD: "$", EUR: "€", INR: "₹" };
 
-const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, isLast }: Props) => {
+const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, isLast, select }: Props) => {
   const [over, setOver] = useState(false);
   const inr = stream.amount * stream.exchangeRateToINR;
 
@@ -48,6 +50,7 @@ const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, 
         over ? "border-primary ring-2 ring-primary/20" : ""
       }`}
     >
+      {select && <div className="shrink-0 flex items-center">{select}</div>}
       <div className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground">
         <button
           aria-label="Move up"
@@ -99,7 +102,7 @@ const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, 
         size="icon"
         className="text-muted-foreground hover:text-coral shrink-0"
         onClick={() => onRemove(stream.id)}
-        aria-label="Remove stream"
+        aria-label={`Remove ${stream.name}`}
       >
         <X className="w-4 h-4" />
       </Button>

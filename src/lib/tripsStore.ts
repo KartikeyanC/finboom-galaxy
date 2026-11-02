@@ -182,6 +182,25 @@ export function useTrips() {
     [currentTenantId, invalidate],
   );
 
+  /**
+   * Bulk delete: one call for every id, one refetch. Throws on failure (no
+   * per-row toast) so the caller — BulkDeleteBar — reports the outcome.
+   */
+  const removeMany = useCallback(
+    async (ids: string[]) => {
+      if (!currentTenantId) throw new Error("No workspace selected");
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("trips")
+        .delete()
+        .in("id", ids)
+        .eq("tenant_id", currentTenantId);
+      if (error) throw error;
+      invalidate();
+    },
+    [currentTenantId, invalidate],
+  );
+
   const patchExpenses = useCallback(
     async (tripId: string, next: TripExpense[]) => {
       const { error } = await supabase
@@ -249,7 +268,7 @@ export function useTrips() {
     }
   }, [currentTenantId, isLoading, data, invalidate]);
 
-  return { trips, upsert, remove, addExpense, removeExpense, archive };
+  return { trips, upsert, remove, removeMany, addExpense, removeExpense, archive };
 }
 
 export function tripTotals(trip: Trip) {

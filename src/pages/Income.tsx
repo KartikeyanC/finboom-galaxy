@@ -12,13 +12,21 @@ import RecurringList from "@/components/recurring/RecurringList";
 import RecurringDialog from "@/components/recurring/RecurringDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryChart, ChartViewToggle, useChartView, type ChartSlice } from "@/components/ui/category-chart";
+import { BulkDeleteBar, SelectAllBox, SelectBox } from "@/components/bulk/BulkSelect";
+import { useBulkSelection } from "@/components/bulk/useBulkSelection";
 
 const Income = () => {
-  const { streams, visible, toggleVisible, reorder, move, add, remove, resetAll } = useIncomeStreams();
+  const { streams, visible, toggleVisible, reorder, move, add, remove, removeMany, resetAll } = useIncomeStreams();
   const dragId = useRef<string | null>(null);
   const [tab, setTab] = useState("streams");
   const [view, setView] = useChartView();
   const streamSlices: ChartSlice[] = visible.map((s) => ({ name: s.name, value: s.amount * s.exchangeRateToINR }));
+  // Hidden streams and the chart views show nothing to tick, so they select nothing.
+  const visibleIds = useMemo(
+    () => (view === "list" ? visible.map((s) => s.id) : []),
+    [view, visible],
+  );
+  const sel = useBulkSelection(visibleIds);
 
   const stats = useMemo(() => {
     const totalINR = visible.reduce((s, x) => s + x.amount * x.exchangeRateToINR, 0);
@@ -71,6 +79,7 @@ const Income = () => {
             <p className="text-sm text-muted-foreground">Drag handles to reorder. Tap the gear to hide or show.</p>
           </div>
           <div className="flex items-center gap-2">
+            {visibleIds.length > 0 && <SelectAllBox sel={sel} className="mr-1" />}
             <ChartViewToggle view={view} onChange={setView} />
             <ManageCategoriesSheet streams={streams} onToggle={toggleVisible} onReset={resetAll} />
           </div>
@@ -80,6 +89,12 @@ const Income = () => {
           <CategoryChart data={streamSlices} view={view} centerLabel="Monthly" emptyText="No income streams to chart." />
         ) : (
         <div className="space-y-3">
+          <BulkDeleteBar
+            sel={sel}
+            noun={["income stream", "income streams"]}
+            description="Recorded income transactions are not affected."
+            onDelete={removeMany}
+          />
           <AnimatePresence initial={false}>
             {visible.map((s, i) => (
               <IncomeCard
@@ -94,6 +109,7 @@ const Income = () => {
                 }}
                 onMove={move}
                 onRemove={remove}
+                select={<SelectBox sel={sel} id={s.id} name={s.name} />}
               />
             ))}
           </AnimatePresence>
