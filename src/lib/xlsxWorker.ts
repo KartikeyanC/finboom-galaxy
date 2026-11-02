@@ -25,27 +25,30 @@ import * as XLSX from "xlsx";
 
 export type XlsxWorkerRequest = { buf: ArrayBuffer };
 // One flat shape rather than a discriminated union — `error` is "" on
-// success, `rows` is [] on failure. The caller only ever needs one or the
+// success, `sheets` is [] on failure. The caller only ever needs one or the
 // other, and this sidesteps relying on `.ok`-narrowing through a
 // `MessageEvent.data` access, which is worth not depending on.
-export type XlsxWorkerResponse = { error: string; rows: Record<string, unknown>[] };
+export type XlsxWorkerResponse = { error: string; sheets: unknown[][][] };
 
 self.onmessage = (e: MessageEvent<XlsxWorkerRequest>) => {
   const respond = (response: XlsxWorkerResponse) => (self as unknown as Worker).postMessage(response);
   try {
     const wb = XLSX.read(e.data.buf, { type: "array" });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    // sheet_to_json's own output is plain data (strings/numbers/booleans) keyed
-    // by header text — re-built into fresh plain objects before it leaves this
-    // scope anyway, via JSON, so nothing carrying xlsx's internal cell-object
-    // shape (or an object with a hostile own "__proto__" key surviving as
-    // structured-clone data rather than a real prototype link) crosses over.
-    const json = sheet
-      ? XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" })
-      : [];
-    const rows = JSON.parse(JSON.stringify(json)) as Record<string, unknown>[];
-    respond({ error: "", rows });
+    // Every sheet as a plain grid of cell values (header: 1), not objects
+    // keyed by row 1: a broker export's real header is often many rows down
+    // (sheetRows.ts finds it). raw: true keeps a date cell as its Excel serial
+    // number — formatted text would be "4/15/24", month first — and
+    // normaliseDate turns the serial into yyyy-mm-dd exactly. Re-built through
+    // JSON so nothing carrying xlsx's internal shapes leaves this scope.
+    const grids = wb.SheetNames.map((name) => {
+      const sheet = wb.Sheets[name];
+      return sheet
+        ? XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: true, blankrows: false })
+        : [];
+    });
+    const sheets = JSON.parse(JSON.stringify(grids)) as unknown[][][];
+    respond({ error: "", sheets });
   } catch (err) {
-    respond({ error: err instanceof Error ? err.message : String(err), rows: [] });
+    respond({ error: err instanceof Error ? err.message : String(err), sheets: [] });
   }
 };

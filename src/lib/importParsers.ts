@@ -1,5 +1,14 @@
 import Papa from "papaparse";
 import { parseXlsxSandboxed } from "./xlsxSandbox";
+import {
+  gridToObjects,
+  normaliseDate,
+  normHeader,
+  pdfLines,
+  pdfLinesToGrid,
+  type Grid,
+  type PdfText,
+} from "./sheetRows";
 
 // pdfjs is heavy (~1MB) and only needed for PDF statements, so it is lazily
 // imported inside parsePDF rather than eagerly at module load. This keeps it
@@ -64,26 +73,55 @@ export type BudgetRow = {
   period_start: string;
 };
 
+// Column names as normHeader() writes them (lower case, "_" and "." as
+// spaces), from generic exports and the brokers' own: a Zerodha tradebook
+// ("Symbol, Trade Date, Trade Type, Quantity, Price") and holdings export
+// ("Symbol, Quantity Available, Average Price"), Groww, Upstox, INDmoney.
 const HEADER_MAP: Record<string, keyof Omit<ImportedRow, "id" | "currency" | "rate">> = {
   date: "date",
   "booking date": "date",
   "trade date": "date",
   "txn date": "date",
+  "transaction date": "date",
+  "order date": "date",
+  "execution date": "date",
   symbol: "asset",
   ticker: "asset",
   asset: "asset",
   scrip: "asset",
+  "scrip name": "asset",
+  "trading symbol": "asset",
+  tradingsymbol: "asset",
+  instrument: "asset",
+  "stock name": "asset",
+  "company name": "asset",
+  "scheme name": "asset",
   type: "action",
   action: "action",
   side: "action",
+  "trade type": "action",
+  "transaction type": "action",
+  "buy/sell": "action",
+  "buy sell": "action",
   quantity: "quantity",
   qty: "quantity",
   shares: "quantity",
   units: "quantity",
+  "quantity available": "quantity",
+  "available quantity": "quantity",
+  "trade quantity": "quantity",
   price: "price",
   rate: "price",
   "avg price": "price",
+  "average price": "price",
+  "trade price": "price",
+  "buy price": "price",
+  "avg cost": "price",
+  nav: "price",
 };
+
+/** Header names that mark a row as the asset table's header. */
+const ASSET_HEADERS: ReadonlySet<string> = new Set(Object.keys(HEADER_MAP));
 
 const FX: Record<string, number> = { INR: 1, USD: 83.5, EUR: 90, GBP: 105, AED: 22.7 };
 
@@ -115,43 +153,55 @@ const normalizeAction = (v: unknown): "Inflow" | "Outflow" => {
   return "Inflow";
 };
 
-const toRow = (raw: Record<string, unknown>, fallbackCcy = "INR"): ImportedRow | null => {
+export const toRow = (raw: Record<string, unknown>, fallbackCcy = "INR"): ImportedRow | null => {
   const norm: Record<string, unknown> = {};
   for (const k of Object.keys(raw)) {
-    const key = HEADER_MAP[k.trim().toLowerCase()];
-    if (key) norm[key] = raw[k];
+    const key = HEADER_MAP[normHeader(k)];
+    // The first filled column wins ("Price" before a later "Avg Cost").
+    if (key && String(norm[key] ?? "").trim() === "") norm[key] = raw[k];
   }
-  if (!norm.date && !norm.asset) return null;
+  const asset = String(norm.asset ?? "").trim();
+  const quantity = Number(String(norm.quantity ?? "0").replace(/[^\d.-]/g, "")) || 0;
   const priceStr = String(norm.price ?? "0");
+  const price = Number(priceStr.replace(/[^\d.-]/g, "")) || 0;
+  // A trade or a holding names what and how much. Anything else under the
+  // header — a "Total" line, a page footer, a disclaimer — is not a row.
+  if (!asset || (quantity === 0 && price === 0)) return null;
   const currency = detectCurrency(priceStr) !== "INR" ? detectCurrency(priceStr) : fallbackCcy;
   return {
     id: crypto.randomUUID(),
-    date: String(norm.date ?? ""),
-    asset: String(norm.asset ?? "—"),
+    date: normaliseDate(norm.date) || String(norm.date ?? "").trim(),
+    asset,
     action: normalizeAction(norm.action),
-    quantity: Number(String(norm.quantity ?? "0").replace(/[^\d.-]/g, "")) || 0,
-    price: Number(priceStr.replace(/[^\d.-]/g, "")) || 0,
+    quantity,
+    price,
     currency,
     rate: FX[currency] ?? 1,
   };
 };
 
-export async function parseCSV(file: File): Promise<ImportedRow[]> {
+/** A CSV as a plain grid; the header row is found afterwards, not assumed. */
+function csvGrid(file: File): Promise<Grid> {
   return new Promise((resolve, reject) => {
-    Papa.parse<Record<string, unknown>>(file, {
-      header: true,
+    Papa.parse<unknown[]>(file, {
+      header: false,
       skipEmptyLines: true,
-      complete: (res) =>
-        resolve(res.data.map((r) => toRow(r)).filter((r): r is ImportedRow => !!r)),
+      complete: (res) => resolve(res.data),
       error: reject,
     });
   });
 }
 
+const toRows = (objs: Record<string, unknown>[]) =>
+  objs.map((r) => toRow(r)).filter((r): r is ImportedRow => !!r);
+
+export async function parseCSV(file: File): Promise<ImportedRow[]> {
+  return toRows(gridToObjects(await csvGrid(file), ASSET_HEADERS));
+}
+
 export async function parseExcel(file: File): Promise<ImportedRow[]> {
   const buf = await file.arrayBuffer();
-  const json = await parseXlsxSandboxed(buf);
-  return json.map((r) => toRow(r)).filter((r): r is ImportedRow => !!r);
+  return toRows(await parseXlsxSandboxed(buf, ASSET_HEADERS));
 }
 
 export async function parsePDF(file: File): Promise<ImportedRow[]> {
@@ -159,12 +209,25 @@ export async function parsePDF(file: File): Promise<ImportedRow[]> {
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   let text = "";
+  const lines: ReturnType<typeof pdfLines> = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     text += content.items.map((it) => ("str" in it ? it.str : "")).join(" ") + "\n";
+    // Lines are built per page: two pages share y coordinates.
+    const items: PdfText[] = content.items.flatMap((it) =>
+      "str" in it
+        ? [{ text: it.str, x: it.transform[4], y: it.transform[5], width: it.width }]
+        : [],
+    );
+    lines.push(...pdfLines(items));
   }
-  // Regex: DATE  SYMBOL  BUY/SELL  QTY  PRICE
+  // A real table first: the header row found by its column names, every
+  // cell placed under the header column it sits beneath.
+  const table = toRows(gridToObjects(pdfLinesToGrid(lines, ASSET_HEADERS), ASSET_HEADERS));
+  if (table.length) return table;
+
+  // Else a statement written as running text — DATE  SYMBOL  BUY/SELL  QTY  PRICE
   const re =
     /(\d{1,2}[-/](?:\d{1,2}|[A-Za-z]{3})[-/]\d{2,4}|\d{4}-\d{2}-\d{2})\s+([A-Z][A-Z0-9&.-]{1,15})\s+(BUY|SELL|B|S|BOUGHT|SOLD)\s+(\d+(?:\.\d+)?)\s+([₹$€£]?\s?\d+(?:,\d{3})*(?:\.\d+)?)/gi;
   const rows: ImportedRow[] = [];
@@ -173,7 +236,7 @@ export async function parsePDF(file: File): Promise<ImportedRow[]> {
     const currency = detectCurrency(priceStr);
     rows.push({
       id: crypto.randomUUID(),
-      date: m[1],
+      date: normaliseDate(m[1]) || m[1],
       asset: m[2],
       action: /S/i.test(m[3][0]) && !/B/i.test(m[3][0]) ? "Outflow" : normalizeAction(m[3]),
       quantity: Number(m[4]) || 0,
@@ -203,16 +266,9 @@ export const STRUCTURED_EXT = [".csv", ".xls", ".xlsx"];
 // ── Generic flat-row parser (CSV / XLSX → plain objects) ──────────────────
 async function parseToObjects(file: File): Promise<Record<string, unknown>[]> {
   const ext = file.name.split(".").pop()?.toLowerCase();
-  if (ext === "csv") {
-    return new Promise((resolve, reject) => {
-      Papa.parse<Record<string, unknown>>(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (r) => resolve(r.data),
-        error: reject,
-      });
-    });
-  }
+  // The header is the first row with two or more filled cells, so a title
+  // line or a blank row above the table no longer hides it.
+  if (ext === "csv") return gridToObjects(await csvGrid(file));
   const buf = await file.arrayBuffer();
   return parseXlsxSandboxed(buf);
 }

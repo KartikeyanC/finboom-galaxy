@@ -6,6 +6,7 @@ import {
   parseBudgets,
   SUPPORTED_EXT,
   STRUCTURED_EXT,
+  parseCSV,
 } from "./importParsers";
 
 const csvFile = (body: string, name = "test.csv") =>
@@ -121,5 +122,39 @@ describe("supported extensions", () => {
     expect(SUPPORTED_EXT).toContain(".pdf");
     expect(STRUCTURED_EXT).not.toContain(".pdf");
     expect(STRUCTURED_EXT).toEqual([".csv", ".xls", ".xlsx"]);
+  });
+});
+
+describe("parseCSV — broker exports", () => {
+  it("finds the header below a title block and keeps sells as sells", async () => {
+    const file = csvFile(
+      "Client ID,AB1234\n" +
+        "Tradebook for Equity from 2024-04-01 to 2025-03-31\n" +
+        "\n" +
+        "Symbol,ISIN,Trade Date,Exchange,Trade Type,Quantity,Price\n" +
+        "ITC,INE154A01025,2024-04-15,NSE,buy,10,410.50\n" +
+        "ITC,INE154A01025,02-05-2024,NSE,sell,4,438\n",
+      "tradebook-Zerodha-EQ.csv",
+    );
+    const rows = await parseCSV(file);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ date: "2024-04-15", asset: "ITC", action: "Inflow", quantity: 10, price: 410.5 });
+    expect(rows[1]).toMatchObject({ date: "2024-05-02", action: "Outflow", quantity: 4, price: 438 });
+  });
+
+  it("reads a holdings export (Quantity Available, Average Price)", async () => {
+    const file = csvFile(
+      "Symbol,ISIN,Sector,Quantity Available,Average Price,Previous Closing Price\n" +
+        "DRREDDY,INE089A01031,Pharma,5,1199.73,1352\n",
+    );
+    const rows = await parseCSV(file);
+    expect(rows).toEqual([
+      expect.objectContaining({ asset: "DRREDDY", quantity: 5, price: 1199.73 }),
+    ]);
+  });
+
+  it("drops a total line under the table", async () => {
+    const file = csvFile("Symbol,Quantity,Price\nITC,10,410\nTotal,,\n");
+    expect(await parseCSV(file)).toHaveLength(1);
   });
 });
