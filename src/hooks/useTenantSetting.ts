@@ -141,6 +141,8 @@ export function useTenantSetting<K extends TenantSettingKey>(key: K) {
     value: (data ?? defaultValue) as TenantSettingsMap[K],
     setValue,
     loading: isLoading,
+    /** The stored value (or its absence) has really been read. */
+    loaded: data !== undefined,
     saving: save.isPending,
   };
 }

@@ -227,7 +227,9 @@ export function useAccounts() {
     }
   }, [currentTenantId, isLoading, data, setAll]);
 
-  return { accounts, upsert, remove, removeMany, setAll };
+  // `loaded`: the list has really arrived — an empty list before then is not
+  // "no accounts" (CardDueSync must not act on it).
+  return { accounts, upsert, remove, removeMany, setAll, loaded: data !== undefined };
 }
 
 /** Virtual "cash on hand" account. Always present in trip allocation matrix. */

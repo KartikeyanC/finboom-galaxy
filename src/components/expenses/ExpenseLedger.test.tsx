@@ -3,6 +3,10 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import type { ReactNode } from "react";
 import type { Transaction } from "@/hooks/useTransactions";
 
+// Renders the whole list with its dialogs: ~2–4 s alone, past the 5 s
+// default when the full suite runs in parallel. Not slow code — a big tree.
+vi.setConfig({ testTimeout: 15_000 });
+
 const deleteMany = vi.fn<(ids: string[]) => Promise<void>>();
 const deleteOne = vi.fn();
 

@@ -1,4 +1,4 @@
-import { Archive, History, Pencil, Trash2, Wallet } from "lucide-react";
+import { Archive, History, Pencil, Trash2, Wallet, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export default function AccountList({
   onEdit,
   onRemove,
   sel,
+  dueLabels,
 }: {
   accounts: SavedAccount[];
   liveBalances: Record<string, number>;
@@ -34,6 +35,8 @@ export default function AccountList({
   onRemove: (id: string) => void;
   /** Bulk-delete selection; when given, each row gets a tick box. */
   sel?: BulkSelection;
+  /** "Due 5th of every month · …" for credit cards with a due day set. */
+  dueLabels?: Record<string, string>;
 }) {
   return (
     <>
@@ -75,6 +78,12 @@ export default function AccountList({
                               •••• {a.last4 || "0000"}
                             </span>
                           </div>
+                          {dueLabels?.[a.id] && (
+                            <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                              <CalendarClock className="h-3 w-3" aria-hidden />
+                              Due {dueLabels[a.id]}
+                            </div>
+                          )}
                           <div className="mt-1 flex flex-wrap gap-1">
                             {a.purposes.length === 0 ? (
                               <span className="text-xs text-muted-foreground">

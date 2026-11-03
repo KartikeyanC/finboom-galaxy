@@ -34,6 +34,9 @@ export type BudgetPlannerState = {
   savings: number;
 };
 
+/** Credit-card payment-due days, per account id — see cardDue.ts. */
+export type CardDueDaysSetting = Record<string, { day: number; lead: "exact" | "1d" | "3d" }>;
+
 export type TenantSettingsMap = {
   custom_categories: CustomCategories;
   custom_subcategories: CustomSubcategories;
@@ -42,6 +45,7 @@ export type TenantSettingsMap = {
   onboarding: OnboardingState;
   tracker_views: SavedTrackerView[];
   hidden_categories: HiddenCategories;
+  card_due_days: CardDueDaysSetting;
 };
 
 export type TenantSettingKey = keyof TenantSettingsMap;
@@ -95,6 +99,12 @@ export const TENANT_SETTINGS: {
   // count every row, or hiding a category would make money disappear.
   hidden_categories: {
     defaultValue: { income: [], expense: [] },
+  },
+  // Each credit card's bill due day and how early to warn. Per workspace: a
+  // household shares its cards' bills. The monthly reminder itself is derived
+  // from this (cardDue.ts) — this is the source of truth for the day.
+  card_due_days: {
+    defaultValue: {},
   },
 };
 

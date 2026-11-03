@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
+// Renders the whole list with its dialogs: ~2–4 s alone, past the 5 s
+// default when the full suite runs in parallel. Not slow code — a big tree.
+vi.setConfig({ testTimeout: 15_000 });
+
 const { removeMany, remove } = vi.hoisted(() => ({
   removeMany: vi.fn(async (ids: string[]) => void ids),
   remove: vi.fn(),

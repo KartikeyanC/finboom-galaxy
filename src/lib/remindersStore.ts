@@ -295,5 +295,5 @@ export function useReminders() {
     }
   }, [currentTenantId, isLoading, data, invalidate]);
 
-  return { records, upsert, remove, removeMany, complete };
+  return { records, upsert, remove, removeMany, complete, loaded: data !== undefined };
 }

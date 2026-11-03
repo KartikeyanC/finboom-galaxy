@@ -40,6 +40,9 @@ import PurposeChips from "./PurposeChips";
 import TransferList from "./TransferList";
 import { BulkDeleteBar, SelectAllBox } from "@/components/bulk/BulkSelect";
 import { useBulkSelection } from "@/components/bulk/useBulkSelection";
+import { useTenantSetting } from "@/hooks/useTenantSetting";
+import { describeCardDue, type CardDue } from "@/lib/cardDue";
+import { CardDueFields } from "./CardDueFields";
 
 
 export default function AccountsManager() {
@@ -75,6 +78,16 @@ export default function AccountsManager() {
   };
   const [purposeOptions, setPurposeOptions] = useState<string[]>(DEFAULT_PURPOSES);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  // A credit card's bill due day (workspace setting card_due_days); CardDueSync
+  // turns it into the monthly reminder.
+  const { value: cardDues, setValue: setCardDues } = useTenantSetting("card_due_days");
+  const [dueDraft, setDueDraft] = useState<CardDue | null>(null);
+  const forgetDues = (ids: string[]) => {
+    if (!ids.some((id) => cardDues[id])) return;
+    const next = { ...cardDues };
+    ids.forEach((id) => delete next[id]);
+    setCardDues(next);
+  };
   const [historyAccount, setHistoryAccount] = useState<{ id: string; name: string } | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
@@ -166,6 +179,7 @@ export default function AccountsManager() {
       toast.error("Please enter an account name");
       return;
     }
+    const savedId = editingAccountId ?? crypto.randomUUID();
     if (editingAccountId) {
       const prev = accounts.find((x) => x.id === editingAccountId);
       const oldBal = Number(prev?.openingBalance ?? 0);
@@ -188,14 +202,23 @@ export default function AccountsManager() {
       toast.success("Account updated");
       setEditingAccountId(null);
     } else {
-      setAccounts((a) => [...a, { ...form, id: crypto.randomUUID() }]);
+      setAccounts((a) => [...a, { ...form, id: savedId }]);
       toast.success("Account added");
     }
+    const wantDue = form.type === "credit" ? dueDraft : null;
+    const hadDue = cardDues[savedId];
+    if (wantDue && (wantDue.day !== hadDue?.day || wantDue.lead !== hadDue?.lead)) {
+      setCardDues({ ...cardDues, [savedId]: wantDue });
+    } else if (!wantDue && hadDue) {
+      forgetDues([savedId]);
+    }
+    setDueDraft(null);
     setForm(emptyForm());
   };
 
   const remove = (id: string) => {
     setAccounts((a) => a.filter((x) => x.id !== id));
+    forgetDues([id]);
     if (editingAccountId === id) {
       setEditingAccountId(null);
       setForm(emptyForm());
@@ -205,6 +228,7 @@ export default function AccountsManager() {
   /** Bulk delete — same effect as `remove`, one call for all of them. */
   const removeSelected = async (ids: string[]) => {
     await removeMany(ids);
+    forgetDues(ids);
     if (editingAccountId && ids.includes(editingAccountId)) {
       setEditingAccountId(null);
       setForm(emptyForm());
@@ -215,6 +239,7 @@ export default function AccountsManager() {
     const { id, ...rest } = acc;
     setForm(rest);
     setEditingAccountId(id);
+    setDueDraft(cardDues[id] ?? null);
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -222,6 +247,7 @@ export default function AccountsManager() {
 
   const cancelEditAccount = () => {
     setEditingAccountId(null);
+    setDueDraft(null);
     setForm(emptyForm());
   };
 
@@ -380,6 +406,9 @@ export default function AccountsManager() {
                       </Select>
                     </div>
                   </div>
+                  {form.type === "credit" && (
+                    <CardDueFields value={dueDraft} onChange={setDueDraft} />
+                  )}
                 </>
               )}
 
@@ -573,6 +602,9 @@ export default function AccountsManager() {
                 onHistory={setHistoryAccount}
                 onEdit={startEditAccount}
                 onRemove={remove}
+                dueLabels={Object.fromEntries(
+                  Object.entries(cardDues).map(([id, due]) => [id, describeCardDue(due)]),
+                )}
               />
             </CardContent>
           </Card>

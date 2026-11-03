@@ -17,6 +17,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import GlobalSearch from "@/components/GlobalSearch";
 import QuickAddSheet from "@/components/QuickAddSheet";
 import { MobileNav } from "@/components/MobileNav";
+import { CardDueSync } from "@/components/accounts/CardDueSync";
 import {
   Select,
   SelectContent,
@@ -96,6 +97,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     // NineFlow: labels from 1024px wide, icons only below that.
     <SidebarProvider defaultOpen={typeof window === "undefined" || window.innerWidth >= 1024}>
+      {/* Credit-card due-date reminders, kept in step with each card's due day. */}
+      <CardDueSync />
       {/*
         Stage 4.8 / BUG-052 — skip link. The sidebar is ~20 links, so a keyboard
         or screen-reader user had to tab through the entire navigation on every
