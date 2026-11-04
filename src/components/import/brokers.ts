@@ -51,6 +51,24 @@ export const BROKERS: Broker[] = [
     footnote: "Imports stocks and mutual fund holdings.",
   },
   {
+    // Not a broker: the statement of every mutual fund held under a PAN,
+    // whichever app or AMC it was bought through (casStatement.ts).
+    value: "CAS",
+    label: "Mutual funds (CAS)",
+    initial: "MF",
+    brand: "#0F766E",
+    url: "camsonline.com",
+    steps: [
+      "Open **camsonline.com** → Investors → Statements → **CAS - CAMS+KFintech**",
+      "Choose **Detailed** (includes transaction listing) and the period up to today",
+      "Enter your email and PAN, and **set a password** for the PDF",
+      "Open the email from CAMS and download the PDF",
+      "Upload it below and type the password you set",
+    ],
+    footnote:
+      "Adds every mutual fund under your PAN — units, cost and latest NAV — whichever app you bought it on.",
+  },
+  {
     value: "INDmoney",
     label: "INDmoney",
     initial: "↑",

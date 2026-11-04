@@ -58,6 +58,7 @@ import { useCreateGoal } from "@/hooks/useGoals";
 import { useSetBudgetAllocation } from "@/hooks/useBudgets";
 import { useIncomeStreams } from "@/hooks/useIncomeStreams";
 import { BROKERS, CUSTOM_BROKER, type Broker } from "./brokers";
+import { usePdfPassword } from "./usePdfPassword";
 
 
 type Section = "assets" | "expenses" | "income" | "goals" | "budgets";
@@ -196,6 +197,7 @@ export function TransactionImporter() {
   const { currentTenantId } = useTenant();
   const navigate = useNavigate();
   const [savingHoldings, setSavingHoldings] = useState(false);
+  const { withPassword, dialog: pdfPasswordDialog } = usePdfPassword();
   const createGoal = useCreateGoal();
   const setBudget = useSetBudgetAllocation();
   const { add: addIncome } = useIncomeStreams();
@@ -254,7 +256,7 @@ export function TransactionImporter() {
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
       if (section === "assets") {
-        const rows = await runParse(files, parseFile);
+        const rows = await runParse(files, withPassword(parseFile));
         setAssetRows((prev) => [...prev, ...(rows as ImportedRow[])]);
       } else if (section === "expenses") {
         const rows = await runParse(files, parseExpenses);
@@ -270,7 +272,7 @@ export function TransactionImporter() {
         setBudgetRows((prev) => [...prev, ...(rows as BudgetRow[])]);
       }
     },
-    [section, runParse],
+    [section, runParse, withPassword],
   );
 
   /**
@@ -455,6 +457,7 @@ export function TransactionImporter() {
 
   return (
     <div className="space-y-6">
+      {pdfPasswordDialog}
       {/* Header */}
       <div>
         <h2 className="font-display text-2xl font-bold">Import</h2>

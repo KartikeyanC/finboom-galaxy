@@ -10,6 +10,7 @@ import {
   type Grid,
   type PdfText,
 } from "./sheetRows";
+import { isCasText, parseCasLines } from "./casStatement";
 
 // pdfjs is heavy (~1MB) and only needed for PDF statements, so it is lazily
 // imported inside parsePDF rather than eagerly at module load. This keeps it
@@ -229,10 +230,30 @@ export async function parseExcel(file: File): Promise<ImportedRow[]> {
   return toRows(await parseXlsxSandboxed(buf, ASSET_HEADERS));
 }
 
-export async function parsePDF(file: File): Promise<ImportedRow[]> {
+/**
+ * The PDF is locked. A CAS always is — with the password chosen when it was
+ * requested (or the PAN, for some). [wrong] says one was given and refused.
+ */
+export class PdfPasswordError extends Error {
+  constructor(readonly wrong: boolean) {
+    super(wrong ? "Incorrect PDF password" : "PDF needs a password");
+    this.name = "PdfPasswordError";
+  }
+}
+
+export type ParseOptions = { password?: string };
+
+export async function parsePDF(file: File, opts: ParseOptions = {}): Promise<ImportedRow[]> {
   const pdfjsLib = await loadPdfjs();
   const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const pdf = await pdfjsLib
+    .getDocument({ data: buf, ...(opts.password ? { password: opts.password } : {}) })
+    .promise.catch((err: unknown) => {
+      if ((err as { name?: string })?.name === "PasswordException") {
+        throw new PdfPasswordError(Boolean(opts.password));
+      }
+      throw err;
+    });
   let text = "";
   const lines: ReturnType<typeof pdfLines> = [];
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -247,6 +268,10 @@ export async function parsePDF(file: File): Promise<ImportedRow[]> {
     );
     lines.push(...pdfLines(items));
   }
+  // A mutual-fund CAS (CAMS / KFintech): one holding per fund.
+  const lineText = lines.map((l) => l.map((c) => c.text).join(" "));
+  if (isCasText(lineText.join("\n"))) return parseCasLines(lineText);
+
   // A real table first: the header row found by its column names, every
   // cell placed under the header column it sits beneath.
   const table = toRows(gridToObjects(pdfLinesToGrid(lines, ASSET_HEADERS), ASSET_HEADERS));
@@ -273,13 +298,13 @@ export async function parsePDF(file: File): Promise<ImportedRow[]> {
   return rows;
 }
 
-export async function parseFile(file: File): Promise<ImportedRow[]> {
+export async function parseFile(file: File, opts: ParseOptions = {}): Promise<ImportedRow[]> {
   const ext = file.name.split(".").pop()?.toLowerCase();
   const broker = detectBrokerFromFilename(file.name);
   let rows: ImportedRow[];
   if (ext === "csv") rows = await parseCSV(file);
   else if (ext === "xls" || ext === "xlsx") rows = await parseExcel(file);
-  else if (ext === "pdf") rows = await parsePDF(file);
+  else if (ext === "pdf") rows = await parsePDF(file, opts);
   else throw new Error(`Unsupported file type: .${ext}`);
   if (broker) rows = rows.map((r) => ({ ...r, broker }));
   return rows;
