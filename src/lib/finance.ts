@@ -92,3 +92,8 @@ const FX_TO_INR: Record<string, number> = {
 export function toINR(amount: number, currency: string) {
   return Number(amount) * (FX_TO_INR[currency] ?? 1);
 }
+
+/** The reverse of [toINR]: rupees in [currency]. */
+export function fromINR(amount: number, currency: string) {
+  return Number(amount) / (FX_TO_INR[currency] ?? 1);
+}

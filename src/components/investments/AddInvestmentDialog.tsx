@@ -27,6 +27,7 @@ import {
 import { useAccounts } from "@/lib/accountsStore";
 import { SymbolPicker } from "./SymbolPicker";
 import { BuyDateField } from "./BuyDateField";
+import { GoalLinkPicker } from "./GoalLinkPicker";
 
 type AssetType =
   | "stocks"
@@ -54,7 +55,6 @@ const ASSET_OPTIONS: { value: AssetType; label: string }[] = [
   { value: "crypto", label: "Crypto & Digital Assets" },
 ];
 
-const GOALS: GoalLink[] = ["Retirement", "House Fund", "Kid's Education", "Emergency Stack"];
 
 const safeNum = (v: string | number | undefined): number => {
   const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
@@ -794,30 +794,15 @@ export default function AddInvestmentDialog({
             </div>
           </div>
 
-          <div className="border-t pt-4">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-              Link to Financial Goal
-            </Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {GOALS.map((g) => {
-                const active = goal === g;
-                return (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setGoal(active ? "" : g)}
-                    className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                      active
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background text-muted-foreground hover:text-foreground border-border"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <GoalLinkPicker
+            goalId={form.goal_id || undefined}
+            legacyLabel={goal}
+            onChange={(id) => {
+              // A goal picked by id replaces any old label link.
+              set("goal_id", id ?? "");
+              setGoal("");
+            }}
+          />
 
           <Button onClick={handleSave} className="w-full" size="lg">
             {isEdit ? "Update Investment Record" : "Save Investment Record"}

@@ -23,6 +23,12 @@ vi.mock("@/hooks/useGoals", () => ({
   useDeleteGoals: () => ({ ...mutation(), mutateAsync: deleteMany }),
 }));
 
+// A holding worth ₹400 counts toward the Emergency Fund (goalHoldings.ts).
+vi.mock("@/hooks/useGoalInvested", () => ({
+  useGoalInvested: () => (id: string) =>
+    id === "g1" ? { value: 400, holdings: [{ id: "h1", name: "Liquid", value: 400 }] } : { value: 0, holdings: [] },
+}));
+
 import GoalManager from "./GoalManager";
 
 describe("GoalManager bulk delete", () => {
@@ -52,5 +58,12 @@ describe("GoalManager bulk delete", () => {
     render(<GoalManager />);
     fireEvent.click(screen.getByRole("checkbox", { name: "Select all" }));
     expect(screen.getByText("3 selected")).toBeInTheDocument();
+  });
+
+  it("shows linked holdings beside the saved amount, both in the bar", () => {
+    render(<GoalManager />);
+    expect(screen.getByText(/saved \+ .*400 invested/)).toBeInTheDocument();
+    // ₹100 saved + ₹400 invested of ₹1,000.
+    expect(screen.getAllByRole("progressbar")[0]).toHaveAttribute("aria-valuenow", "50");
   });
 });

@@ -1,13 +1,15 @@
 import { motion } from "framer-motion";
 import { Target } from "lucide-react";
 import { useGoals } from "@/hooks/useGoals";
-import { formatCompact } from "@/lib/finance";
+import { useGoalInvested } from "@/hooks/useGoalInvested";
+import { GoalProgress } from "@/components/goals/GoalProgress";
 
 const COLORS = ["hsl(160, 60%, 45%)", "hsl(210, 70%, 55%)", "hsl(35, 90%, 55%)", "hsl(280, 60%, 55%)", "hsl(190, 70%, 50%)"];
 
 const GoalTracker = () => {
   const { data: goals = [] } = useGoals();
   const active = goals.filter((g) => g.status !== "completed").slice(0, 5);
+  const investedIn = useGoalInvested();
 
   return (
     <motion.div
@@ -30,9 +32,6 @@ const GoalTracker = () => {
         <div className="flex flex-col gap-4">
           {active.map((goal, i) => {
             const color = COLORS[i % COLORS.length];
-            const pct = Number(goal.target_amount) > 0
-              ? Math.min(100, Math.round((Number(goal.current_amount) / Number(goal.target_amount)) * 100))
-              : 0;
             return (
               <div key={goal.id} className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -41,21 +40,14 @@ const GoalTracker = () => {
                     {goal.target_date ? new Date(goal.target_date).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : "—"}
                   </span>
                 </div>
-                <div className="relative h-2 rounded-full bg-secondary overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 1, delay: 0.3 + i * 0.1, ease: "easeOut" }}
-                    className="absolute inset-y-0 left-0 rounded-full"
-                    style={{ backgroundColor: color }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
-                    {formatCompact(Number(goal.current_amount), goal.currency)} / {formatCompact(Number(goal.target_amount), goal.currency)}
-                  </span>
-                  <span className="font-display font-semibold" style={{ color }}>{pct}%</span>
-                </div>
+                <GoalProgress
+                  saved={Number(goal.current_amount)}
+                  invested={investedIn(goal.id).value}
+                  target={Number(goal.target_amount)}
+                  currency={goal.currency}
+                  color={color}
+                  delay={0.3 + i * 0.1}
+                />
               </div>
             );
           })}

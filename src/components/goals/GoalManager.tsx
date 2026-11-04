@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import { Pencil, Plus, Trash2, PiggyBank } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CURRENCIES, GOAL_CATEGORIES, formatCompact } from "@/lib/finance";
-import { percentOf } from "@/lib/progress";
+import { useGoalInvested } from "@/hooks/useGoalInvested";
+import { GoalProgress } from "./GoalProgress";
 import { cn } from "@/lib/utils";
 import {
   useContributeToGoal,
@@ -282,7 +282,11 @@ export default function GoalManager() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [funding, setFunding] = useState<Goal | null>(null);
   const [view, setView] = useChartView();
-  const goalSlices: ChartSlice[] = (data ?? []).map((g) => ({ name: g.title, value: Number(g.current_amount) }));
+  const investedIn = useGoalInvested();
+  const goalSlices: ChartSlice[] = (data ?? []).map((g) => ({
+    name: g.title,
+    value: Number(g.current_amount) + investedIn(g.id).value,
+  }));
   const delMany = useDeleteGoals();
   // Only the list view shows rows to tick; the chart views select nothing.
   const visibleIds = useMemo(
@@ -327,7 +331,6 @@ export default function GoalManager() {
             }}
           />
           {data.map((g, i) => {
-            const pct = percentOf(Number(g.current_amount), Number(g.target_amount));
             return (
               <div key={g.id} className="space-y-2 p-3 rounded-lg bg-secondary/30">
                 <div className="flex items-center justify-between gap-2">
@@ -366,20 +369,13 @@ export default function GoalManager() {
                     </Button>
                   </div>
                 </div>
-                <div className="relative h-2 rounded-full bg-secondary overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.8, delay: i * 0.05 }}
-                    className="absolute inset-y-0 left-0 rounded-full bg-primary"
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
-                    {formatCompact(Number(g.current_amount), g.currency)} / {formatCompact(Number(g.target_amount), g.currency)}
-                  </span>
-                  <span className="font-display font-semibold text-primary">{pct}%</span>
-                </div>
+                <GoalProgress
+                  saved={Number(g.current_amount)}
+                  invested={investedIn(g.id).value}
+                  target={Number(g.target_amount)}
+                  currency={g.currency}
+                  delay={i * 0.05}
+                />
               </div>
             );
           })}
