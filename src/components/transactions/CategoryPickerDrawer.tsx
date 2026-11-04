@@ -138,7 +138,7 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
         {/* Two-pane picker */}
         <div className="flex flex-1 min-h-[340px] overflow-hidden">
           {/* Left pane */}
-          <div className="w-1/3 overflow-y-auto border-r border-border/60 bg-background">
+          <div className="w-2/5 sm:w-1/3 overflow-y-auto border-r border-border/60 bg-background">
             <div className="p-2 space-y-1">
             {(q ? filteredGroups : allGroups).map((g) => {
               const isActive = !q && g.name === activeGroup.name;
@@ -152,14 +152,15 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
                     setQuery("");
                   }}
                   className={cn(
-                    "w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm rounded-lg border transition-colors",
+                    "w-full flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-2.5 text-left text-[12.5px] sm:text-sm rounded-lg border transition-colors",
                     isActive
                       ? "bg-primary/10 border-primary/30 text-primary font-medium"
                       : "border-transparent text-muted-foreground hover:bg-accent/40 hover:text-foreground",
                   )}
                 >
                   <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} strokeWidth={2} />
-                  <span className="truncate leading-tight">{g.name}</span>
+                  {/* Wrap, don't truncate: on a phone "Food …" and "Entert…" hid what the group was. */}
+                  <span className="min-w-0 break-words leading-tight">{g.name}</span>
                 </button>
               );
             })}
@@ -167,7 +168,7 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
           </div>
 
           {/* Right pane */}
-          <div className="w-2/3 overflow-y-auto p-3 bg-background flex flex-col">
+          <div className="w-3/5 sm:w-2/3 overflow-y-auto p-3 bg-background flex flex-col">
             {rightSubs.length === 0 && q ? (
               <div className="flex-1 grid place-items-center text-xs text-muted-foreground">
                 No matches. Try a different search.
@@ -208,7 +209,7 @@ export default function CategoryPickerDrawer({ value, category, onSelect }: Prop
                       >
                         <span className="flex items-center gap-1.5 leading-tight">
                           {q && <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                          <span className="truncate">{sub}</span>
+                          <span className="min-w-0 break-words">{sub}</span>
                         </span>
                         {q && (
                           <span className="text-xs text-muted-foreground truncate">{parent}</span>

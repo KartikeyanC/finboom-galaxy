@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import { parseXlsxSandboxed } from "./xlsxSandbox";
+import { EXPENSE_CATEGORIES } from "./finance";
 import {
   gridToObjects,
   normaliseDate,
@@ -300,6 +301,30 @@ async function parseToObjects(file: File): Promise<Record<string, unknown>[]> {
 const str = (v: unknown) => String(v ?? "").trim();
 const num = (v: unknown) => Number(String(v ?? "0").replace(/[^\d.-]/g, "")) || 0;
 
+// ── Expense category names ────────────────────────────────────────────────
+// A spreadsheet says "Food" or "Health"; the app's categories are "Food & Dining" and "Healthcare".
+// Imported verbatim, those rows never matched the chips, the charts or a budget. Our own template
+// even used "Food". Only an exact (case-insensitive) match or one of these obvious aliases is
+// changed; any other name is kept as written so the user can still edit it in the preview.
+const EXPENSE_CATEGORY_ALIASES: Record<string, (typeof EXPENSE_CATEGORIES)[number]> = {
+  food: "Food & Dining",
+  dining: "Food & Dining",
+  "food and dining": "Food & Dining",
+  health: "Healthcare",
+  medical: "Healthcare",
+  "health care": "Healthcare",
+  transportation: "Transport",
+  "personal care": "Personal Care",
+  subscription: "Subscriptions",
+  utility: "Utilities",
+};
+
+export function canonicalExpenseCategory(raw: string): string {
+  const key = raw.trim().toLowerCase();
+  const exact = EXPENSE_CATEGORIES.find((c) => c.toLowerCase() === key);
+  return exact ?? EXPENSE_CATEGORY_ALIASES[key] ?? raw;
+}
+
 // ── Expense parser ────────────────────────────────────────────────────────
 /**
  * BUG-108 — a row with neither a date nor an amount used to be dropped with
@@ -317,7 +342,7 @@ export async function parseExpenses(file: File): Promise<{ rows: ExpenseRow[]; s
       return {
         id: crypto.randomUUID(),
         date,
-        category: str(r["category"] ?? r["Category"] ?? r["CATEGORY"] ?? "Uncategorized"),
+        category: canonicalExpenseCategory(str(r["category"] ?? r["Category"] ?? r["CATEGORY"] ?? "Uncategorized")),
         description: str(r["description"] ?? r["Description"] ?? r["note"] ?? r["Note"] ?? ""),
         amount,
         currency: str(r["currency"] ?? r["Currency"] ?? "INR") || "INR",

@@ -22,7 +22,7 @@ describe("parseExpenses", () => {
     expect(skipped).toBe(0);
     expect(rows[0]).toMatchObject({
       date: "2024-01-15",
-      category: "Food",
+      category: "Food & Dining", // "Food" is mapped to the app's category
       description: "Lunch",
       amount: 250,
       currency: "INR",
@@ -41,6 +41,20 @@ describe("parseExpenses", () => {
     const { rows } = await parseExpenses(file);
     expect(rows[0].category).toBe("Uncategorized");
     expect(rows[0].currency).toBe("INR");
+  });
+
+  it("maps common spreadsheet category names onto the app's, and leaves others alone", async () => {
+    const file = csvFile(
+      "date,category,amount\n2024-01-01,Food,1\n2024-01-02,health,2\n2024-01-03,RENT,3\n2024-01-04,Groceries,4\n2024-01-05,Pets,5\n",
+    );
+    const { rows } = await parseExpenses(file);
+    expect(rows.map((r) => r.category)).toEqual([
+      "Food & Dining",
+      "Healthcare",
+      "Rent",
+      "Groceries", // not an app category in the list, but the app accepts it: kept as written
+      "Pets", // unknown: kept so the user can edit it in the preview
+    ]);
   });
 
   it("skips fully empty rows and reports how many", async () => {

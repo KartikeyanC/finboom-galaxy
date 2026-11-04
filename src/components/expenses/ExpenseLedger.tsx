@@ -74,7 +74,9 @@ const CHIPS: ChipDef[] = [
   { id: "all", label: "All", icon: Sparkles, tint: "text-amber-300" },
   { id: "food", label: "Food & Dining", icon: UtensilsCrossed, tint: "text-yellow-300", match: ["Food & Dining"] },
   { id: "transport", label: "Transport", icon: Bus, tint: "text-orange-300", match: ["Transport", "Travel & Transport", "Travel"] },
-  { id: "groceries", label: "Groceries", icon: ShoppingBasket, tint: "text-pink-300", match: ["Groceries", "Shopping"] },
+  // Matches the Shopping category too, so say so: it used to read just "Groceries" while a grocery
+  // entry made in the picker is filed under Food & Dining and showed under the Food chip instead.
+  { id: "groceries", label: "Groceries & Shopping", icon: ShoppingBasket, tint: "text-pink-300", match: ["Groceries", "Shopping"] },
   { id: "entertainment", label: "Entertainment", icon: Clapperboard, tint: "text-indigo-300", match: ["Entertainment"] },
   { id: "bills", label: "Bills", icon: Zap, tint: "text-violet-300", match: ["Utilities", "Subscriptions", "Rent"] },
 ];
@@ -177,7 +179,10 @@ export default function ExpenseLedger() {
             Expense Ledger
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {preFiltered.length} {preFiltered.length === 1 ? "entry" : "entries"} in view
+            {/* This counts what was loaded for the period (after chips and search). The date/category
+                filter below narrows it further and reports its own "Transactions found". Saying
+                "in view" here read as 28 beside a list showing 1. */}
+            {preFiltered.length} {preFiltered.length === 1 ? "entry" : "entries"}
             {" · "}
             <span className="lowercase">{ledgerPeriodLabel(period)}</span>
           </p>
