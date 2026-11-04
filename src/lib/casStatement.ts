@@ -52,6 +52,11 @@ function cleanName(raw: string): string {
 export function parseCasLines(lines: string[], broker?: string): ImportedRow[] {
   const rows = new Map<string, ImportedRow>();
   const isinRe = /ISIN\s*:\s*(INF[A-Z0-9]{9})/i;
+  // "01-Apr-2024 To 31-Oct-2026": units held before the period began were
+  // bought before its first day — the date their opening balance is given.
+  const periodRe = new RegExp(`${DATE}\\s+To\\s+${DATE}`, "i");
+  const period = lines.map((l) => periodRe.exec(l)).find(Boolean);
+  const periodStart = period ? normaliseDate(period[1]) : "";
 
   // Where each scheme starts: the line carrying its ISIN.
   const starts = lines.flatMap((l, i) => (isinRe.test(l) ? [i] : []));
@@ -90,6 +95,7 @@ export function parseCasLines(lines: string[], broker?: string): ImportedRow[] {
 
     // The first transaction's date is when the holding began.
     const first = new RegExp(`^\\s*${DATE}`, "m").exec(body)?.[1];
+    const lots = purchaseLots(body, periodStart, units, invested);
 
     const prev = rows.get(isin);
     if (prev) {
@@ -97,6 +103,8 @@ export function parseCasLines(lines: string[], broker?: string): ImportedRow[] {
       const totalCost = prev.quantity * prev.price + invested;
       prev.quantity += units;
       prev.price = totalCost / prev.quantity;
+      // Each folio is its own queue; together they are kept only when both are known.
+      prev.lots = prev.lots && lots ? [...prev.lots, ...lots] : undefined;
       if (first && (!prev.date || normaliseDate(first) < prev.date)) prev.date = normaliseDate(first);
       return;
     }
@@ -111,8 +119,63 @@ export function parseCasLines(lines: string[], broker?: string): ImportedRow[] {
       rate: 1,
       isin,
       ...(ltp ? { ltp } : {}),
+      ...(lots ? { lots } : {}),
       ...(broker ? { broker } : {}),
     });
   });
   return [...rows.values()];
+}
+
+type Lot = { date: string; qty: number; cost: number };
+
+/** "1,600.00" → 1600; "(1,600.00)" and "-1,600.00" → -1600. */
+const signed = (s: string) => {
+  const n = num(s.replace(/[()]/g, ""));
+  return /^\(.*\)$/.test(s.trim()) ? -Math.abs(n) : n;
+};
+
+const AMT = "(\\(?-?[\\d,]+\\.\\d+\\)?)";
+/** DATE  description  amount  units  price  unit-balance */
+const TX = new RegExp(`^\\s*${DATE}\\s+.*?\\s${AMT}\\s+${AMT}\\s+[\\d,]+\\.\\d+\\s+${AMT}\\s*$`, "i");
+
+/**
+ * The purchases still held, oldest first — what the tax-harvest planner needs
+ * (taxHarvest.ts). Units below zero on a line are a redemption or switch-out,
+ * taken from the oldest purchase first, as the law requires. Units held when
+ * the period began are one lot dated its first day, costed as whatever the
+ * statement's cost value leaves over. Undefined when the lots don't come back
+ * to the closing balance: a statement read wrong is better left without them.
+ */
+function purchaseLots(body: string, periodStart: string, closing: number, cost: number): Lot[] | undefined {
+  const queue: Lot[] = [];
+  const opening = num(/Opening\s+Unit\s+Balance\s*:?\s*([\d,]+(?:\.\d+)?)/i.exec(body)?.[1]);
+  if (opening > 0) {
+    if (!periodStart) return undefined;
+    queue.push({ date: periodStart, qty: opening, cost: Number.NaN });
+  }
+  for (const line of body.split("\n")) {
+    const m = TX.exec(line);
+    if (!m) continue;
+    const units = signed(m[3]);
+    if (units > 0) {
+      queue.push({ date: normaliseDate(m[1]), qty: units, cost: Math.abs(signed(m[2])) / units });
+      continue;
+    }
+    let out = -units;
+    while (out > 1e-6 && queue.length) {
+      const take = Math.min(out, queue[0].qty);
+      queue[0].qty -= take;
+      out -= take;
+      if (queue[0].qty <= 1e-6) queue.shift();
+    }
+  }
+  const held = queue.reduce((s, l) => s + l.qty, 0);
+  if (!queue.length || Math.abs(held - closing) > Math.max(0.002, closing * 0.001)) return undefined;
+  const opener = queue.find((l) => Number.isNaN(l.cost));
+  if (opener) {
+    const left = cost - queue.reduce((s, l) => (l === opener ? s : s + l.qty * l.cost), 0);
+    if (!(left >= 0)) return undefined;
+    opener.cost = left / opener.qty;
+  }
+  return queue.map((l) => ({ ...l, qty: Math.round(l.qty * 1000) / 1000 }));
 }

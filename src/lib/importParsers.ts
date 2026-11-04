@@ -40,6 +40,8 @@ export type ImportedRow = {
   isin?: string;
   /** Last / previous-close price or NAV, when the export carries one. */
   ltp?: number;
+  /** The purchases this row stands for, oldest first, when the source lists them (a CAS). */
+  lots?: { date: string; qty: number; cost: number }[];
 };
 
 export type ExpenseRow = {

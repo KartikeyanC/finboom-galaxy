@@ -30,6 +30,11 @@ export type ImportedHolding = {
   ltp?: number;
   /** When the open position was first bought (yyyy-mm-dd), if known. */
   since?: string;
+  /**
+   * The purchases still held, oldest first — sells take the oldest units
+   * first (FIFO), as tax does. Present only when every one has a date.
+   */
+  lots?: { date: string; qty: number; cost: number }[];
   currency: Currency;
 };
 
@@ -53,21 +58,37 @@ export function rowsToHoldings(rows: ImportedRow[]): ImportedHolding[] {
     })
     .map((e) => e.r);
 
-  type Acc = { first: ImportedRow; qty: number; cost: number; ltp?: number; since?: string };
+  type Lot = { date: string; qty: number; cost: number };
+  type Acc = {
+    first: ImportedRow;
+    qty: number;
+    cost: number;
+    ltp?: number;
+    since?: string;
+    queue: Lot[];
+  };
   const byKey = new Map<string, Acc>();
   for (const r of ordered) {
     if (!r.asset.trim() || r.quantity <= 0) continue;
     const k = keyOf(r);
-    const a = byKey.get(k) ?? { first: r, qty: 0, cost: 0 };
+    const a = byKey.get(k) ?? { first: r, qty: 0, cost: 0, queue: [] };
     if (r.action === "Outflow") {
       const avg = a.qty > 0 ? a.cost / a.qty : 0;
       a.qty = Math.max(0, a.qty - r.quantity);
       a.cost = avg * a.qty;
       if (a.qty === 0) a.since = undefined;
+      let out = r.quantity;
+      while (out > 1e-9 && a.queue.length) {
+        const take = Math.min(out, a.queue[0].qty);
+        a.queue[0].qty -= take;
+        out -= take;
+        if (a.queue[0].qty <= 1e-9) a.queue.shift();
+      }
     } else {
       if (a.qty === 0) a.since = r.date || undefined;
       a.qty += r.quantity;
       a.cost += r.quantity * r.price;
+      a.queue.push(...(r.lots?.map((l) => ({ ...l })) ?? [{ date: r.date, qty: r.quantity, cost: r.price }]));
     }
     if (r.ltp) a.ltp = r.ltp;
     byKey.set(k, a);
@@ -90,6 +111,9 @@ export function rowsToHoldings(rows: ImportedRow[]): ImportedHolding[] {
       invested: round(a.cost, 2),
       ltp: a.ltp,
       since: a.since,
+      ...(a.queue.length && a.queue.every((l) => /^\d{4}-\d{2}-\d{2}$/.test(l.date))
+        ? { lots: a.queue.map((l) => ({ date: l.date, qty: round(l.qty), cost: round(l.cost) })) }
+        : {}),
       currency,
     });
   }
@@ -121,6 +145,10 @@ const asBroker = (name: string | undefined): Broker =>
   BROKERS.find((b) => b.toLowerCase() === (name ?? "").toLowerCase()) ??
   "Other / Direct Holding";
 
+/** `_lots`: [date, qty, unit cost] per purchase — read by taxHarvest.ts. */
+const lotsField = (h: ImportedHolding): Record<string, string> =>
+  h.lots?.length ? { _lots: JSON.stringify(h.lots.map((l) => [l.date, l.qty, l.cost])) } : {};
+
 /**
  * A holding as the Investments record the Add Investment form would have
  * saved — same fields, so the web list, the phone app and live prices all
@@ -150,6 +178,7 @@ export function holdingToRecord(
         invested: String(h.invested),
         nav: String(nav),
         ...(h.isin ? { isin: h.isin } : {}),
+        ...lotsField(h),
         _import: "1",
       },
       derived: { avgNav: h.avg, currentValue: round(h.qty * nav, 2) },
@@ -166,6 +195,7 @@ export function holdingToRecord(
       ...(h.since ? { buy_date: h.since } : {}),
       ...(h.ltp ? { current: String(round(h.qty * h.ltp, 2)) } : {}),
       ...(h.isin ? { isin: h.isin } : {}),
+      ...lotsField(h),
       _import: "1",
     },
     derived: { total: h.invested, avg: h.avg },

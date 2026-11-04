@@ -34,6 +34,23 @@ describe("rowsToHoldings — a tradebook", () => {
     });
   });
 
+  it("keeps the purchases still held, a sell taking the oldest first (for tax)", () => {
+    const [h] = rowsToHoldings([
+      row({ date: "2024-04-15", quantity: 10, price: 400, exchange: "NSE" }),
+      row({ date: "2024-05-02", quantity: 10, price: 420, exchange: "NSE" }),
+      row({ date: "2024-06-01", action: "Outflow", quantity: 15, price: 450, exchange: "NSE" }),
+    ]);
+    expect(h.lots).toEqual([{ date: "2024-05-02", qty: 5, cost: 420 }]);
+    const rec = holdingToRecord(h, { tenantId: "t1", now: "2026-11-04T00:00:00Z" });
+    expect(JSON.parse(rec.fields._lots)).toEqual([["2024-05-02", 5, 420]]);
+  });
+
+  it("no purchase list when a date is missing", () => {
+    const [h] = rowsToHoldings([row({ quantity: 10, price: 400 })]);
+    expect(h.lots).toBeUndefined();
+    expect(holdingToRecord(h, { tenantId: "t1" }).fields._lots).toBeUndefined();
+  });
+
   it("works in date order even when the file is not", () => {
     const [h] = rowsToHoldings([
       row({ date: "2024-06-01", action: "Outflow", quantity: 5, price: 450 }),

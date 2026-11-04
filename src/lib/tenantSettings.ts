@@ -37,6 +37,9 @@ export type BudgetPlannerState = {
 /** Credit-card payment-due days, per account id — see cardDue.ts. */
 export type CardDueDaysSetting = Record<string, { day: number; lead: "exact" | "1d" | "3d" }>;
 
+/** Long-term gains already booked, per financial year ("2026-27") — see taxHarvest.ts. */
+export type LtcgBookedSetting = Record<string, number>;
+
 export type TenantSettingsMap = {
   custom_categories: CustomCategories;
   custom_subcategories: CustomSubcategories;
@@ -46,6 +49,7 @@ export type TenantSettingsMap = {
   tracker_views: SavedTrackerView[];
   hidden_categories: HiddenCategories;
   card_due_days: CardDueDaysSetting;
+  ltcg_booked: LtcgBookedSetting;
 };
 
 export type TenantSettingKey = keyof TenantSettingsMap;
@@ -104,6 +108,9 @@ export const TENANT_SETTINGS: {
   // household shares its cards' bills. The monthly reminder itself is derived
   // from this (cardDue.ts) — this is the source of truth for the day.
   card_due_days: {
+    defaultValue: {},
+  },
+  ltcg_booked: {
     defaultValue: {},
   },
 };

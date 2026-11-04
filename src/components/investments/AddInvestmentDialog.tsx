@@ -26,6 +26,7 @@ import {
 } from "@/lib/investmentsStore";
 import { useAccounts } from "@/lib/accountsStore";
 import { SymbolPicker } from "./SymbolPicker";
+import { BuyDateField } from "./BuyDateField";
 
 type AssetType =
   | "stocks"
@@ -386,6 +387,7 @@ export default function AddInvestmentDialog({
                 }}
               />
             </Field>
+            <BuyDateField value={form.buy_date} onChange={(v) => set("buy_date", v)} />
             <div className="grid grid-cols-2 gap-3">
               <OutputBox label="Total Invested" value={fmt(calc.total ?? 0)} />
               <OutputBox label="Buying Avg" value={fmt(calc.avg ?? 0)} />
@@ -439,6 +441,7 @@ export default function AddInvestmentDialog({
             <Field label={<>Current NAV<CurrencyBadge /></>}>
               {N("nav", "0.00")}
             </Field>
+            <BuyDateField value={form.buy_date} onChange={(v) => set("buy_date", v)} sip={mfMode === "SIP"} />
             <div className="grid grid-cols-2 gap-3">
               <OutputBox label="Avg NAV" value={fmt(calc.avgNav ?? 0, 4)} />
               <OutputBox label="Current Value" value={fmt(calc.currentValue ?? 0)} />

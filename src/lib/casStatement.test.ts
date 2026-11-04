@@ -78,6 +78,47 @@ describe("parseCasLines", () => {
     expect(r.quantity * r.price).toBeCloseTo(20000, 2);
   });
 
+  it("keeps each purchase still held, for the tax-harvest planner", () => {
+    expect(rows[0].lots).toEqual([
+      { date: "2024-04-15", qty: 40.123, cost: 50000 / 40.123 },
+      { date: "2025-01-10", qty: 80.222, cost: 100000 / 80.222 },
+    ]);
+  });
+
+  it("a redemption takes the oldest units; an opening balance is dated the period's first day", () => {
+    const [r] = parseCasLines([
+      "01-Apr-2024 To 31-Oct-2026",
+      "P1 - Some Flexi Cap Fund - Direct Growth - ISIN: INF000X01AB1",
+      "Opening Unit Balance: 10.000",
+      "05-May-2024 Purchase 2,000.00 20.000 100.00 30.000",
+      "06-Jun-2025 Redemption (1,800.00) (15.000) 120.00 15.000",
+      "Closing Unit Balance: 15.000 NAV on 31-Oct-2026: INR 150.00 Total Cost Value: 1,500.00",
+    ]);
+    // 10 opening units + 5 of the purchase went out; 15 purchase units remain.
+    expect(r.lots).toEqual([{ date: "2024-05-05", qty: 15, cost: 100 }]);
+
+    const [kept] = parseCasLines([
+      "01-Apr-2024 To 31-Oct-2026",
+      "P1 - Some Flexi Cap Fund - Direct Growth - ISIN: INF000X01AB1",
+      "Opening Unit Balance: 10.000",
+      "05-May-2024 Purchase 2,000.00 20.000 100.00 30.000",
+      "Closing Unit Balance: 30.000 NAV on 31-Oct-2026: INR 150.00 Total Cost Value: 2,800.00",
+    ]);
+    expect(kept.lots).toEqual([
+      { date: "2024-04-01", qty: 10, cost: 80 },
+      { date: "2024-05-05", qty: 20, cost: 100 },
+    ]);
+  });
+
+  it("no lots when they don't add up to the closing balance", () => {
+    const [r] = parseCasLines([
+      "P1 - Some Flexi Cap Fund - Direct Growth - ISIN: INF000X01AB1",
+      "05-May-2024 Purchase 2,000.00 20.000 100.00 20.000",
+      "Closing Unit Balance: 25.000 NAV on 31-Oct-2026: INR 150.00 Total Cost Value: 2,500.00",
+    ]);
+    expect(r.lots).toBeUndefined();
+  });
+
   it("becomes mutual-fund holdings in Investments", () => {
     const holdings = rowsToHoldings(rows);
     expect(holdings.map((h) => h.asset)).toEqual(["mutual_funds", "mutual_funds"]);
@@ -86,5 +127,9 @@ describe("parseCasLines", () => {
       asset: "mutual_funds",
       fields: { units: "120.345", invested: "150000", nav: "1800.5", isin: "INF179K01UT0" },
     });
+    expect(JSON.parse(rec.fields._lots)).toEqual([
+      ["2024-04-15", 40.123, 1246.1680],
+      ["2025-01-10", 80.222, 1246.5408],
+    ]);
   });
 });

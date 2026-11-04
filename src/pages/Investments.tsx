@@ -10,6 +10,7 @@ import { formatCompact, toINR } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import AddInvestmentDialog from "@/components/investments/AddInvestmentDialog";
 import PortfolioList from "@/components/investments/PortfolioList";
+import TaxHarvestCard from "@/components/investments/TaxHarvestCard";
 import DematAccountsSection from "@/components/investments/DematAccountsSection";
 import { InteractiveDonut, NestedDonut } from "@/components/investments/PortfolioDonuts";
 import {
@@ -180,6 +181,8 @@ const Investments = () => {
         onDelete={handleDelete}
         onDeleteMany={handleDeleteMany}
       />
+
+      <TaxHarvestCard records={records} />
 
       <AddInvestmentDialog
         open={open}
