@@ -30,6 +30,7 @@ import WhoFor from "./landing/WhoFor";
 import BucketSplitter from "./landing/BucketSplitter";
 import Farming from "./landing/Farming";
 import Privacy from "./landing/Privacy";
+import BucketPills from "./landing/BucketPills";
 
 /* ═══════════════════════════ page ═══════════════════════════ */
 const Landing = () => {
@@ -155,6 +156,7 @@ const Landing = () => {
             <div aria-hidden="true">
               <GlassDashboard />
             </div>
+            <BucketPills />
           </motion.div>
         </div>
 
@@ -190,7 +192,7 @@ const Landing = () => {
         <Reveal className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
           <div>
             <div className={eyebrow + " mb-3"}>The product</div>
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight max-w-2xl text-white">One canvas. Every dimension of your money.</h2>
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight max-w-2xl text-white">One canvas. <span className="text-[#8b9a94]">Every dimension of your money.</span></h2>
           </div>
           <p className="text-[#9aa3a0] max-w-md">A bento of focused tools — each quiet on its own, transformative together.</p>
         </Reveal>
@@ -220,7 +222,7 @@ const Landing = () => {
       <section id="workflow" ref={wfRef} className="max-w-6xl mx-auto px-6 py-28 scroll-mt-24">
         <Reveal className="text-center mb-16">
           <div className={eyebrow + " mb-3"}>The workflow</div>
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">Three movements. One quiet system.</h2>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">Three movements. <span className="text-[#8b9a94]">One quiet system.</span></h2>
         </Reveal>
         <div className="relative">
           {/* progress rail (desktop) */}
@@ -251,7 +253,7 @@ const Landing = () => {
       <section id="voices" className="max-w-6xl mx-auto px-6 py-28 scroll-mt-24">
         <Reveal className="text-center mb-14">
           <div className={eyebrow + " mb-3"}>Households like yours</div>
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">Different incomes. The same seven buckets.</h2>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">Different incomes. <span className="text-[#8b9a94]">The same seven buckets.</span></h2>
         </Reveal>
         <Voices />
       </section>
@@ -296,7 +298,7 @@ const Landing = () => {
       <section id="faq" className="max-w-3xl mx-auto px-6 py-28 scroll-mt-24">
         <Reveal className="text-center mb-12">
           <div className={eyebrow + " mb-3"}>FAQ</div>
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">Answers, before you ask.</h2>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">Answers, <span className="text-[#8b9a94]">before you ask.</span></h2>
         </Reveal>
         <div className="divide-y divide-white/10 border-y border-white/10">
           {FAQ.map((f) => <FaqItem key={f.q} q={f.q} a={f.a} />)}

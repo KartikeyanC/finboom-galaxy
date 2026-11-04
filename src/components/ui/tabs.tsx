@@ -31,7 +31,7 @@ const TabsTrigger = React.forwardRef<
       // transparent border on every state so the box size never changes between active/inactive (prevents misalignment)
       "inline-flex items-center justify-center whitespace-nowrap rounded-full border border-transparent px-4 py-1.5 text-sm font-semibold leading-none ring-offset-background transition-all",
       // inactive
-      "text-muted-foreground hover:text-foreground hover:bg-primary/8",
+      "text-foreground/70 hover:text-foreground hover:bg-primary/8",
       // BUG-094 — the active pill used to be a translucent green tint
       // (`bg-primary/15`) with matching-hue text (`text-primary`) on top: the
       // same colour twice at different opacities, which reads fine to the eye

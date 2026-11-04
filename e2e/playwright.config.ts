@@ -28,7 +28,9 @@ export default defineConfig({
   // under `import.meta.env.PROD`), so it runs under `pwa.config.ts` against
   // `vite preview`. Left in here it would be picked up by the default
   // testMatch and fail against the dev server for a reason that is not a bug.
-  testIgnore: /pwa\.spec\.ts/,
+  // `capture-screens.spec.ts` is not a test: it saves marketing images and runs
+  // only under its own `capture.config.ts` (`npm run capture:screens`).
+  testIgnore: /(pwa|capture-screens)\.spec\.ts/,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

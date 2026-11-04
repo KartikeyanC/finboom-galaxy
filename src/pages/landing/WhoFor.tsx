@@ -15,7 +15,7 @@ export default function WhoFor() {
       <Reveal className="mb-8">
         <div className={eyebrow + " mb-3"}>Who it's for</div>
         <h2 id="who-title" className="text-3xl md:text-4xl font-semibold tracking-tight text-white max-w-3xl">
-          Built for the person who keeps the household's money on track.
+          Built for the person who keeps <span className="text-[#8b9a94]">the household's money on track.</span>
         </h2>
       </Reveal>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,minmax(0,1fr))]">

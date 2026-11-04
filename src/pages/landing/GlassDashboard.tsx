@@ -46,10 +46,11 @@ const DASH_KPIS = [
   { icon: Target, label: "Saved · Jun", value: "₹64k", delta: "+8.0%", tint: "#C9A84C" },
 ];
 const DASH_ALLOC = [
-  { n: "Essentials", p: 42, c: "#0D7A5F" },
-  { n: "Investments", p: 22, c: "#5DCAA5" },
-  { n: "Wants", p: 19, c: "#C9A84C" },
-  { n: "Giving", p: 17, c: "#2D7DD2" },
+  // The app's own bucket names (BUDGET_BUCKETS) — the mock must not invent others.
+  { n: "Needs", p: 42, c: "#0D7A5F" },
+  { n: "Freedom", p: 22, c: "#5DCAA5" },
+  { n: "Play", p: 19, c: "#C9A84C" },
+  { n: "Others", p: 17, c: "#2D7DD2" },
 ];
 
 /* ── screen flow data ───────────────────────────────────────────── */
@@ -66,7 +67,7 @@ const SCR_INCOME = {
 const SCR_EXPENSE = {
   spent: "₹86,200", of: "₹1,10,000", pct: 78,
   cats: [
-    { n: "Essentials", a: "₹38,400", p: 64, c: "#0D7A5F" },
+    { n: "Rent", a: "₹38,400", p: 64, c: "#0D7A5F" },
     { n: "Food & Dining", a: "₹16,900", p: 40, c: "#2DD4BF" },
     { n: "Transport", a: "₹9,200", p: 24, c: "#C9A84C" },
     { n: "Shopping", a: "₹12,300", p: 31, c: "#e8896b" },
@@ -86,13 +87,13 @@ const SCR_HOLDINGS = [
   { n: "Index Fund", t: "MF", v: "₹4.5L", ch: "+2.3%", up: true },
 ];
 const SCR_BUCKETS = [
-  { n: "Essentials", a: "₹46,200", p: 42, c: "#0D7A5F" },
-  { n: "Investments", a: "₹24,200", p: 22, c: "#5DCAA5" },
-  { n: "Wants", a: "₹20,900", p: 19, c: "#C9A84C" },
-  { n: "Insurance", a: "₹7,700", p: 7, c: "#2D7DD2" },
-  { n: "Short-term", a: "₹5,500", p: 5, c: "#2DD4BF" },
-  { n: "Long-term", a: "₹3,300", p: 3, c: "#a78bfa" },
-  { n: "Charity", a: "₹2,200", p: 2, c: "#e8896b" },
+  { n: "Needs", a: "₹46,200", p: 42, c: "#0D7A5F" },
+  { n: "Financial Freedom", a: "₹24,200", p: 22, c: "#5DCAA5" },
+  { n: "Play", a: "₹20,900", p: 19, c: "#C9A84C" },
+  { n: "Education", a: "₹7,700", p: 7, c: "#2D7DD2" },
+  { n: "Long-Term Savings", a: "₹5,500", p: 5, c: "#a78bfa" },
+  { n: "Giving", a: "₹3,300", p: 3, c: "#e8896b" },
+  { n: "Agri", a: "₹2,200", p: 2, c: "#2DD4BF" },
 ];
 const SCR_GOALS = [
   { n: "Emergency Fund", cur: "₹4.1L", tgt: "₹5.0L", p: 82, c: "#0D7A5F" },

@@ -17,7 +17,7 @@ export default function Privacy() {
         <div>
           <div className={eyebrow + " mb-3"}>Your data</div>
           <h2 id="privacy-title" className="text-4xl md:text-5xl font-semibold tracking-tight text-white max-w-2xl">
-            What happens to your money data, in plain words.
+            What happens to your money data, <span className="text-[#8b9a94]">in plain words.</span>
           </h2>
         </div>
         <Link to="/privacy" data-cursor className="inline-flex items-center gap-1.5 min-h-[44px] text-sm text-[#c9cfcc] hover:text-white">

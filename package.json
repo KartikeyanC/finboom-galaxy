@@ -19,6 +19,7 @@
     "e2e": "playwright test --config e2e/playwright.config.ts",
     "e2e:headed": "playwright test --config e2e/playwright.config.ts --headed",
     "e2e:report": "playwright show-report playwright-report",
+    "capture:screens": "playwright test --config e2e/capture.config.ts",
     "drain:storage": "node scripts/storage-purge.mjs"
   },
   "dependencies": {
