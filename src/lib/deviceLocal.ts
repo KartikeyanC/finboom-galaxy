@@ -112,6 +112,14 @@ export const DEVICE_LOCAL_STATE: readonly DeviceLocalEntry[] = [
       "Drives the 12-hour re-authentication rule for this device. A different device has its own clock on that.",
   },
   {
+    key: "finroot.lastlogout.",
+    prefix: true,
+    store: "local",
+    label: "Last lock or sign-out",
+    reason:
+      "When this device last locked or signed out, kept beside the last password sign-in for the same 12-hour rule. It describes this device's session, so another device has no use for it.",
+  },
+  {
     key: "finroot.unlocked.",
     prefix: true,
     store: "session",
@@ -239,6 +247,10 @@ export const LEGACY_IMPORT_ONLY_KEYS: readonly string[] = [
   "budgetAllocator.v1",
   "finroot.baseCurrency",
   "finroot.recurring.reminders.v1",
+  // Account balance history, per user, until 2026-11-05 — now the workspace's
+  // `balance_history` setting. Surfaced when the scanner learned to resolve
+  // keys built by a helper: `getItem(legacyKey(userId))`.
+  "finroot.balance_history.",
 ];
 
 export function isRegisteredDeviceLocal(key: string): boolean {

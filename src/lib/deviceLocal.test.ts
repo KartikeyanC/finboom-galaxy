@@ -66,6 +66,20 @@ function storageKeysInSource(): { key: string; file: string }[] {
       const hit = decl.exec(src);
       if (hit) found.push({ key: hit[1], file: rel });
     }
+    // Built by a helper: `getItem(legacyKey(userId))`, where the helper returns
+    // a template. Record its static prefix. Missed until 2026-11-05, which is
+    // how a whole feature's data (account balance history) stayed in the
+    // browser without ever being registered.
+    for (const m of src.matchAll(
+      /(?:localStorage|sessionStorage)\.(?:get|set|remove)Item\(\s*([A-Za-z_$][\w$]*)\(/g,
+    )) {
+      const name = m[1];
+      const helper = new RegExp(
+        `(?:function\\s+${name}\\s*\\([^)]*\\)[^{]*\\{\\s*return\\s*|\\b(?:const|let)\\s+${name}\\s*=\\s*\\([^)]*\\)[^=]*=>\\s*)\`([^\`$]*)\\$\\{`,
+      );
+      const hit = helper.exec(src);
+      if (hit?.[1]) found.push({ key: hit[1], file: rel });
+    }
   }
   return found;
 }

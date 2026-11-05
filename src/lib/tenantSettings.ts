@@ -40,6 +40,22 @@ export type CardDueDaysSetting = Record<string, { day: number; lead: "exact" | "
 /** Long-term gains already booked, per financial year ("2026-27") — see taxHarvest.ts. */
 export type LtcgBookedSetting = Record<string, number>;
 
+/** One manual balance change on an account (useAccountBalanceHistory). */
+export type BalanceEntry = {
+  id: string;
+  /** Balance before and after the edit. */
+  from: number;
+  to: number;
+  note?: string;
+  /** ISO time of the edit. */
+  at: string;
+  /** Who made it (auth user id). */
+  by?: string;
+};
+
+/** Balance edits per account id, newest first, capped per account. */
+export type BalanceHistorySetting = Record<string, BalanceEntry[]>;
+
 export type TenantSettingsMap = {
   custom_categories: CustomCategories;
   custom_subcategories: CustomSubcategories;
@@ -50,6 +66,7 @@ export type TenantSettingsMap = {
   hidden_categories: HiddenCategories;
   card_due_days: CardDueDaysSetting;
   ltcg_booked: LtcgBookedSetting;
+  balance_history: BalanceHistorySetting;
 };
 
 export type TenantSettingKey = keyof TenantSettingsMap;
@@ -111,6 +128,13 @@ export const TENANT_SETTINGS: {
     defaultValue: {},
   },
   ltcg_booked: {
+    defaultValue: {},
+  },
+  // Each account's manual balance edits. Lived in localStorage per USER until
+  // 2026-11-05, so history made on one device never reached another and
+  // clearing the browser lost it. No legacyKey: the old key carried the user
+  // id, so useAccountBalanceHistory imports it itself.
+  balance_history: {
     defaultValue: {},
   },
 };

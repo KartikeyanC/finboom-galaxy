@@ -145,8 +145,10 @@ any "check both themes" that uses it silently checks one theme twice. `applyThem
 covers the viewport, hit-testable, for ~2.8 s, so anything that measures or clicks on `/` must wait
 it out (`settle()`, same file).
 
-A few `lib/*Store.ts` localStorage stores remain (accounts, trips, debts, reminders, net worth,
-investments) and are still pending migration to tenant-scoped tables. Genuinely device-local keys
+The `lib/*Store.ts` stores (accounts, trips, debts, insurance, investments, net worth, reminders,
+subscriptions) all read and write tenant-scoped tables; each still reads its old localStorage key
+once, to bring a device's data across. The last real data left in the browser, account balance
+history, moved to the `balance_history` workspace setting on 2026-11-05. Genuinely device-local keys
 are registered in `src/lib/deviceLocal.ts` — **a new localStorage key must be registered there or
 its guard test fails**, which is the point.
 
