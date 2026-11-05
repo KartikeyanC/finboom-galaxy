@@ -103,7 +103,7 @@ export function rowsToHoldings(rows: ImportedRow[]): ImportedHolding[] {
     out.push({
       key,
       asset: fund ? "mutual_funds" : "stocks",
-      name: a.first.asset.trim(),
+      name: (a.first.name || a.first.asset).trim(),
       ticker: fund ? undefined : key,
       isin: a.first.isin,
       qty: round(a.qty),

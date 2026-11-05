@@ -73,8 +73,9 @@ export function usePdfPassword() {
         >
           <DialogHeader>
             <DialogTitle>This PDF is locked</DialogTitle>
-            <DialogDescription className="break-all">
-              {ask?.file} needs a password. For a CAS it is the one you set when you requested it.
+            <DialogDescription className="break-words">
+              {ask?.file} needs a password. A CAMS / KFintech CAS uses the one you set when you
+              requested it; an NSDL or CDSL CAS uses your PAN in capitals.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">

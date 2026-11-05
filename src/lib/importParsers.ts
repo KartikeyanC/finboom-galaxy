@@ -11,6 +11,8 @@ import {
   type PdfText,
 } from "./sheetRows";
 import { isCasText, parseCasLines } from "./casStatement";
+import { isDepositoryText, parseDepositoryLines } from "./depositoryStatement";
+import { resolveIsinTickers } from "./isinTickers";
 
 // pdfjs is heavy (~1MB) and only needed for PDF statements, so it is lazily
 // imported inside parsePDF rather than eagerly at module load. This keeps it
@@ -40,6 +42,8 @@ export type ImportedRow = {
   isin?: string;
   /** Last / previous-close price or NAV, when the export carries one. */
   ltp?: number;
+  /** The display name when [asset] is a trading symbol (a depository statement's share). */
+  name?: string;
   /** The purchases this row stands for, oldest first, when the source lists them (a CAS). */
   lots?: { date: string; qty: number; cost: number }[];
 };
@@ -272,7 +276,10 @@ export async function parsePDF(file: File, opts: ParseOptions = {}): Promise<Imp
   }
   // A mutual-fund CAS (CAMS / KFintech): one holding per fund.
   const lineText = lines.map((l) => l.map((c) => c.text).join(" "));
-  if (isCasText(lineText.join("\n"))) return parseCasLines(lineText);
+  const joined = lineText.join("\n");
+  // An NSDL / CDSL statement: shares and funds, shares looked up by ISIN.
+  if (isDepositoryText(joined)) return resolveIsinTickers(parseDepositoryLines(lineText));
+  if (isCasText(joined)) return parseCasLines(lineText);
 
   // A real table first: the header row found by its column names, every
   // cell placed under the header column it sits beneath.

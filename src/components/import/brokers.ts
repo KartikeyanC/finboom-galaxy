@@ -69,6 +69,22 @@ export const BROKERS: Broker[] = [
       "Adds every mutual fund under your PAN — units, cost and latest NAV — whichever app you bought it on.",
   },
   {
+    // The depository statement: every share and fund under a PAN (depositoryStatement.ts).
+    value: "NSDL/CDSL CAS",
+    label: "Shares + funds (NSDL / CDSL CAS)",
+    initial: "DP",
+    brand: "#1D4ED8",
+    url: "nsdl.co.in",
+    steps: [
+      "Find the monthly **NSDL CAS** or **CDSL CAS** email sent to your registered email",
+      "Or request one from **nsdl.co.in** → CAS, or from cdslindia.com",
+      "Download the PDF from the email",
+      "Upload it below; its password is your **PAN in capitals**",
+    ],
+    footnote:
+      "Adds every share and fund in your demat accounts and folios. Shares come in at today's price — the statement doesn't say what you paid — so edit them to add the buy price.",
+  },
+  {
     value: "INDmoney",
     label: "INDmoney",
     initial: "↑",
