@@ -207,7 +207,21 @@ keeping: the checklist counts real rows rather than storing "the user did X", an
 excluded from those counts by recorded id. If you add to the sample workspace, keep it anchored to
 the calendar month (`src/lib/onboarding.ts`) — "days ago" put the salary in the wrong month.
 
-### Pending migrations — none, as of 2026-08-17
+### Pending migrations — one, as of 2026-11-05
+
+`supabase/migrations/20261105120000_stage5_edge_usage.sql` — **written, NOT applied.** Stage 5.9
+cost alerting: `edge_usage` (calls/errors per function per hour), `edge_usage_alerts`, and
+`record_edge_call()` (service_role only), which notifies every platform admin once per function /
+window / kind when a limit in `site_settings.edge_usage_limits` is crossed or the hourly error rate
+passes it. Every edge function is wrapped in `metered()` (`supabase/functions/_shared/usage.ts`),
+which records after the response and swallows every failure — so the functions are safe to deploy
+before the migration, they just count nothing. `/po` shows it in `PoEdgeUsage`, which says "Not
+switched on yet" until then. `types.ts` carries the two tables by hand; a regen replaces them with
+the same shape. To switch on: apply per [apply-a-migration.md](./docs/runbooks/apply-a-migration.md),
+run the smoke test at the foot of the migration, then redeploy all functions
+([deploy.md](./docs/runbooks/deploy.md)).
+
+### Earlier pending migrations — none left, as of 2026-08-17
 
 `supabase/migrations/20260815100000_stage6_onboarding_wizard.sql` — adds `profiles.onboarding_completed`
 / `onboarding_step` / `onboarding_selections` for the Stage 6.1 selection-only onboarding wizard

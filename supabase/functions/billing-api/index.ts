@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { metered } from "../_shared/usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,7 +42,7 @@ async function paddleFetch(envName: "sandbox" | "live", path: string, init: Requ
   return { ok: res.ok, status: res.status, json };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(metered("billing-api", async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -193,4 +194,4 @@ Deno.serve(async (req) => {
     console.error("billing-api error", e);
     return json({ error: String(e) }, 500);
   }
-});
+}));

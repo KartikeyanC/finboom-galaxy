@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Building2, Users, CreditCard, AlertTriangle, UserPlus, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import PoAccountDeletions from "@/components/po/PoAccountDeletions";
+import PoEdgeUsage from "@/components/po/PoEdgeUsage";
 
 type Stats = {
   total_tenants: number;
@@ -107,6 +108,8 @@ export default function PoDashboard() {
           </div>
         </>
       )}
+
+      <PoEdgeUsage />
 
       <PoAccountDeletions />
 

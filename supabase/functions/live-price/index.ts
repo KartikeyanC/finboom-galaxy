@@ -12,6 +12,7 @@
 // The GET form is kept for one-off manual checks and older clients.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { metered } from "../_shared/usage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -251,7 +252,7 @@ function parseWants(body: unknown): Want[] {
   return out;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(metered("live-price", async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {
@@ -285,4 +286,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ prices: {}, price: null, error: String(e) });
   }
-});
+}));

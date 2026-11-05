@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { handleEmailIngest } from "./handler.ts";
+import { metered } from "../_shared/usage.ts";
 
 // Stage 7 — inbound e-mail parser webhook. Server-to-server only: no CORS
 // headers. Deploy with --no-verify-jwt; each call carries its route's secret
@@ -10,7 +11,7 @@ import { handleEmailIngest } from "./handler.ts";
 
 const env = (k: string) => Deno.env.get(k) ?? "";
 
-Deno.serve(async (req) => {
+Deno.serve(metered("email-ingest", async (req) => {
   const supabase = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false },
   });
@@ -57,4 +58,4 @@ Deno.serve(async (req) => {
       headers: { "content-type": "application/json" },
     });
   }
-});
+}));

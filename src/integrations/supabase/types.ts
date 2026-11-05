@@ -425,6 +425,57 @@ export type Database = {
           },
         ]
       }
+      edge_usage: {
+        Row: {
+          calls: number
+          errors: number
+          fn: string
+          hour: string
+        }
+        Insert: {
+          calls?: number
+          errors?: number
+          fn: string
+          hour: string
+        }
+        Update: {
+          calls?: number
+          errors?: number
+          fn?: string
+          hour?: string
+        }
+        Relationships: []
+      }
+      edge_usage_alerts: {
+        Row: {
+          created_at: string
+          fn: string
+          kind: string
+          limit_value: number
+          observed: number
+          period: string
+          period_start: string
+        }
+        Insert: {
+          created_at?: string
+          fn: string
+          kind: string
+          limit_value: number
+          observed: number
+          period: string
+          period_start: string
+        }
+        Update: {
+          created_at?: string
+          fn?: string
+          kind?: string
+          limit_value?: number
+          observed?: number
+          period?: string
+          period_start?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           category: string | null

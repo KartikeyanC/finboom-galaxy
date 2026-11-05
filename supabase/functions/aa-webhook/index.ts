@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { aaVendorFromEnv } from "../_shared/ingest/aa_vendor.ts";
 import { handleAaWebhook } from "./handler.ts";
+import { metered } from "../_shared/usage.ts";
 
 // Stage 7 — Account Aggregator webhook. Server-to-server only: no CORS
 // headers, no browser ever calls this. Deploy with --no-verify-jwt (the vendor
@@ -12,7 +13,7 @@ import { handleAaWebhook } from "./handler.ts";
 
 const env = (k: string) => Deno.env.get(k) ?? "";
 
-Deno.serve(async (req) => {
+Deno.serve(metered("aa-webhook", async (req) => {
   const supabase = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false },
   });
@@ -68,4 +69,4 @@ Deno.serve(async (req) => {
       headers: { "content-type": "application/json" },
     });
   }
-});
+}));

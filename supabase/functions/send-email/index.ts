@@ -17,6 +17,7 @@
 // Still no-ops gracefully when RESEND_API_KEY is not configured. Requires a
 // logged-in caller (verify_jwt — no config.toml override, so it defaults on).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { metered } from "../_shared/usage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -102,7 +103,7 @@ type Invitation = {
   revoked_at: string | null;
 };
 
-Deno.serve(async (req) => {
+Deno.serve(metered("send-email", async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
@@ -203,4 +204,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
-});
+}));

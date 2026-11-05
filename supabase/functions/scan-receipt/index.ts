@@ -7,6 +7,7 @@
 // secretLockedOut(): fails OPEN on a query error (a broken limiter should
 // degrade to "allow", never "nobody can scan a receipt").
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { metered } from "../_shared/usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -205,7 +206,7 @@ function validateResult(raw: unknown): {
   };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(metered("scan-receipt", async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return new Response("method not allowed", { status: 405, headers: corsHeaders });
 
@@ -265,4 +266,4 @@ Deno.serve(async (req) => {
     console.error("scan-receipt error", e);
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
-});
+}));

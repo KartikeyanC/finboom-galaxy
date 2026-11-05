@@ -81,6 +81,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   price_cache: "Market prices keyed by security symbol. Shared, and contains nobody's identity.",
   platform_admins: "Which staff accounts are platform administrators.",
   storage_purge_queue: "Operational queue for deleting files after a workspace is purged.",
+  edge_usage: "Hourly call and error counts per server function (Stage 5.9). Counts only — no caller, user or workspace is recorded.",
+  edge_usage_alerts: "When a server function went over its usage or error limit. Operational, with no user or workspace in it.",
   // Listed here even though it is tied to a user, because the decision it
   // records is "not exported" and this is the list that holds those decisions.
   // It may be absent from the generated types until 20261101120000 is applied

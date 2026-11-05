@@ -6,6 +6,7 @@
 //                   exchanges via supabase.auth.verifyOtp({ token_hash, type:'magiclink' }).
 // Public function (verify_jwt = false). Uses the service-role key server-side.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { metered } from "../_shared/usage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -76,7 +77,7 @@ async function secretLockedOut(admin: AdminClient, identifier: string): Promise<
   }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(metered("po-auth", async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {
@@ -147,4 +148,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
-});
+}));

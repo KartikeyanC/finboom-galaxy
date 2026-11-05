@@ -113,7 +113,7 @@ closes most of the risk.
 | Status page | ❌ none |
 | Support channel | ❌ landing contact is the placeholder `hello@finroots.app` |
 | Capacity plan | ❌ none |
-| Cost monitoring | ❌ none — unthrottled public edge functions |
+| Cost monitoring | ⚠️ built, not yet applied — per-function hourly counts with limit and error-rate alerts to platform admins (Stage 5.9, migration `20261105120000`) |
 | Log retention | ❌ undefined |
 | Incident process | ❌ undefined |
 
