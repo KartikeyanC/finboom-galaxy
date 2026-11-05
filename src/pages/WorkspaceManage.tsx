@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   ChevronDown,
@@ -36,12 +37,16 @@ import RecurringDialog from "@/components/recurring/RecurringDialog";
 import MemberCard, { type MemberRow } from "./workspace/MemberCard";
 import ReminderSummaryBar from "./workspace/ReminderSummaryBar";
 import { MODULE_ICON } from "./workspace/moduleIcons";
+import InviteLinkPanel from "./workspace/InviteLinkPanel";
+import PendingInvites from "./workspace/PendingInvites";
+import { invitesKey, type InviteShare } from "@/lib/inviteShare";
 
 /* ────────────────────────────────── main page ───────────────────────────────── */
 
 export default function WorkspaceManage() {
   const { members, refresh } = useAccess();
-  const { currentTenantId } = useTenant();
+  const { currentTenantId, current } = useTenant();
+  const qc = useQueryClient();
 
   /* ── member rows (optimistic) ── */
   const [rows, setRows] = useState<MemberRow[]>([]);
@@ -66,7 +71,7 @@ export default function WorkspaceManage() {
   const [showInviteMenus, setShowInviteMenus] = useState(false);
   // Shown once, right after creating an invitation — the token is never
   // retrievable again (only its hash is stored).
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<InviteShare | null>(null);
 
   /* ── helpers ── */
   const persistMenus = async (userId: string, menus: string[]) => {
@@ -145,16 +150,23 @@ export default function WorkspaceManage() {
 
     const row = Array.isArray(data) ? data[0] : data;
     if (row?.token) {
-      setInviteLink(`${window.location.origin}/invite/${row.token}`);
+      setInviteLink({
+        email: email.toLowerCase(),
+        role: inviteRole,
+        workspace: current?.name,
+        expiresAt: row.expires_at,
+        link: `${window.location.origin}/invite/${row.token}`,
+      });
     }
     // No email is sent: `send-email` is deliberately not deployed (BUG-005).
     // The inviter shares the link themselves, which is why it is shown rather
     // than merely confirmed.
     toast.success(`Invitation created for ${email}`, {
-      description: "Copy the link below and send it to them.",
+      description: "Send them the link below.",
     });
     setInviteEmail(""); setInviteRole("viewer"); setInviteMenus([...ALL_MENU_IDS]);
     setShowInviteMenus(false);
+    qc.invalidateQueries({ queryKey: invitesKey(currentTenantId) });
     await refresh();
   };
 
@@ -209,7 +221,8 @@ export default function WorkspaceManage() {
           <div className="flex items-start gap-2 rounded-lg border border-border/50 bg-background/40 px-4 py-3 text-xs text-muted-foreground">
             <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
             <span>
-              Inviting someone gives you a <strong className="text-foreground">link to send them</strong>.
+              Inviting someone gives you a <strong className="text-foreground">link to send them</strong> by
+              email, WhatsApp or however you like.
               They don&rsquo;t need a FinRoot account yet — if they sign up with the invited email
               they join automatically. Links last 14 days and only work for that address.
               Permissions are enforced server-side and take effect immediately.
@@ -258,42 +271,8 @@ export default function WorkspaceManage() {
               </Button>
             </div>
 
-            {/* Stage 3.8: the link IS the invitation. Shown once — the raw token
-                is not stored, only its hash, so it cannot be looked up again. */}
             {inviteLink && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
-                <div className="text-xs font-semibold text-foreground">
-                  Invitation link — copy it now
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Send this to them yourself. It works whether or not they already have an
-                  account, expires in 14 days, and can only be used by that email address.
-                  This is the only time it can be shown.
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded bg-background/70 px-2 py-1.5 text-xs">
-                    {inviteLink}
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(inviteLink);
-                        toast.success("Link copied");
-                      } catch {
-                        toast.error("Copy failed — select the link and copy it manually");
-                      }
-                    }}
-                  >
-                    Copy
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setInviteLink(null)}>
-                    Done
-                  </Button>
-                </div>
-              </div>
+              <InviteLinkPanel invite={inviteLink} onDone={() => setInviteLink(null)} />
             )}
 
             {/* Pre-set module permissions for invite */}
@@ -369,6 +348,12 @@ export default function WorkspaceManage() {
               )}
             </div>
           </div>
+
+          <PendingInvites
+            tenantId={currentTenantId}
+            workspace={current?.name}
+            onNewLink={setInviteLink}
+          />
 
           {/* ── Member list ── */}
           <div className="space-y-3">

@@ -17,6 +17,7 @@ import { LockScreen } from "@/components/LockScreen";
 import { PinSetup } from "@/components/PinSetup";
 import { OnboardingWizard } from "@/components/onboarding-wizard/OnboardingWizard";
 import { useOnboardingWizard } from "@/hooks/useOnboardingWizard";
+import { peekPendingInvite } from "@/lib/pendingInvite";
 
 export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -101,6 +102,14 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   if (!user) {
     if (deliberateSignOut) return null;
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // BUG-020 — signed in by a route that lands on /app (Google, or the sign-up
+  // confirmation mail) while an invitation link was waiting: finish it first.
+  // AcceptInvite clears the token whatever the outcome, so this cannot loop.
+  const pendingInvite = peekPendingInvite();
+  if (pendingInvite) {
+    return <Navigate to={`/invite/${pendingInvite}`} replace />;
   }
 
   // Stage 6.1 — a brand-new user answers a short selection-only profile

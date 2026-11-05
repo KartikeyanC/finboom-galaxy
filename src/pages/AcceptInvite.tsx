@@ -6,6 +6,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { FinrootLogo } from "@/components/brand/FinrootLogo";
 import { toUserMessage } from "@/lib/errorMessages";
+import { clearPendingInvite, savePendingInvite } from "@/lib/pendingInvite";
 import { Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 /**
@@ -19,11 +20,9 @@ import { Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
  *   signed out → keep the token, send them to sign in / sign up, come back
  *
  * A user who signs up with the invited address does not even need to return:
- * `handle_new_user` claims the invitation on signup. This page then reports
- * "already a member", which is the truth rather than an error.
+ * `handle_new_user` claims the invitation on signup. The token then reads as
+ * used, and this page says they joined at sign-up rather than showing an error.
  */
-const PENDING_KEY = "finroot.pendingInvite";
-
 export default function AcceptInvite() {
   const { token = "" } = useParams();
   const { user, loading: authLoading } = useAuth();
@@ -37,14 +36,11 @@ export default function AcceptInvite() {
     if (authLoading) return;
 
     if (!user) {
-      // Survive the round trip through auth. sessionStorage, not localStorage:
-      // an invitation is for this visit, not something to leave on the device.
-      try {
-        sessionStorage.setItem(PENDING_KEY, token);
-      } catch {
-        /* private mode — they can re-open the link */
-      }
-      navigate("/auth", { replace: true });
+      // Email sign-in comes straight back via `from`; Google and the sign-up
+      // confirmation mail land on /app, where ProtectedRoute picks the saved
+      // token up (pendingInvite.ts).
+      savePendingInvite(token);
+      navigate("/auth", { replace: true, state: { from: { pathname: `/invite/${token}` } } });
       return;
     }
 
@@ -52,14 +48,19 @@ export default function AcceptInvite() {
     (async () => {
       const { data, error } = await supabase.rpc("accept_invitation", { p_token: token });
       if (cancelled) return;
-
-      try {
-        sessionStorage.removeItem(PENDING_KEY);
-      } catch {
-        /* ignore */
-      }
+      clearPendingInvite();
 
       if (error) {
+        // Signing up with the invited address already claimed the invitation
+        // (handle_new_user), so the token reads as used. That is a success.
+        const joined = await joinedAtSignup(user.id, user.created_at);
+        if (cancelled) return;
+        if (joined) {
+          await refresh?.();
+          setState("ok");
+          setMessage(`You were added to ${joined} when you created your account.`);
+          return;
+        }
         setState("error");
         setMessage(toUserMessage(error, "That invitation link is not valid any more."));
         return;
@@ -126,4 +127,21 @@ export default function AcceptInvite() {
       </div>
     </div>
   );
+}
+
+/**
+ * For an account made in the last day: the name of a workspace it joined as a
+ * member rather than an owner, i.e. one an invitation added it to at sign-up.
+ */
+async function joinedAtSignup(userId: string, createdAt?: string): Promise<string | null> {
+  if (!createdAt || Date.now() - new Date(createdAt).getTime() > 86_400_000) return null;
+  const { data } = await supabase
+    .from("tenant_members")
+    .select("role, tenants(name)")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .neq("role", "owner")
+    .limit(1);
+  const row = data?.[0] as { tenants?: { name?: string } | null } | undefined;
+  return row ? row.tenants?.name || "the workspace" : null;
 }
