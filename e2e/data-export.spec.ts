@@ -78,18 +78,20 @@ test("settings explains what deletion does before offering the route", async ({ 
 
   // The consequences must appear BEFORE any route to requesting it — a user
   // must not be able to ask for erasure without being told what it takes.
-  await expect(page.getByRole("link", { name: /compose the request/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^request deletion$/i })).toHaveCount(0);
   await start.click();
 
   const text = await page.locator("body").innerText();
-  expect(text).toMatch(/30-day recovery window/i);
+  expect(text).toMatch(/30 days/i);
   expect(text).toMatch(/uploaded documents/i);
   expect(text).toMatch(/workspace/i);
 
-  const compose = page.getByRole("link", { name: /compose the request/i });
-  await expect(compose).toBeVisible();
-  const href = await compose.getAttribute("href");
-  expect(href).toContain("mailto:");
-  expect(decodeURIComponent(href!)).toContain(EMAIL);      // identifies the account
-  expect(decodeURIComponent(href!)).toContain("Account id:");
+  // The request stays locked until DELETE is typed. This test never sends it:
+  // it signs in as the shared demo account.
+  const send = page.getByRole("button", { name: /^request deletion$/i });
+  await expect(send).toBeDisabled();
+  await page.getByLabel(/to confirm/i).fill("DELETE");
+  await expect(send).toBeEnabled();
+  await page.getByRole("button", { name: /^cancel$/i }).click();
+  await expect(send).toHaveCount(0);
 });

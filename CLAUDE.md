@@ -238,12 +238,13 @@ cast that existed only because a function wasn't in the generated types yet
 - `20260811120000_stage5_legal_acceptance.sql` — `profiles.legal_version` / `legal_accepted_at` and
   `record_legal_acceptance()`. Sign-up now records acceptance instead of logging a console warning.
 - `20260811130000_stage5_account_deletion.sql` — the account-deletion request queue and
-  `request_account_deletion()` (Stage 5.2). **The schema exists now, but `DeleteAccountCard.tsx`
-  still hasn't been rewired to call it** — it deliberately still routes deletion by email, because
-  wiring a real self-service button also needs a `service_role` edge-function step (deleting the
-  auth user, draining uploaded files) that applying this migration alone does not provide. See
-  [docs/runbooks/account-deletion.md](./docs/runbooks/account-deletion.md). That rewiring is
-  separate, not-yet-started work.
+  `request_account_deletion()` (Stage 5.2). **Wired 2026-11-05:** Settings → "Delete your account"
+  records a request (typed DELETE to confirm), shows its date and lets the person cancel within the
+  30-day window; `/po` lists the due ones (`PoAccountDeletions`) and records each as done. The
+  deleting itself is still the operator's, with service_role — deleting the auth user and draining
+  uploaded files can't run in the browser or in SQL. See
+  [docs/runbooks/account-deletion.md](./docs/runbooks/account-deletion.md). If the request table
+  can't be read, the card falls back to the emailed request.
 - `20260812120000_stage5_analytics.sql` — `po_tenant_engagement()` and `po_tenant_activity_months()`
   (Stage 5.8). `/po/analytics` now shows real activation/retention figures instead of the
   migration-missing message; `usePoAnalytics.ts` keeps its `isMissingFunction()` fallback as a

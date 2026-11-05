@@ -1,8 +1,11 @@
 # Runbook — deleting an account
 
-**Status:** the request queue (`20260811130000_stage5_account_deletion.sql`) is **written but not
-applied**. Until it is, requests arrive by email from the Settings page and this runbook is followed
-by hand from step 3.
+**Status (2026-11-05):** the request queue (`20260811130000_stage5_account_deletion.sql`) is live and
+Settings → "Delete your account" files requests into it. A request made while signed in **is** the
+identity check of step 1. Requests whose 30-day window has ended appear on the PO overview (`/po`,
+"Due account deletions"); work through steps 2 and 4–6 for each, then **Mark done** there with a
+note of what was done — that note is the audit trail. A request that arrives by email (the card's
+fallback) still starts at step 1.
 
 **Promise made to the user:** in the [Privacy Policy](../../src/pages/legal/PrivacyPolicy.tsx) —
 identity confirmed, acted on within 30 days, told when it is done. There is a 30-day recovery window
