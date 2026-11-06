@@ -124,6 +124,19 @@ test.describe("calendar", () => {
     test.setTimeout(120_000);
     const NOTE = `E2E calendar ${Date.now()}`;
 
+    // From the keyboard, the way a keyboard user reaches it: the button only
+    // shows on hover/focus, and a pointer click (even forced) landed on the
+    // "Transaction added" toast that sits over this row's right edge.
+    const deleteRow = async (note: string) => {
+      const row = day.locator("div.group", { hasText: note });
+      await row.getByRole("button", { name: `Delete ${note}` }).focus();
+      await page.keyboard.press("Enter");
+      const confirm = page.getByRole("alertdialog");
+      await expect(confirm).toContainText(/cannot be undone/i);
+      await confirm.getByRole("button", { name: "Delete", exact: true }).click();
+      await expect(day.getByText(note)).toHaveCount(0, { timeout: 15_000 });
+    };
+
     const cal = page.getByRole("region", CAL);
     const day = page.getByRole("region", DAY);
     const monthHeading = cal.getByRole("heading", { level: 2 });
@@ -134,6 +147,15 @@ test.describe("calendar", () => {
     // silently defaulted to today would land in a different month.
     await cal.getByRole("button", { name: "Previous month" }).click();
     await expect(monthHeading).not.toHaveText(thisMonth, { timeout: 10_000 });
+
+    // A run that failed between adding and deleting leaves its row behind on
+    // this day; sweep those first so they cannot pile up on the demo account.
+    const leftovers = day.getByText(/^E2E calendar \d+$/);
+    await page.waitForTimeout(1500); // let the day's rows load
+    for (let n = await leftovers.count(); n > 0; n = await leftovers.count()) {
+      const text = (await leftovers.first().textContent())?.trim() ?? "";
+      await deleteRow(text);
+    }
 
     await day.getByRole("button", { name: "Out", exact: true }).click();
     const dialog = page.getByRole("dialog");
@@ -155,14 +177,7 @@ test.describe("calendar", () => {
     await cal.getByRole("button", { name: "Previous month" }).click();
     await expect(day.getByText(NOTE)).toBeVisible({ timeout: 15_000 });
 
-    const row = day.locator("div.group", { hasText: NOTE });
-    await row.hover();
-    await row.getByRole("button", { name: `Delete ${NOTE}` }).click({ force: true });
-    const confirm = page.getByRole("alertdialog");
-    await expect(confirm).toContainText(/cannot be undone/i);
-    await confirm.getByRole("button", { name: "Delete", exact: true }).click();
-
-    await expect(day.getByText(NOTE)).toHaveCount(0, { timeout: 15_000 });
+    await deleteRow(NOTE);
   });
 
   test("a goal's target date shows on the calendar as a Goal marker", async () => {

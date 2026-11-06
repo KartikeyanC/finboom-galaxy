@@ -32,6 +32,12 @@ export default defineConfig({
   // only under its own `capture.config.ts` (`npm run capture:screens`).
   testIgnore: /(pwa|capture-screens)\.spec\.ts/,
   fullyParallel: false,
+  // One worker, always. Every spec signs in as the SAME demo account, and
+  // fullyParallel:false only keeps tests within a file in order — separate
+  // files still ran at once, collided on that account (PIN, lock state,
+  // trackers), and read as product bugs. CLAUDE.md said "--workers=1"; the
+  // config now says it, so `npm run e2e` cannot forget (2026-11-06).
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: [["list"], ["html", { outputFolder: "../playwright-report", open: "never" }]],

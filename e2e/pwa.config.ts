@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
@@ -34,7 +35,7 @@ export default defineConfig({
     // Playwright resolves `cwd` against the config file, which lives in e2e/ —
     // and `dist` is at the repo root, so without this `vite preview` reports
     // "did you build your project?" against a build that is sitting right there.
-    cwd: new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"),
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
     url: `http://localhost:${PORT}`,
     reuseExistingServer: true,
     timeout: 60_000,

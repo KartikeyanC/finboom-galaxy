@@ -134,9 +134,21 @@ only under `import.meta.env.PROD`:
 npm run build && npx playwright test --config e2e/pwa.config.ts   # UI-T17, 5 passing
 ```
 
-🔴 **Run Playwright serially.** `fullyParallel: false` is set but no worker count is, so separate
-spec *files* still run at once — and they all sign in as the same demo account. A parallel run
-fails on contention, which reads as a product bug and is not one.
+🔴 **Run Playwright serially, against the build.** Every spec signs in as the same demo account,
+so `e2e/playwright.config.ts` now sets `workers: 1` itself (2026-11-06) — before that, separate
+spec files ran at once and collided. And on this machine the dev server compiles pages on first
+request too slowly for the suite: two dev-server runs failed 15 and 19 tests, mostly pages still
+"Loading" at the timeout. Use the production build instead:
+
+```bash
+npm run build && npm run e2e:preview    # e2e/preview.config.ts → vite preview on :4174
+```
+
+**Baseline 2026-11-06 (`e2e:preview`, 90 tests): 84 pass, 2 fail, 4 do not run.** The two reds:
+`cross-browser` (Firefox and WebKit are not installed here — `npx playwright install firefox
+webkit`) and `onboarding-wizard` (a fresh sign-up needs a service-role key); the 4 skipped are the
+rest of the serial groups those failures stop.
+`calendar` was a test bug (a toast covered the Delete button) and is fixed.
 
 🔴 **The theme is `finroot.theme` in localStorage** (five presets, default `obsidian`), read by
 `ThemeContext` — **not** `prefers-color-scheme`. `emulateMedia({colorScheme})` changes nothing, so
