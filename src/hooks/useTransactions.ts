@@ -71,20 +71,6 @@ export interface TransactionInput {
 }
 
 /**
- * ⚠️ TEMPORARY — remove when `types.ts` is regenerated.
- *
- * The generated Insert/Update types are built from a schema that predates
- * `transactions.tracker_id`, and they reject any key they do not recognise
- * (`RejectExcessProperties` resolves the unknown key to `never`). Widening
- * only the payload — not the client, not the query — keeps that rejection in
- * force for every OTHER column while letting this one through.
- *
- * Delete this and the two call sites below once the column is in types.ts;
- * nothing else changes.
- */
-const withTracker = <T extends object>(payload: T) => payload as T & Record<string, never>;
-
-/**
  * Every transaction in the workspace, or only those inside a period.
  *
  * Stage 4.2: `period` is OPT-IN and defaults to "all", so no existing caller
@@ -147,7 +133,7 @@ export function useCreateTransaction() {
       // the wrong workspace for anyone who belongs to more than one).
       const { data, error } = await supabase
         .from("transactions")
-        .insert(withTracker({ ...input, user_id: user.id, tenant_id: currentTenantId }))
+        .insert({ ...input, user_id: user.id, tenant_id: currentTenantId })
         .select()
         .single();
       if (error) throw error;
@@ -169,7 +155,7 @@ export function useUpdateTransaction() {
       if (!currentTenantId) throw new Error("No workspace selected");
       const { data, error } = await supabase
         .from("transactions")
-        .update(withTracker(patch))
+        .update(patch)
         .eq("id", id)
         // Guard: an id from another workspace must not be editable from here.
         .eq("tenant_id", currentTenantId)
