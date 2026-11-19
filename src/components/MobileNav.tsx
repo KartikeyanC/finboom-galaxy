@@ -6,9 +6,9 @@ import { useNavSections } from "@/components/AppSidebar";
 import { cn } from "@/lib/utils";
 
 /**
- * Phones only (below md): NineFlow's bottom tab bar — four tabs and "More",
- * which opens a sheet of tiles for every other page — plus the floating
- * + button for quick add. The desktop sidebar takes over from 768px.
+ * Phones only (below md): a floating pill dock — two tabs, the gradient
+ * quick-add button in the centre, two tabs, and "More", which opens a sheet of
+ * tiles for every other page. The desktop sidebar takes over from 768px.
  *
  * The four tabs are fixed destinations, but they still go through
  * useNavSections(), so a member who cannot see Budget never gets a tab for it.
@@ -26,8 +26,8 @@ const TYPING_FIELD =
   'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="range"]), textarea, select, [contenteditable="true"]';
 
 /**
- * True while a field inside the page is focused. The floating + button steps
- * aside then, so it never sits on top of the form's own Save / Add button.
+ * True while a field inside the page is focused. The dock steps aside then,
+ * so it never sits on top of the form's own Save / Add button.
  */
 function useTypingInPage() {
   const [typing, setTyping] = useState(false);
@@ -59,56 +59,73 @@ export function MobileNav({ onQuickAdd, onSearch }: { onQuickAdd: () => void; on
   const more = all.filter(({ item }) => !tabs.some((t) => t.url === item.url));
   const inMore = more.find(({ item }) => item.url === pathname);
 
-  const tab = (active: boolean, Icon: typeof LayoutDashboard, label: string) => (
-    <>
-      <span className={cn("h-7 w-10 rounded-full inline-flex items-center justify-center", active && "bg-accent")}>
-        <Icon className="h-[18px] w-[18px]" />
-      </span>
-      {label}
-    </>
-  );
-  const tabClass = (active: boolean) =>
+  // Each item is a circle wrapped in a thick dark ring; neighbouring rings
+  // overlap, which draws the scalloped dock outline without any SVG.
+  const item = (active: boolean) =>
     cn(
-      "flex-1 h-16 flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors",
-      active ? "text-primary" : "text-faint",
+      "relative h-12 w-12 shrink-0 rounded-full ring-[5px] ring-[#0c0c0e] inline-flex items-center justify-center transition duration-200 ease-out active:scale-95 motion-reduce:transition-none",
+      active ? "bg-white text-[#0c0c0e]" : "bg-[#232327] text-white/60 hover:text-white",
     );
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onQuickAdd}
-        aria-label="Quick add transaction"
-        aria-hidden={typing || undefined}
-        tabIndex={typing ? -1 : undefined}
-        className={cn(
-          "md:hidden fixed right-4 z-30 h-14 w-14 rounded-full bg-gradient-to-r from-brand-a to-brand-b text-brand-foreground shadow-lift inline-flex items-center justify-center transition duration-200 ease-out active:scale-95 hover:scale-105 motion-reduce:transition-none",
-          typing && "pointer-events-none opacity-0 translate-y-4",
-        )}
-        style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
-      >
-        <Plus className="h-6 w-6" />
-      </button>
-
       <nav
         aria-label="Tabs"
-        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-card border-t border-border flex"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className={cn(
+          "md:hidden fixed inset-x-0 z-30 flex justify-center pointer-events-none transition duration-200 ease-out motion-reduce:transition-none",
+          typing && "opacity-0 translate-y-6",
+        )}
+        style={{ bottom: "calc(0.875rem + env(safe-area-inset-bottom))" }}
+        aria-hidden={typing || undefined}
       >
-        {tabs.map(({ url, label, icon }) => (
-          <Link key={url} to={url} aria-current={pathname === url ? "page" : undefined} className={tabClass(pathname === url)}>
-            {tab(pathname === url, icon, label)}
-          </Link>
-        ))}
-        <button
-          type="button"
-          onClick={() => setSheet(true)}
-          aria-expanded={sheet}
-          aria-haspopup="dialog"
-          className={tabClass(!!inMore || sheet)}
-        >
-          {tab(!!inMore || sheet, MoreHorizontal, inMore ? inMore.item.title : "More")}
-        </button>
+        <div className="pointer-events-auto flex items-center gap-1.5 p-[5px] drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
+          {tabs.slice(0, 2).map(({ url, label, icon: Icon }) => (
+            <Link
+              key={url}
+              to={url}
+              aria-label={label}
+              title={label}
+              tabIndex={typing ? -1 : undefined}
+              aria-current={pathname === url ? "page" : undefined}
+              className={item(pathname === url)}
+            >
+              <Icon className="h-5 w-5" />
+            </Link>
+          ))}
+          <button
+            type="button"
+            onClick={onQuickAdd}
+            aria-label="Quick add transaction"
+            tabIndex={typing ? -1 : undefined}
+            className="relative h-12 w-12 shrink-0 rounded-full ring-[5px] ring-[#0c0c0e] bg-gradient-to-br from-brand-a to-brand-b text-brand-foreground inline-flex items-center justify-center transition duration-200 ease-out active:scale-95 hover:scale-105 motion-reduce:transition-none"
+          >
+            <Plus className="h-6 w-6" strokeWidth={2.5} />
+          </button>
+          {tabs.slice(2).map(({ url, label, icon: Icon }) => (
+            <Link
+              key={url}
+              to={url}
+              aria-label={label}
+              title={label}
+              tabIndex={typing ? -1 : undefined}
+              aria-current={pathname === url ? "page" : undefined}
+              className={item(pathname === url)}
+            >
+              <Icon className="h-5 w-5" />
+            </Link>
+          ))}
+          <button
+            type="button"
+            onClick={() => setSheet(true)}
+            aria-label={inMore ? `More (${inMore.item.title})` : "More"}
+            aria-expanded={sheet}
+            aria-haspopup="dialog"
+            tabIndex={typing ? -1 : undefined}
+            className={item(!!inMore || sheet)}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+        </div>
       </nav>
 
       <Sheet open={sheet} onOpenChange={setSheet}>
