@@ -51,12 +51,12 @@ const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, 
       }`}
     >
       {select && <div className="shrink-0 flex items-center">{select}</div>}
-      <div className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground">
+      <div className="flex flex-col items-center gap-0 sm:gap-1 shrink-0 text-muted-foreground">
         <button
           aria-label="Move up"
           onClick={() => onMove(stream.id, -1)}
           disabled={isFirst}
-          className="sm:hidden disabled:opacity-30 hover:text-primary"
+          className="sm:hidden h-8 w-8 -my-1 flex items-center justify-center rounded-full disabled:opacity-30 hover:text-primary active:bg-muted/60"
         >
           <ChevronUp className="w-4 h-4" />
         </button>
@@ -65,7 +65,7 @@ const IncomeCard = ({ stream, onDragStart, onDropOn, onMove, onRemove, isFirst, 
           aria-label="Move down"
           onClick={() => onMove(stream.id, 1)}
           disabled={isLast}
-          className="sm:hidden disabled:opacity-30 hover:text-primary"
+          className="sm:hidden h-8 w-8 -my-1 flex items-center justify-center rounded-full disabled:opacity-30 hover:text-primary active:bg-muted/60"
         >
           <ChevronDown className="w-4 h-4" />
         </button>

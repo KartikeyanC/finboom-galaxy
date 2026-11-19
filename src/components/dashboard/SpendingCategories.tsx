@@ -45,15 +45,19 @@ const SpendingCategories = () => {
       ) : (
         <div className="flex items-center gap-5 flex-wrap sm:flex-nowrap">
           {/* Legend */}
-          <ul className="flex flex-col gap-1 flex-1 min-w-0 order-2 sm:order-1">
+          <ul className="flex flex-col gap-1 basis-full sm:basis-auto flex-1 min-w-0 order-2 sm:order-1">
             {cats.map((cat, i) => (
               <li key={cat.name}>
                 <button
                   type="button"
+                  aria-pressed={active === i}
                   onMouseEnter={() => setActive(i)}
                   onMouseLeave={() => setActive(null)}
+                  onFocus={() => setActive(i)}
+                  onBlur={() => setActive(null)}
+                  onClick={() => setActive(active === i ? null : i)}
                   className={cn(
-                    "w-full flex items-center gap-2.5 rounded-md px-1.5 py-1 -mx-1.5 transition-colors text-left",
+                    "w-full flex items-center gap-2.5 rounded-md px-1.5 py-1 min-h-9 -mx-1.5 transition-colors text-left",
                     active === i ? "bg-primary/10" : "hover:bg-muted/40",
                   )}
                 >

@@ -475,14 +475,16 @@ export default function AccountsManager() {
 
             {/* Color */}
             <div className="space-y-2">
-              <Label>Color Tag</Label>
-              <div className="flex flex-wrap gap-2">
+              <Label id="account-color-label">Color Tag</Label>
+              <div role="group" aria-labelledby="account-color-label" className="flex flex-wrap gap-2">
                 {COLORS.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => set("color", c.id)}
                     title={c.label}
+                    aria-label={c.label}
+                    aria-pressed={form.color === c.id}
                     className={cn(
                       "h-9 w-9 rounded-full border-2 transition-all flex items-center justify-center",
                       form.color === c.id
@@ -499,13 +501,16 @@ export default function AccountsManager() {
 
             {/* Icon */}
             <div className="space-y-2">
-              <Label>Icon</Label>
-              <div className="flex flex-wrap gap-2">
-                {ICONS.map(({ id, icon: I }) => (
+              <Label id="account-icon-label">Icon</Label>
+              <div role="group" aria-labelledby="account-icon-label" className="flex flex-wrap gap-2">
+                {ICONS.map(({ id, icon: I, label }) => (
                   <button
                     key={id}
                     type="button"
                     onClick={() => set("icon", id)}
+                    aria-label={label}
+                    aria-pressed={form.icon === id}
+                    title={label}
                     className={cn(
                       "h-10 w-10 rounded-lg border flex items-center justify-center transition-all",
                       form.icon === id
@@ -513,7 +518,7 @@ export default function AccountsManager() {
                         : "border-border/60 hover:border-border text-muted-foreground"
                     )}
                   >
-                    <I className="h-4 w-4" />
+                    <I className="h-4 w-4" aria-hidden="true" />
                   </button>
                 ))}
               </div>

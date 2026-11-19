@@ -52,13 +52,14 @@ export const COLORS = [
 
 export type ColorId = (typeof COLORS)[number]["id"];
 
-export const ICONS: { id: string; icon: LucideIcon }[] = [
-  { id: "wallet", icon: Wallet },
-  { id: "landmark", icon: Landmark },
-  { id: "card", icon: CreditCard },
-  { id: "coins", icon: Coins },
-  { id: "trend", icon: TrendingUp },
-  { id: "shield", icon: Shield },
+/** [label] is what a screen reader says for the icon picker button. */
+export const ICONS: { id: string; icon: LucideIcon; label: string }[] = [
+  { id: "wallet", icon: Wallet, label: "Wallet" },
+  { id: "landmark", icon: Landmark, label: "Bank" },
+  { id: "card", icon: CreditCard, label: "Card" },
+  { id: "coins", icon: Coins, label: "Coins" },
+  { id: "trend", icon: TrendingUp, label: "Investments" },
+  { id: "shield", icon: Shield, label: "Shield" },
 ];
 
 export const DEFAULT_PURPOSES = [

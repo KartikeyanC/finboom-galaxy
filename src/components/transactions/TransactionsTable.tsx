@@ -185,7 +185,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
   return (
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap min-w-0">
           {/* BUG-097 — h2, not h3. Every `glass-card` section heading in the
               app was an <h3> sitting directly under the page's <h1>, so the
               heading list a screen-reader user navigates by skipped a level on
@@ -237,7 +237,7 @@ export default function TransactionsTable({ type: initialType }: { type: TxnType
             setDialogOpen(true);
           }}
         >
-          <Plus className="w-4 h-4 mr-1" /> Add {title.slice(0, -1).toLowerCase()}
+          <Plus className="w-4 h-4 mr-1" /> {type === "income" ? "Add income" : "Add expense"}
         </Button>
       </div>
 

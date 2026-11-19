@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, HandCoins, Wallet, PieChart, MoreHorizontal, Lock, Plus, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -20,9 +20,38 @@ const TABS = [
   { url: "/app/budget", label: "Budget", icon: PieChart },
 ];
 
+
+/** Fields where the on-screen keyboard is up and a form's own buttons matter more than quick add. */
+const TYPING_FIELD =
+  'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="range"]), textarea, select, [contenteditable="true"]';
+
+/**
+ * True while a field inside the page is focused. The floating + button steps
+ * aside then, so it never sits on top of the form's own Save / Add button.
+ */
+function useTypingInPage() {
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const el = document.activeElement;
+      setTyping(!!el && el.matches(TYPING_FIELD) && !!el.closest("#main-content"));
+    };
+    // focusout fires before focus lands on the next element; read it a tick later.
+    const later = () => setTimeout(check, 0);
+    document.addEventListener("focusin", check);
+    document.addEventListener("focusout", later);
+    return () => {
+      document.removeEventListener("focusin", check);
+      document.removeEventListener("focusout", later);
+    };
+  }, []);
+  return typing;
+}
+
 export function MobileNav({ onQuickAdd, onSearch }: { onQuickAdd: () => void; onSearch: () => void }) {
   const { pathname } = useLocation();
   const [sheet, setSheet] = useState(false);
+  const typing = useTypingInPage();
   const { main, wealth, tools } = useNavSections();
   const all = [...main, ...wealth, ...tools];
   const visible = new Set(all.map(({ item }) => item.url));
@@ -50,7 +79,12 @@ export function MobileNav({ onQuickAdd, onSearch }: { onQuickAdd: () => void; on
         type="button"
         onClick={onQuickAdd}
         aria-label="Quick add transaction"
-        className="md:hidden fixed right-4 z-30 h-14 w-14 rounded-full bg-gradient-to-r from-brand-a to-brand-b text-brand-foreground shadow-lift inline-flex items-center justify-center transition active:scale-95 hover:scale-105"
+        aria-hidden={typing || undefined}
+        tabIndex={typing ? -1 : undefined}
+        className={cn(
+          "md:hidden fixed right-4 z-30 h-14 w-14 rounded-full bg-gradient-to-r from-brand-a to-brand-b text-brand-foreground shadow-lift inline-flex items-center justify-center transition duration-200 ease-out active:scale-95 hover:scale-105 motion-reduce:transition-none",
+          typing && "pointer-events-none opacity-0 translate-y-4",
+        )}
         style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
       >
         <Plus className="h-6 w-6" />
